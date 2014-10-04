@@ -110,13 +110,14 @@ fn is_valid_deck(deck: &[Card]) -> bool {
 }
 
 // Game state:
-// - discarded card
+// - discarded ('burnt') card
 // - the remaining deck
 // - each player's card
 // - whether they are protected by priestess
 // - each player's discard
 //   - publicly available
 
+// XXX: Should we wrap up 'Player'?
 
 struct Game {
     _hands: [Card, ..NUM_PLAYERS],
@@ -163,6 +164,16 @@ impl Game {
     fn num_cards_remaining(&self) -> uint {
         self._deck.len()
     }
+
+    //fn handle_turn(&self, |Game, Card| -> Action) -> Game {
+        // TODO: UNTESTED:
+        // - pop a card off the deck
+        // - give it & this to the callback
+        // - process the action
+        // - update the current player's hand to have whichever card they
+        //   didn't discard
+        // - increment the internal player count if necessary
+    //}
 }
 
 
@@ -170,6 +181,27 @@ fn minister_bust(a: Card, b: Card) -> bool {
     a == Minister && b >= Wizard || a >= Wizard && b == Minister
 }
 
+
+// XXX: Want to have a simple, pure function that knows all of the rules and
+// assumes as little as it can. Still not sure the best way to do that.
+// Kind of getting blocked on details:
+// - what should it return?
+// - should the rules function be responsible for things like updating hands,
+//   discard piles, etc.
+// - how to represent
+//   - 'protected by priestess'
+//   - 'kicked out of game'
+// - how to make sure only allowable actions are played
+//   - don't play actions for cards you don't have
+//   - soldier
+//     - don't allow soldier as guess
+//   - for soldier, clown, knight, wizard, general
+//     - don't allow self as target
+//
+// Current best guess at signature:
+//   fn judge(current: GameState, dealt_card: Card, action: Action) -> GameState
+//
+// Where 'Action' combines card & parameters (target player, guess)
 
 #[test]
 fn test_card_ordering() {
@@ -242,26 +274,6 @@ fn test_minister_bust() {
     assert!(minister_bust(Princess, Minister));
 }
 
-// XXX: Want to have a simple, pure function that knows all of the rules and
-// assumes as little as it can. Still not sure the best way to do that.
-// Kind of getting blocked on details:
-// - what should it return?
-// - should the rules function be responsible for things like updating hands,
-//   discard piles, etc.
-// - how to represent
-//   - 'protected by priestess'
-//   - 'kicked out of game'
-// - how to make sure only allowable actions are played
-//   - don't play actions for cards you don't have
-//   - soldier
-//     - don't allow soldier as guess
-//   - for soldier, clown, knight, wizard, general
-//     - don't allow self as target
-//
-// Current best guess at signature:
-//   fn judge(current: GameState, dealt_card: Card, action: Action) -> GameState
-//
-// Where 'Action' combines card & parameters (target player, guess)
 
 
 #[test]
