@@ -123,6 +123,7 @@ fn is_valid_deck(deck: &[Card]) -> bool {
 // XXX: Should we wrap up 'Player'?
 
 struct Game {
+    // XXX: What's stored in a player's hand when they are eliminated?
     _hands: [Card, ..NUM_PLAYERS],
     _deck: Vec<Card>,
 }
@@ -147,6 +148,10 @@ impl Game {
             _hands: hands,
             _deck: cards.slice_from(5).iter().map(|&x| x).collect(),
         }
+    }
+
+    fn from_manual(hands: [Card, ..NUM_PLAYERS], deck: &[Card]) -> Result<Game, DeckError> {
+        Ok(Game { _hands: hands, _deck: deck.iter().map(|&x| x).collect() })
     }
 
     fn hands(&self) -> &[Card] {
@@ -251,7 +256,7 @@ fn test_card_ordering() {
 
 
 #[test]
-fn test_new_game() {
+fn test_num_cards_remaining_on_new() {
     // make a new game, make sure that the number & kinds of cards matches the
     // rules (5 soldiers, 2 clowns, etc.)
     let g = Game::new();
@@ -281,7 +286,6 @@ fn test_all_cards_in_game() {
 }
 
 
-
 #[test]
 fn test_from_deck() {
     let cards = [
@@ -306,6 +310,37 @@ fn test_from_deck() {
     let g = Game::from_deck(deck);
     assert_eq!(cards.slice(1, 5), g.hands());
     assert_eq!(cards.slice_from(5), g.deck());
+}
+
+
+#[test]
+fn test_manual_game() {
+    // XXX: How to specify eliminated players?
+
+    // XXX: Will need to update to take current player, because it won't be
+    // able to figure out when previous players were eliminated.
+    let hands = [Soldier, Clown, Soldier, Princess];
+    let stack = [Soldier, Soldier, Minister];
+    let result = Game::from_manual(hands, stack);
+    match result {
+        Ok(game) => {
+            assert_eq!(hands.as_slice(), game.hands());
+            assert_eq!(stack.as_slice(), game.deck().as_slice());
+        },
+        Err(e)   => fail!("Unexpected error: {}", e),
+    }
+}
+
+#[test]
+#[should_fail]
+fn test_invalid_manual_game() {
+    let hands = [Soldier, Clown, Soldier, Princess];
+    let stack = [Soldier, Princess, Minister];
+    let result = Game::from_manual(hands, stack);
+    match result {
+        Ok(_)  => fail!("Had two Princesses, should not be ok."),
+        Err(e) => assert_eq!(e, WrongCards)
+    }
 }
 
 
