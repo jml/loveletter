@@ -30,3 +30,42 @@ Winner is either the last player standing, or the player with the
 highest-valued card.
 
 ## notes on implementation
+
+Essentially focused on implementing minimal logic for adjudicating games.
+
+Phase Two is implementing client layer that does card counting and has a slot
+for a user-provided callback.
+
+### representing actions
+
+Two options.
+
+1. Have a `Play` and associate each play with a card.
+
+```
+    enum Play {
+        Guess(Card, Player),
+        Attack(Player),
+        Defend,
+    }
+
+```
+
+Don't think there's a data-driven way to do this in rust.
+
+2. Have an `Action` type that duplicates cards.
+
+```
+    enum Action {
+        // name a player & a non-soldier card, named player loses if correct
+        UseSoldier(Card, Player),
+        // See opponent's hand
+        UseClown(Player),
+        UseKnight(Player),
+        UsePriestess,
+        UseWizard(Player),
+        UseGeneral(Player),
+        UseMinister,
+        UsePrincess,
+    }
+```

@@ -226,6 +226,29 @@ fn test_from_deck() {
     assert_eq!(cards.slice_from(5), g.deck());
 }
 
+
+// XXX: Want to have a simple, pure function that knows all of the rules and
+// assumes as little as it can. Still not sure the best way to do that.
+// Kind of getting blocked on details:
+// - what should it return?
+// - should the rules function be responsible for things like updating hands,
+//   discard piles, etc.
+// - how to represent
+//   - 'protected by priestess'
+//   - 'kicked out of game'
+// - how to make sure only allowable actions are played
+//   - don't play actions for cards you don't have
+//   - soldier
+//     - don't allow soldier as guess
+//   - for soldier, clown, knight, wizard, general
+//     - don't allow self as target
+//
+// Current best guess at signature:
+//   fn judge(current: GameState, dealt_card: Card, action: Action) -> GameState
+//
+// Where 'Action' combines card & parameters (target player, guess)
+
+
 #[test]
 fn test_deck_new() {
     let Deck(mut cards) = Deck::new();
