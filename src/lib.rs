@@ -176,6 +176,17 @@ impl Game {
         self._stack.as_slice()
     }
 
+    fn get_hand(&self, player: uint) -> Result<Card, PlayError> {
+        if player < self._hands.len() {
+            match self._hands[player] {
+                Some(card) => Ok(card),
+                None => Err(InactivePlayer(player)),
+            }
+        } else {
+            Err(InvalidPlayer(player))
+        }
+    }
+
     fn num_cards_remaining(&self) -> uint {
         self._stack.len()
     }
@@ -245,6 +256,7 @@ enum Action {
 enum PlayError {
     InvalidPlayer(uint),
     InvalidAction,
+    InactivePlayer(uint),
 }
 
 // XXX: With Wizard, will need to check if they are forced to play the Princess.
@@ -297,6 +309,30 @@ fn test_num_cards_remaining_on_new() {
 fn test_active_players_on_new() {
     let g = Game::new();
     assert_eq!(vec![0, 1, 2, 3], g.active_players());
+}
+
+#[test]
+fn test_get_card_active_player() {
+    let g = Game::from_manual(
+        [Some(General), Some(Clown), Some(Knight), Some(Priestess)],
+        [Soldier, Minister, Princess, Soldier, Wizard]).unwrap();
+    assert_eq!(g.get_hand(0), Ok(General));
+}
+
+#[test]
+fn test_get_card_nonexistent_player() {
+    let g = Game::from_manual(
+        [Some(General), Some(Clown), Some(Knight), Some(Priestess)],
+        [Soldier, Minister, Princess, Soldier, Wizard]).unwrap();
+    assert_eq!(g.get_hand(5), Err(InvalidPlayer(5)));
+}
+
+#[test]
+fn test_get_card_inactive_player() {
+    let g = Game::from_manual(
+        [Some(General), Some(Clown), None, Some(Priestess)],
+        [Soldier, Minister, Princess, Soldier, Wizard]).unwrap();
+    assert_eq!(g.get_hand(2), Err(InactivePlayer(2)));
 }
 
 #[test]
