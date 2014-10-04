@@ -2,6 +2,8 @@ use std::collections::TreeSet;
 use std::rand;
 use std::rand::Rng;
 
+// XXX: Make a loveletter namespace (figure out how to do this properly).
+
 #[deriving(PartialEq, PartialOrd, Eq, Ord, Show)]
 enum Card {
     Soldier,
@@ -90,8 +92,8 @@ impl Game {
         self._deck.as_slice()
     }
 
-    fn num_cards_remaining(&self) -> int {
-        11
+    fn num_cards_remaining(&self) -> uint {
+        self._deck.len()
     }
 }
 
