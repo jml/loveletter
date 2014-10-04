@@ -265,13 +265,14 @@ fn judge(game: Game, dealt_card: Card, action: Action) -> Result<Game, PlayError
     // non-deterministic finite automata.
     match action {
         UseGeneral(target) => {
-            if target >= 4 {
-                // XXX: need to check that target is active
-                return Err(InvalidPlayer(target));
+            match game.get_hand(target) {
+                Err(e) => return Err(e),
+                _      => (),
             }
             // XXX: need current player in order to swap. Assume it's 0 for now.
             let current_player = 0;
             let current_card = game.hands()[current_player];
+
             if !(current_card == Some(General) || dealt_card == General) {
                 return Err(InvalidAction);
             }
@@ -475,6 +476,24 @@ fn test_general_with_no_general() {
         Err(e) => assert_eq!(InvalidAction, e)
     }
 }
+
+// XXX: [emacs] My work config has M-f and M-b break at underscores. It's
+// extremely useful, and I should set it up in my home config.
+
+#[test]
+fn test_general_at_inactive_players() {
+    let mut g = Game::from_manual(
+        [Some(General), Some(Clown), None, Some(Priestess)],
+        [Soldier, Minister, Princess, Soldier, Wizard]).unwrap();
+    // XXX: Messing with internals: a sign of bad design!
+    let next_card = g._stack.pop().unwrap();
+    let next_game = judge(g, next_card, UseGeneral(2));
+    match next_game {
+        Ok(_)  => fail!("Should not have succeeded"),
+        Err(e) => assert_eq!(InactivePlayer(2), e)
+    }
+}
+
 
 #[test]
 fn test_deck_new() {
