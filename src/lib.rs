@@ -152,14 +152,16 @@ impl Game {
         }
     }
 
-    fn from_manual(hands: [Card, ..NUM_PLAYERS], deck: &[Card]) -> Result<Game, DeckError> {
+    fn from_manual(hands: [Option<Card>, ..NUM_PLAYERS], deck: &[Card]) -> Result<Game, DeckError> {
         let stack: Vec<Card> = deck.iter().map(|&x| x).collect();
         let mut all_cards = stack.clone();
-        all_cards.push_all(hands);
+        for x in hands.as_slice().iter().filter_map(|&x| x) {
+            all_cards.push(x);
+        }
         let difference = subtract_vector(DECK.iter().map(|&x| x).collect(), all_cards);
         match difference {
             Some(_) => Ok(Game {
-                _hands: hands.iter().map(|&x| Some(x)).collect(),
+                _hands: hands.iter().map(|&x| x).collect(),
                 _stack: stack,
             }),
             None    => Err(WrongCards),
@@ -364,18 +366,16 @@ fn test_manual_game() {
 
     // XXX: Will need to update to take current player, because it won't be
     // able to figure out when previous players were eliminated.
-    let hands = [Soldier, Clown, Soldier, Princess];
+    let hands = [Some(Soldier), Some(Clown), Some(Soldier), Some(Princess)];
     let stack = [Soldier, Soldier, Minister];
     let game = Game::from_manual(hands, stack).unwrap();
-    assert_eq!(
-        [Some(Soldier), Some(Clown), Some(Soldier), Some(Princess)].as_slice(),
-        game.hands());
+    assert_eq!(hands.as_slice(), game.hands());
     assert_eq!(stack.as_slice(), game.deck().as_slice());
 }
 
 #[test]
 fn test_invalid_manual_game() {
-    let hands = [Soldier, Clown, Soldier, Princess];
+    let hands = [Some(Soldier), Some(Clown), Some(Soldier), Some(Princess)];
     let stack = [Soldier, Princess, Minister];
     let result = Game::from_manual(hands, stack);
     match result {
@@ -400,7 +400,7 @@ fn test_minister_bust() {
 #[test]
 fn test_general_swap() {
     let mut g = Game::from_manual(
-        [General, Clown, Knight, Priestess],
+        [Some(General), Some(Clown), Some(Knight), Some(Priestess)],
         [Soldier, Minister, Princess, Soldier, Wizard]).unwrap();
     // XXX: Messing with internals: a sign of bad design!
     let next_card = g._stack.pop().unwrap();
@@ -415,7 +415,7 @@ fn test_general_swap() {
 #[test]
 fn test_general_swap_bad_target() {
     let mut g = Game::from_manual(
-        [General, Clown, Knight, Priestess],
+        [Some(General), Some(Clown), Some(Knight), Some(Priestess)],
         [Soldier, Minister, Princess, Soldier, Wizard]).unwrap();
     // XXX: Messing with internals: a sign of bad design!
     let next_card = g._stack.pop().unwrap();
@@ -429,7 +429,7 @@ fn test_general_swap_bad_target() {
 #[test]
 fn test_general_with_no_general() {
     let mut g = Game::from_manual(
-        [Soldier, Clown, Knight, Priestess],
+        [Some(Soldier), Some(Clown), Some(Knight), Some(Priestess)],
         [Soldier, Minister, Princess, Soldier, Wizard]).unwrap();
     // XXX: Messing with internals: a sign of bad design!
     let next_card = g._stack.pop().unwrap();
