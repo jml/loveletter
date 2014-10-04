@@ -134,13 +134,13 @@ impl Game {
         let Deck(cards) = deck;
         // XXX: Is there a better syntax for this? (Problem is duplicating
         // NUM_PLAYERS implicitly by explicitly listing cards.)
+        let burn = cards[0];
         let hands: [Card, ..NUM_PLAYERS] = [
-            cards[0],
             cards[1],
             cards[2],
             cards[3],
+            cards[4],
             ];
-        let burn = cards[NUM_PLAYERS];
         Game {
             _hands: hands,
             _burned: burn,
@@ -221,8 +221,8 @@ fn test_from_deck() {
         ];
     let deck = Deck(cards);
     let g = Game::from_deck(deck);
-    assert_eq!(cards.slice(0, 4), g.hands());
-    assert_eq!(cards[4], g.burned_card());
+    assert_eq!(cards[0], g.burned_card());
+    assert_eq!(cards.slice(1, 5), g.hands());
     assert_eq!(cards.slice_from(5), g.deck());
 }
 
