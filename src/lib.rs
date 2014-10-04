@@ -203,6 +203,49 @@ fn minister_bust(a: Card, b: Card) -> bool {
 //
 // Where 'Action' combines card & parameters (target player, guess)
 
+enum Action {
+    UseGeneral(uint),
+}
+
+// XXX: Will probably make sense to move it into the Game object, but let's
+// keep it separate for now.
+
+
+// XXX: has to assume that the dealt_card is no longer on the stack, because
+// Wizard will force another player to draw from the deck.
+
+// XXX: With Wizard, will need to check if they are forced to play the Princess.
+fn judge(game: Game, dealt_card: Card, action: Action) -> Game {
+    // XXX: my spider sense is telling me this can be modeled as a
+    // non-deterministic finite automata.
+
+    match action {
+        UseGeneral(target) => {
+            let mut new_game = game;
+            let current_player = 0;
+            // XXX: need current player in order to swap. Assume it's 0 for now.
+            let current_card = new_game.hands()[current_player];
+            // XXX: might want to extract 'get the one that's not this' logic.
+            if dealt_card == General || current_card == General {
+                let new_card = new_game._hands[target];
+                if dealt_card == General {
+                    new_game._hands[target] = new_game._hands[current_player];
+                } else {
+                    new_game._hands[target] = dealt_card;
+                }
+                new_game._hands[current_player] = new_card
+            } else {
+                // XXX: Update the return type to be Result
+                fail!("Using General despite not having one.")
+            }
+            // XXX: need to check that target is valid
+            // XXX: need to update so priestess renders ineffective
+            new_game
+        }
+    }
+}
+
+
 #[test]
 fn test_card_ordering() {
     assert!(Soldier <= Soldier);
@@ -274,6 +317,42 @@ fn test_minister_bust() {
     assert!(minister_bust(Princess, Minister));
 }
 
+
+#[test]
+fn test_general_swap() {
+    // XXX: This isn't a great way to initialize a game for tests -- it's too
+    // hard to reason from the deck to who's in what's hand.
+    let deck = Deck([
+        Soldier,
+        General,
+        Clown,
+        Knight,
+        Priestess,
+        Wizard,
+        Minister,
+        Princess,
+        Soldier,
+        Clown,
+        Soldier,
+        Knight,
+        Soldier,
+        Priestess,
+        Soldier,
+        Wizard,
+        ]);
+    let mut g = Game::from_deck(deck);
+    // XXX: Messing with internals: a sign of bad design!
+    let next_card = match g._deck.pop() {
+        Some(card) => card,
+        None => fail!("There is nothing on the deck. WTF.")
+    };
+    assert_eq!(Wizard, next_card);
+    assert_eq!(General, g.hands()[0]);
+
+    let next_game = judge(g, next_card, UseGeneral(3));
+    assert_eq!(next_game.hands()[3], Wizard);
+    assert_eq!(next_game.hands()[0], Priestess);
+}
 
 
 #[test]
