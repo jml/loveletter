@@ -200,6 +200,17 @@ impl Game {
         }
     }
 
+    fn swap_hands(&self, p1: uint, p2: uint) -> Result<Game, PlayError> {
+        match self.get_hand(p2).and(self.get_hand(p1)) {
+            Err(e) => Err(e),
+            Ok(..) => {
+                let mut hands = self._hands.clone();
+                hands.as_mut_slice().swap(p1, p2);
+                Ok(Game { _hands: hands, _stack: self._stack.clone() })
+            }
+        }
+    }
+
     fn num_cards_remaining(&self) -> uint {
         self._stack.len()
     }
@@ -384,6 +395,28 @@ fn test_eliminate_gone_player() {
         [Soldier, Minister, Princess, Soldier, Wizard]).unwrap();
     let error = g.eliminate(2).unwrap_err();
     assert_eq!(InactivePlayer(2), error);
+}
+
+#[test]
+fn test_swap_cards() {
+    let g = Game::from_manual(
+        [Some(General), Some(Clown), None, Some(Priestess)],
+        [Soldier, Minister, Princess, Soldier, Wizard]).unwrap();
+    let new_game = g.swap_hands(0, 1).unwrap();
+    assert_eq!(
+        [Some(Clown), Some(General), None, Some(Priestess)].as_slice(),
+        new_game.hands());
+}
+
+#[test]
+fn test_swap_cards_nonexistent() {
+    let g = Game::from_manual(
+        [Some(General), Some(Clown), None, Some(Priestess)],
+        [Soldier, Minister, Princess, Soldier, Wizard]).unwrap();
+    let error = g.swap_hands(0, 5).unwrap_err();
+    assert_eq!(InvalidPlayer(5), error);
+    let error = g.swap_hands(5, 0).unwrap_err();
+    assert_eq!(InvalidPlayer(5), error);
 }
 
 
