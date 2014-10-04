@@ -300,15 +300,15 @@ fn judge(game: Game, dealt_card: Card, action: Action) -> Result<Game, PlayError
             if !(current_card == Some(General) || dealt_card == General) {
                 return Err(InvalidAction);
             }
-            // XXX: might want to extract 'get the one that's not this' logic.
+
             let mut new_game = game;
             if current_card == Some(General) {
                 new_game._hands.as_mut_slice()[current_player] = Some(dealt_card);
             }
 
+            // XXX: might want to extract 'get the one that's not this' logic.
             // XXX: need to update so priestess renders ineffective
-            new_game._hands.as_mut_slice().swap(target, current_player);
-            Ok(new_game)
+            new_game.swap_hands(current_player, target)
         }
     }
 }
