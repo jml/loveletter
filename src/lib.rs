@@ -166,6 +166,11 @@ impl Game {
 }
 
 
+fn minister_bust(a: Card, b: Card) -> bool {
+    a == Minister && b >= Wizard || a >= Wizard && b == Minister
+}
+
+
 #[test]
 fn test_card_ordering() {
     assert!(Soldier <= Soldier);
@@ -226,6 +231,16 @@ fn test_from_deck() {
     assert_eq!(cards.slice_from(5), g.deck());
 }
 
+#[test]
+fn test_minister_bust() {
+    assert!(!minister_bust(Soldier, Soldier));
+    assert!(minister_bust(Minister, Wizard));
+    assert!(minister_bust(Minister, General));
+    assert!(minister_bust(Minister, Princess));
+    assert!(minister_bust(Wizard, Minister));
+    assert!(minister_bust(General, Minister));
+    assert!(minister_bust(Princess, Minister));
+}
 
 // XXX: Want to have a simple, pure function that knows all of the rules and
 // assumes as little as it can. Still not sure the best way to do that.
