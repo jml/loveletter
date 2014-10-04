@@ -1,4 +1,3 @@
-use std::collections::TreeSet;
 use std::rand;
 use std::rand::Rng;
 
@@ -121,11 +120,10 @@ fn is_valid_deck(deck: &[Card]) -> bool {
 
 struct Game {
     _hands: [Card, ..NUM_PLAYERS],
-    _burnt: Card,
+    _burned: Card,
     _deck: Vec<Card>,
 }
 
-// XXX: Next time, remind me not to take the alcohol when they offer it.
 
 impl Game {
     fn new() -> Game {
@@ -144,13 +142,13 @@ impl Game {
         let burn = cards[NUM_PLAYERS];
         Game {
             _hands: hands,
-            _burnt: burn,
+            _burned: burn,
             _deck: cards.slice_from(5).iter().map(|&x| x).collect(),
         }
     }
 
-    fn burn_card(&self) -> Card {
-        self._burnt
+    fn burned_card(&self) -> Card {
+        self._burned
     }
 
     fn hands(&self) -> &[Card] {
@@ -184,16 +182,6 @@ fn test_new_game() {
 }
 
 #[test]
-fn test_cards_remaining() {
-    // XXX: INVARIANT: It is always the case that the remaining deck is a
-    // subset of the total deck.
-    let g = Game::new();
-    let full_deck: TreeSet<Card> = DECK.iter().map(|&x| x).collect();
-    let deck: TreeSet<Card> = g.deck().iter().map(|&x| x).collect();
-    assert!(full_deck.is_superset(&deck));
-}
-
-#[test]
 fn test_all_cards_in_game() {
     // make a new game, make sure that the number & kinds of cards matches the
     // rules (5 soldiers, 2 clowns, etc.)
@@ -201,17 +189,14 @@ fn test_all_cards_in_game() {
     let mut full_deck: Vec<&Card> = DECK.iter().collect();
     full_deck.sort();
     let mut found_cards: Vec<&Card> = g.deck().iter().collect();
-    let burnt = g.burn_card();
+    let burnt = g.burned_card();
     found_cards.push(&burnt);
     for card in g.hands().iter() {
         found_cards.push(card);
     }
-    // XXX: You don't want to test set equality, because that'll eliminate
-    // duplicates.
     found_cards.sort();
     assert_eq!(full_deck, found_cards);
 }
-
 
 #[test]
 fn test_deck_new() {
@@ -321,4 +306,3 @@ fn test_deck_variable_too_many() {
 
 // XXX: Probably want a method to make a game from an already-shuffled deck
 // Once we've got that, we can start testing adjudication.
-
