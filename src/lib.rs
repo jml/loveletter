@@ -1,3 +1,4 @@
+use std::collections;
 use std::rand;
 use std::rand::Rng;
 
@@ -129,12 +130,17 @@ struct Game {
     // XXX: What's stored in a player's hand when they are eliminated?
     _hands: [Card, ..NUM_PLAYERS],
     _stack: Vec<Card>,
+    _players: collections::BitvSet,
 }
 
 
 impl Game {
     fn new() -> Game {
         Game::from_deck(Deck::new())
+    }
+
+    fn _player_set() -> collections::BitvSet {
+        collections::BitvSet::from_bitv(collections::Bitv::with_capacity(4, true))
     }
 
     fn from_deck(deck: Deck) -> Game {
@@ -150,6 +156,7 @@ impl Game {
         Game {
             _hands: hands,
             _stack: cards.slice_from(5).iter().map(|&x| x).collect(),
+            _players: Game::_player_set(),
         }
     }
 
@@ -159,7 +166,11 @@ impl Game {
         all_cards.push_all(hands);
         let difference = subtract_vector(DECK.iter().map(|&x| x).collect(), all_cards);
         match difference {
-            Some(_) => Ok(Game { _hands: hands, _stack: stack }),
+            Some(_) => Ok(Game {
+                _hands: hands,
+                _stack: stack,
+                _players: Game::_player_set(),
+            }),
             None    => Err(WrongCards),
         }
     }
@@ -174,6 +185,16 @@ impl Game {
 
     fn num_cards_remaining(&self) -> uint {
         self._stack.len()
+    }
+
+    fn active_players(&self) -> Vec<uint> {
+        // XXX: I think we might only need this for testing, so fudge over it.
+        let mut vec = Vec::with_capacity(self._players.len());
+        for i in self._players.iter() {
+            vec.push(i);
+        }
+        vec.sort();
+        vec
     }
 
     //fn handle_turn(&self, |Game, Card| -> Action) -> Game {
@@ -275,6 +296,12 @@ fn test_num_cards_remaining_on_new() {
     // rules (5 soldiers, 2 clowns, etc.)
     let g = Game::new();
     assert_eq!(11, g.num_cards_remaining())
+}
+
+#[test]
+fn test_active_players_on_new() {
+    let g = Game::new();
+    assert_eq!(vec![0, 1, 2, 3], g.active_players());
 }
 
 #[test]
