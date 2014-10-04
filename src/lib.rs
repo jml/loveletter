@@ -127,10 +127,11 @@ struct Game {
 
 impl Game {
     fn new() -> Game {
-        let Deck(cards) = Deck::new();
-        // XXX: How do we say that we're not going to mutate a variable any more?
-        // After this point, we don't want to mutate 'cards'.
-        //
+        Game::from_deck(Deck::new())
+    }
+
+    fn from_deck(deck: Deck) -> Game {
+        let Deck(cards) = deck;
         // XXX: Is there a better syntax for this? (Problem is duplicating
         // NUM_PLAYERS implicitly by explicitly listing cards.)
         let hands: [Card, ..NUM_PLAYERS] = [
@@ -196,6 +197,33 @@ fn test_all_cards_in_game() {
     }
     found_cards.sort();
     assert_eq!(full_deck, found_cards);
+}
+
+#[test]
+fn test_from_deck() {
+    let cards = [
+        Soldier,
+        Clown,
+        Knight,
+        Priestess,
+        Wizard,
+        General,
+        Minister,
+        Princess,
+        Soldier,
+        Clown,
+        Soldier,
+        Knight,
+        Soldier,
+        Priestess,
+        Soldier,
+        Wizard,
+        ];
+    let deck = Deck(cards);
+    let g = Game::from_deck(deck);
+    assert_eq!(cards.slice(0, 4), g.hands());
+    assert_eq!(cards[4], g.burned_card());
+    assert_eq!(cards.slice_from(5), g.deck());
 }
 
 #[test]
@@ -303,6 +331,3 @@ fn test_deck_variable_too_many() {
         Err(error) => assert_eq!(error, WrongNumber(cards.len())),
     }
 }
-
-// XXX: Probably want a method to make a game from an already-shuffled deck
-// Once we've got that, we can start testing adjudication.
