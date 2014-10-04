@@ -51,11 +51,9 @@ enum DeckError {
 }
 
 impl Deck {
-    fn shuffle() -> Deck {
-        let mut cards = DECK;
-        let mut rng = rand::task_rng();
-        rng.shuffle(cards);
-        Deck(cards)
+    /// Returns a new, shuffled deck.
+    fn new() -> Deck {
+        Deck(DECK).shuffled()
     }
 
     fn from_array(cards: [Card, ..CARDS_IN_DECK]) -> Result<Deck, DeckError> {
@@ -92,6 +90,13 @@ impl Deck {
             ];
         Deck::from_array(card_array)
     }
+
+    fn shuffled(&self) -> Deck {
+        let &Deck(mut cards) = self;
+        let mut rng = rand::task_rng();
+        rng.shuffle(cards);
+        Deck(cards)
+    }
 }
 
 fn is_valid_deck(deck: &[Card]) -> bool {
@@ -124,7 +129,7 @@ struct Game {
 
 impl Game {
     fn new() -> Game {
-        let Deck(cards) = Deck::shuffle();
+        let Deck(cards) = Deck::new();
         // XXX: How do we say that we're not going to mutate a variable any more?
         // After this point, we don't want to mutate 'cards'.
         //
@@ -209,10 +214,30 @@ fn test_all_cards_in_game() {
 
 
 #[test]
-fn test_deck_shuffle() {
-    let Deck(mut cards) = Deck::shuffle();
+fn test_deck_new() {
+    let Deck(mut cards) = Deck::new();
     cards.sort();
     assert_eq!(DECK.as_slice(), cards.as_slice());
+}
+
+#[test]
+fn test_deck_shuffle() {
+    let deck = Deck::new();
+    let Deck(mut shuffled_cards) = deck.shuffled();
+    let Deck(mut cards) = deck;
+    cards.sort();
+    shuffled_cards.sort();
+    assert_eq!(cards.as_slice(), shuffled_cards.as_slice());
+}
+
+#[test]
+fn test_deck_shuffle_does_not_modify() {
+    let deck = Deck::new();
+    let Deck(cards) = deck;
+    let old_cards = cards.clone();
+    deck.shuffled();
+    let Deck(new_cards) = deck;
+    assert_eq!(old_cards.as_slice(), new_cards.as_slice());
 }
 
 #[test]
