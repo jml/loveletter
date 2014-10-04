@@ -284,25 +284,27 @@ enum PlayError {
 }
 
 // XXX: With Wizard, will need to check if they are forced to play the Princess.
-fn judge(game: Game, dealt_card: Card, action: Action) -> Result<Game, PlayError> {
+fn judge(game: Game, current_player: uint, dealt_card: Card,
+         action: Action) -> Result<Game, PlayError> {
     // XXX: my spider sense is telling me this can be modeled as a
     // non-deterministic finite automata.
+    let current_card = match game.get_hand(current_player) {
+        Ok(card) => card,
+        Err(e) => return Err(e),
+    };
     match action {
         UseGeneral(target) => {
             match game.get_hand(target) {
                 Err(e) => return Err(e),
                 _      => (),
             }
-            // XXX: need current player in order to swap. Assume it's 0 for now.
-            let current_player = 0;
-            let current_card = game.hands()[current_player];
 
-            if !(current_card == Some(General) || dealt_card == General) {
+            if !(current_card == General || dealt_card == General) {
                 return Err(InvalidAction);
             }
 
             let mut new_game = game;
-            if current_card == Some(General) {
+            if current_card == General {
                 new_game._hands.as_mut_slice()[current_player] = Some(dealt_card);
             }
 
@@ -517,6 +519,15 @@ fn test_minister_bust() {
     assert!(minister_bust(Princess, Minister));
 }
 
+#[test]
+fn test_judge_invalid_player() {
+    let g = Game::from_manual(
+        [Some(General), Some(Clown), Some(Knight), Some(Priestess)],
+        [Soldier, Minister, Princess, Soldier, Wizard]).unwrap();
+    let err = judge(g, 5, Soldier, UseGeneral(2)).unwrap_err();
+    assert_eq!(InvalidPlayer(5), err);
+}
+
 
 #[test]
 fn test_general_swap() {
@@ -528,7 +539,7 @@ fn test_general_swap() {
     assert_eq!(Wizard, next_card);
     assert_eq!(Some(General), g.hands()[0]);
 
-    let next_game = judge(g, next_card, UseGeneral(3)).unwrap();
+    let next_game = judge(g, 0, next_card, UseGeneral(3)).unwrap();
     assert_eq!(next_game.hands()[3], Some(Wizard));
     assert_eq!(next_game.hands()[0], Some(Priestess));
 }
@@ -540,11 +551,8 @@ fn test_general_swap_bad_target() {
         [Soldier, Minister, Princess, Soldier, Wizard]).unwrap();
     // XXX: Messing with internals: a sign of bad design!
     let next_card = g._stack.pop().unwrap();
-    let next_game = judge(g, next_card, UseGeneral(4));
-    match next_game {
-        Ok(_)  => fail!("Should not have succeeded"),
-        Err(e) => assert_eq!(InvalidPlayer(4), e)
-    }
+    let next_game = judge(g, 0, next_card, UseGeneral(4));
+    assert_eq!(InvalidPlayer(4), next_game.unwrap_err());
 }
 
 #[test]
@@ -554,11 +562,8 @@ fn test_general_with_no_general() {
         [Soldier, Minister, Princess, Soldier, Wizard]).unwrap();
     // XXX: Messing with internals: a sign of bad design!
     let next_card = g._stack.pop().unwrap();
-    let next_game = judge(g, next_card, UseGeneral(2));
-    match next_game {
-        Ok(_)  => fail!("Should not have succeeded"),
-        Err(e) => assert_eq!(InvalidAction, e)
-    }
+    let next_game = judge(g, 0, next_card, UseGeneral(2));
+    assert_eq!(InvalidAction, next_game.unwrap_err());
 }
 
 // XXX: [emacs] My work config has M-f and M-b break at underscores. It's
@@ -571,11 +576,8 @@ fn test_general_at_inactive_players() {
         [Soldier, Minister, Princess, Soldier, Wizard]).unwrap();
     // XXX: Messing with internals: a sign of bad design!
     let next_card = g._stack.pop().unwrap();
-    let next_game = judge(g, next_card, UseGeneral(2));
-    match next_game {
-        Ok(_)  => fail!("Should not have succeeded"),
-        Err(e) => assert_eq!(InactivePlayer(2), e)
-    }
+    let next_game = judge(g, 0, next_card, UseGeneral(2));
+    assert_eq!(InactivePlayer(2), next_game.unwrap_err());
 }
 
 
