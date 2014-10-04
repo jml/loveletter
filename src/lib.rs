@@ -124,7 +124,7 @@ fn is_valid_deck(deck: &[Card]) -> bool {
 struct Game {
     // XXX: What's stored in a player's hand when they are eliminated?
     _hands: [Card, ..NUM_PLAYERS],
-    _deck: Vec<Card>,
+    _stack: Vec<Card>,
 }
 
 
@@ -145,7 +145,7 @@ impl Game {
             ];
         Game {
             _hands: hands,
-            _deck: cards.slice_from(5).iter().map(|&x| x).collect(),
+            _stack: cards.slice_from(5).iter().map(|&x| x).collect(),
         }
     }
 
@@ -155,7 +155,7 @@ impl Game {
         all_cards.push_all(hands);
         let difference = subtract_vector(DECK.iter().map(|&x| x).collect(), all_cards);
         match difference {
-            Some(_) => Ok(Game { _hands: hands, _deck: stack }),
+            Some(_) => Ok(Game { _hands: hands, _stack: stack }),
             None    => Err(WrongCards),
         }
     }
@@ -165,11 +165,11 @@ impl Game {
     }
 
     fn deck(&self) -> &[Card] {
-        self._deck.as_slice()
+        self._stack.as_slice()
     }
 
     fn num_cards_remaining(&self) -> uint {
-        self._deck.len()
+        self._stack.len()
     }
 
     //fn handle_turn(&self, |Game, Card| -> Action) -> Game {
@@ -327,14 +327,9 @@ fn test_manual_game() {
     // able to figure out when previous players were eliminated.
     let hands = [Soldier, Clown, Soldier, Princess];
     let stack = [Soldier, Soldier, Minister];
-    let result = Game::from_manual(hands, stack);
-    match result {
-        Ok(game) => {
-            assert_eq!(hands.as_slice(), game.hands());
-            assert_eq!(stack.as_slice(), game.deck().as_slice());
-        },
-        Err(e)   => fail!("Unexpected error: {}", e),
-    }
+    let game = Game::from_manual(hands, stack).unwrap();
+    assert_eq!(hands.as_slice(), game.hands());
+    assert_eq!(stack.as_slice(), game.deck().as_slice());
 }
 
 #[test]
@@ -363,32 +358,11 @@ fn test_minister_bust() {
 
 #[test]
 fn test_general_swap() {
-    // XXX: This isn't a great way to initialize a game for tests -- it's too
-    // hard to reason from the deck to who's in what's hand.
-    let deck = Deck([
-        Soldier,
-        General,
-        Clown,
-        Knight,
-        Priestess,
-        Wizard,
-        Minister,
-        Princess,
-        Soldier,
-        Clown,
-        Soldier,
-        Knight,
-        Soldier,
-        Priestess,
-        Soldier,
-        Wizard,
-        ]);
-    let mut g = Game::from_deck(deck);
+    let mut g = Game::from_manual(
+        [General, Clown, Knight, Priestess],
+        [Soldier, Minister, Princess, Soldier, Wizard]).unwrap();
     // XXX: Messing with internals: a sign of bad design!
-    let next_card = match g._deck.pop() {
-        Some(card) => card,
-        None => fail!("There is nothing on the deck. WTF.")
-    };
+    let next_card = g._stack.pop().unwrap();
     assert_eq!(Wizard, next_card);
     assert_eq!(General, g.hands()[0]);
 
