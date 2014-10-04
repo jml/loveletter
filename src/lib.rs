@@ -43,7 +43,6 @@ static DECK: [Card, ..CARDS_IN_DECK] = [
     Princess,
     ];
 
-
 struct Deck([Card, ..CARDS_IN_DECK]);
 
 #[deriving(Show, PartialEq, Eq)]
@@ -151,7 +150,14 @@ impl Game {
     }
 
     fn from_manual(hands: [Card, ..NUM_PLAYERS], deck: &[Card]) -> Result<Game, DeckError> {
-        Ok(Game { _hands: hands, _deck: deck.iter().map(|&x| x).collect() })
+        let stack: Vec<Card> = deck.iter().map(|&x| x).collect();
+        let mut all_cards = stack.clone();
+        all_cards.push_all(hands);
+        let difference = subtract_vector(DECK.iter().map(|&x| x).collect(), all_cards);
+        match difference {
+            Some(_) => Ok(Game { _hands: hands, _deck: stack }),
+            None    => Err(WrongCards),
+        }
     }
 
     fn hands(&self) -> &[Card] {
@@ -332,7 +338,6 @@ fn test_manual_game() {
 }
 
 #[test]
-#[should_fail]
 fn test_invalid_manual_game() {
     let hands = [Soldier, Clown, Soldier, Princess];
     let stack = [Soldier, Princess, Minister];
