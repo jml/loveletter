@@ -3,7 +3,10 @@ use std::rand::Rng;
 
 // XXX: Make a loveletter namespace (figure out how to do this properly).
 
-#[deriving(PartialEq, PartialOrd, Eq, Ord, Show)]
+// XXX: Stop playing whack-a-mole with references & ownership and start
+// actually *understanding* it.
+
+#[deriving(PartialEq, PartialOrd, Eq, Ord, Show, Clone)]
 enum Card {
     Soldier,
     Clown,
@@ -121,7 +124,6 @@ fn is_valid_deck(deck: &[Card]) -> bool {
 
 struct Game {
     _hands: [Card, ..NUM_PLAYERS],
-    _burned: Card,
     _deck: Vec<Card>,
 }
 
@@ -135,7 +137,6 @@ impl Game {
         let Deck(cards) = deck;
         // XXX: Is there a better syntax for this? (Problem is duplicating
         // NUM_PLAYERS implicitly by explicitly listing cards.)
-        let burn = cards[0];
         let hands: [Card, ..NUM_PLAYERS] = [
             cards[1],
             cards[2],
@@ -144,13 +145,8 @@ impl Game {
             ];
         Game {
             _hands: hands,
-            _burned: burn,
             _deck: cards.slice_from(5).iter().map(|&x| x).collect(),
         }
-    }
-
-    fn burned_card(&self) -> Card {
-        self._burned
     }
 
     fn hands(&self) -> &[Card] {
@@ -265,19 +261,26 @@ fn test_new_game() {
 #[test]
 fn test_all_cards_in_game() {
     // make a new game, make sure that the number & kinds of cards matches the
-    // rules (5 soldiers, 2 clowns, etc.)
+    // rules (5 soldiers, 2 clowns, etc.). One card is 'burned' before dealing.
     let g = Game::new();
     let mut full_deck: Vec<&Card> = DECK.iter().collect();
     full_deck.sort();
-    let mut found_cards: Vec<&Card> = g.deck().iter().collect();
-    let burnt = g.burned_card();
-    found_cards.push(&burnt);
-    for card in g.hands().iter() {
-        found_cards.push(card);
-    }
+    let mut found_cards: Vec<Card> = g.deck().iter().map(|&x| x).collect();
+    found_cards.push_all(g.hands());
     found_cards.sort();
-    assert_eq!(full_deck, found_cards);
+    for card in found_cards.iter() {
+        let found = full_deck.iter().position(|&c| c == card);
+        match found {
+            Some(i) => full_deck.swap_remove(i),
+            None    => fail!("card in game that's not in deck: {}", card),
+        };
+    }
+    assert_eq!(1, full_deck.len());
+    found_cards.push(*full_deck[0]);
+    assert!(is_valid_deck(found_cards.as_slice()));
 }
+
+
 
 #[test]
 fn test_from_deck() {
@@ -301,10 +304,10 @@ fn test_from_deck() {
         ];
     let deck = Deck(cards);
     let g = Game::from_deck(deck);
-    assert_eq!(cards[0], g.burned_card());
     assert_eq!(cards.slice(1, 5), g.hands());
     assert_eq!(cards.slice_from(5), g.deck());
 }
+
 
 #[test]
 fn test_minister_bust() {
