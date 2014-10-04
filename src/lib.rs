@@ -221,13 +221,20 @@ enum Action {
 // XXX: has to assume that the dealt_card is no longer on the stack, because
 // Wizard will force another player to draw from the deck.
 
+#[deriving(PartialEq, Eq, Show)]
+enum PlayError {
+    InvalidPlayer(uint),
+}
+
 // XXX: With Wizard, will need to check if they are forced to play the Princess.
-fn judge(game: Game, dealt_card: Card, action: Action) -> Game {
+fn judge(game: Game, dealt_card: Card, action: Action) -> Result<Game, PlayError> {
     // XXX: my spider sense is telling me this can be modeled as a
     // non-deterministic finite automata.
-
     match action {
         UseGeneral(target) => {
+            if target >= 4 {
+                return Err(InvalidPlayer(target));
+            }
             let mut new_game = game;
             let current_player = 0;
             // XXX: need current player in order to swap. Assume it's 0 for now.
@@ -247,7 +254,7 @@ fn judge(game: Game, dealt_card: Card, action: Action) -> Game {
             }
             // XXX: need to check that target is valid
             // XXX: need to update so priestess renders ineffective
-            new_game
+            Ok(new_game)
         }
     }
 }
@@ -366,9 +373,23 @@ fn test_general_swap() {
     assert_eq!(Wizard, next_card);
     assert_eq!(General, g.hands()[0]);
 
-    let next_game = judge(g, next_card, UseGeneral(3));
+    let next_game = judge(g, next_card, UseGeneral(3)).unwrap();
     assert_eq!(next_game.hands()[3], Wizard);
     assert_eq!(next_game.hands()[0], Priestess);
+}
+
+#[test]
+fn test_general_swap_bad_target() {
+    let mut g = Game::from_manual(
+        [General, Clown, Knight, Priestess],
+        [Soldier, Minister, Princess, Soldier, Wizard]).unwrap();
+    // XXX: Messing with internals: a sign of bad design!
+    let next_card = g._stack.pop().unwrap();
+    let next_game = judge(g, next_card, UseGeneral(4));
+    match next_game {
+        Ok(_)  => fail!("Should not have succeeded"),
+        Err(e) => assert_eq!(InvalidPlayer(4), e)
+    }
 }
 
 
