@@ -122,7 +122,7 @@ fn is_valid_deck(deck: &[Card]) -> bool {
 
 // XXX: Should we wrap up 'Player'?
 
-
+#[deriving(Show)]
 struct Game {
     // XXX: [rust]: Why can't I derive show while this has a size? Why can't I
     // make it a slice?
@@ -177,6 +177,8 @@ impl Game {
     }
 
     fn get_hand(&self, player: uint) -> Result<Card, PlayError> {
+        // XXX: Maybe a good idea to return an error if the player is
+        // protected by the priestess
         if player < self._hands.len() {
             match self._hands[player] {
                 Some(card) => Ok(card),
@@ -184,6 +186,17 @@ impl Game {
             }
         } else {
             Err(InvalidPlayer(player))
+        }
+    }
+
+    fn eliminate(&self, player: uint) -> Result<Game, PlayError> {
+        match self.get_hand(player) {
+            Err(e) => Err(e),
+            Ok(..) => {
+                let mut hands = self._hands.clone();
+                hands.as_mut_slice()[player] = None;
+                Ok(Game { _hands: hands, _stack: self._stack.clone() })
+            }
         }
     }
 
@@ -335,6 +348,44 @@ fn test_get_card_inactive_player() {
         [Soldier, Minister, Princess, Soldier, Wizard]).unwrap();
     assert_eq!(g.get_hand(2), Err(InactivePlayer(2)));
 }
+
+#[test]
+fn test_no_hand_means_not_active() {
+    let g = Game::from_manual(
+        [Some(General), Some(Clown), None, Some(Priestess)],
+        [Soldier, Minister, Princess, Soldier, Wizard]).unwrap();
+    assert_eq!(vec![0, 1, 3], g.active_players());
+}
+
+#[test]
+fn test_eliminate_player() {
+    let g = Game::from_manual(
+        [Some(General), Some(Clown), None, Some(Priestess)],
+        [Soldier, Minister, Princess, Soldier, Wizard]).unwrap();
+    let new_game = g.eliminate(0).unwrap();
+    assert_eq!(vec![1, 3], new_game.active_players());
+}
+
+// XXX: [emacs] How do I jump to the last mark? glyph wrote about that once.
+
+#[test]
+fn test_eliminate_nonexistent_player() {
+    let g = Game::from_manual(
+        [Some(General), Some(Clown), None, Some(Priestess)],
+        [Soldier, Minister, Princess, Soldier, Wizard]).unwrap();
+    let error = g.eliminate(5).unwrap_err();
+    assert_eq!(InvalidPlayer(5), error);
+}
+
+#[test]
+fn test_eliminate_gone_player() {
+    let g = Game::from_manual(
+        [Some(General), Some(Clown), None, Some(Priestess)],
+        [Soldier, Minister, Princess, Soldier, Wizard]).unwrap();
+    let error = g.eliminate(2).unwrap_err();
+    assert_eq!(InactivePlayer(2), error);
+}
+
 
 #[test]
 fn test_all_cards_in_game() {
