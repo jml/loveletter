@@ -121,7 +121,11 @@ fn is_valid_deck(deck: &[Card]) -> bool {
 
 // XXX: Should we wrap up 'Player'?
 
+
 struct Game {
+    // XXX: [rust]: Why can't I derive show while this has a size? Why can't I
+    // make it a slice?
+    //
     // XXX: What's stored in a player's hand when they are eliminated?
     _hands: [Card, ..NUM_PLAYERS],
     _stack: Vec<Card>,
@@ -224,6 +228,7 @@ enum Action {
 #[deriving(PartialEq, Eq, Show)]
 enum PlayError {
     InvalidPlayer(uint),
+    InvalidAction,
 }
 
 // XXX: With Wizard, will need to check if they are forced to play the Princess.
@@ -233,27 +238,23 @@ fn judge(game: Game, dealt_card: Card, action: Action) -> Result<Game, PlayError
     match action {
         UseGeneral(target) => {
             if target >= 4 {
+                // XXX: need to check that target is active
                 return Err(InvalidPlayer(target));
             }
-            let mut new_game = game;
-            let current_player = 0;
             // XXX: need current player in order to swap. Assume it's 0 for now.
-            let current_card = new_game.hands()[current_player];
-            // XXX: might want to extract 'get the one that's not this' logic.
-            if dealt_card == General || current_card == General {
-                let new_card = new_game._hands[target];
-                if dealt_card == General {
-                    new_game._hands[target] = new_game._hands[current_player];
-                } else {
-                    new_game._hands[target] = dealt_card;
-                }
-                new_game._hands[current_player] = new_card
-            } else {
-                // XXX: Update the return type to be Result
-                fail!("Using General despite not having one.")
+            let current_player = 0;
+            let current_card = game.hands()[current_player];
+            if !(current_card == General || dealt_card == General) {
+                return Err(InvalidAction);
             }
-            // XXX: need to check that target is valid
+            // XXX: might want to extract 'get the one that's not this' logic.
+            let mut new_game = game;
+            if current_card == General {
+                new_game._hands[current_player] = dealt_card;
+            }
+
             // XXX: need to update so priestess renders ineffective
+            new_game._hands.swap(target, current_player);
             Ok(new_game)
         }
     }
@@ -392,6 +393,19 @@ fn test_general_swap_bad_target() {
     }
 }
 
+#[test]
+fn test_general_with_no_general() {
+    let mut g = Game::from_manual(
+        [Soldier, Clown, Knight, Priestess],
+        [Soldier, Minister, Princess, Soldier, Wizard]).unwrap();
+    // XXX: Messing with internals: a sign of bad design!
+    let next_card = g._stack.pop().unwrap();
+    let next_game = judge(g, next_card, UseGeneral(2));
+    match next_game {
+        Ok(_)  => fail!("Should not have succeeded"),
+        Err(e) => assert_eq!(InvalidAction, e)
+    }
+}
 
 #[test]
 fn test_deck_new() {
