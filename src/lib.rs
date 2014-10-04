@@ -127,10 +127,10 @@ struct Game {
     // XXX: [rust]: Why can't I derive show while this has a size? Why can't I
     // make it a slice?
     //
-    // XXX: What's stored in a player's hand when they are eliminated?
-    _hands: [Card, ..NUM_PLAYERS],
+    // XXX: I reckon I can make '_hands' an array without making the code much
+    // more complicated. I wonder if that would matter.
+    _hands: Vec<Option<Card>>,
     _stack: Vec<Card>,
-    _players: collections::BitvSet,
 }
 
 
@@ -145,18 +145,10 @@ impl Game {
 
     fn from_deck(deck: Deck) -> Game {
         let Deck(cards) = deck;
-        // XXX: Is there a better syntax for this? (Problem is duplicating
-        // NUM_PLAYERS implicitly by explicitly listing cards.)
-        let hands: [Card, ..NUM_PLAYERS] = [
-            cards[1],
-            cards[2],
-            cards[3],
-            cards[4],
-            ];
+        let hand_end = NUM_PLAYERS + 1;
         Game {
-            _hands: hands,
-            _stack: cards.slice_from(5).iter().map(|&x| x).collect(),
-            _players: Game::_player_set(),
+            _hands: cards.slice(1, hand_end).iter().map(|&x| Some(x)).collect(),
+            _stack: cards.slice_from(hand_end).iter().map(|&x| x).collect(),
         }
     }
 
@@ -167,16 +159,15 @@ impl Game {
         let difference = subtract_vector(DECK.iter().map(|&x| x).collect(), all_cards);
         match difference {
             Some(_) => Ok(Game {
-                _hands: hands,
+                _hands: hands.iter().map(|&x| Some(x)).collect(),
                 _stack: stack,
-                _players: Game::_player_set(),
             }),
             None    => Err(WrongCards),
         }
     }
 
-    fn hands(&self) -> &[Card] {
-        self._hands
+    fn hands(&self) -> &[Option<Card>] {
+        self._hands.as_slice()
     }
 
     fn deck(&self) -> &[Card] {
@@ -189,11 +180,13 @@ impl Game {
 
     fn active_players(&self) -> Vec<uint> {
         // XXX: I think we might only need this for testing, so fudge over it.
-        let mut vec = Vec::with_capacity(self._players.len());
-        for i in self._players.iter() {
-            vec.push(i);
+        let mut vec = Vec::with_capacity(NUM_PLAYERS);
+        for (i, card) in self._hands.iter().enumerate() {
+            match *card {
+                Some(_) => vec.push(i),
+                None    => ()
+            }
         }
-        vec.sort();
         vec
     }
 
@@ -265,17 +258,17 @@ fn judge(game: Game, dealt_card: Card, action: Action) -> Result<Game, PlayError
             // XXX: need current player in order to swap. Assume it's 0 for now.
             let current_player = 0;
             let current_card = game.hands()[current_player];
-            if !(current_card == General || dealt_card == General) {
+            if !(current_card == Some(General) || dealt_card == General) {
                 return Err(InvalidAction);
             }
             // XXX: might want to extract 'get the one that's not this' logic.
             let mut new_game = game;
-            if current_card == General {
-                new_game._hands[current_player] = dealt_card;
+            if current_card == Some(General) {
+                new_game._hands.as_mut_slice()[current_player] = Some(dealt_card);
             }
 
             // XXX: need to update so priestess renders ineffective
-            new_game._hands.swap(target, current_player);
+            new_game._hands.as_mut_slice().swap(target, current_player);
             Ok(new_game)
         }
     }
@@ -312,7 +305,12 @@ fn test_all_cards_in_game() {
     let mut full_deck: Vec<&Card> = DECK.iter().collect();
     full_deck.sort();
     let mut found_cards: Vec<Card> = g.deck().iter().map(|&x| x).collect();
-    found_cards.push_all(g.hands());
+    for card in g.hands().iter() {
+        match *card {
+            Some(c) => found_cards.push(c),
+            None    => ()
+        }
+    }
     found_cards.sort();
     for card in found_cards.iter() {
         let found = full_deck.iter().position(|&c| c == card);
@@ -349,7 +347,13 @@ fn test_from_deck() {
         ];
     let deck = Deck(cards);
     let g = Game::from_deck(deck);
-    assert_eq!(cards.slice(1, 5), g.hands());
+    assert_eq!(
+        cards.slice(1, 5)
+            .iter()
+            .map(|&x| Some(x))
+            .collect::<Vec<Option<Card>>>()
+            .as_slice(),
+        g.hands());
     assert_eq!(cards.slice_from(5), g.deck());
 }
 
@@ -363,7 +367,9 @@ fn test_manual_game() {
     let hands = [Soldier, Clown, Soldier, Princess];
     let stack = [Soldier, Soldier, Minister];
     let game = Game::from_manual(hands, stack).unwrap();
-    assert_eq!(hands.as_slice(), game.hands());
+    assert_eq!(
+        [Some(Soldier), Some(Clown), Some(Soldier), Some(Princess)].as_slice(),
+        game.hands());
     assert_eq!(stack.as_slice(), game.deck().as_slice());
 }
 
@@ -399,11 +405,11 @@ fn test_general_swap() {
     // XXX: Messing with internals: a sign of bad design!
     let next_card = g._stack.pop().unwrap();
     assert_eq!(Wizard, next_card);
-    assert_eq!(General, g.hands()[0]);
+    assert_eq!(Some(General), g.hands()[0]);
 
     let next_game = judge(g, next_card, UseGeneral(3)).unwrap();
-    assert_eq!(next_game.hands()[3], Wizard);
-    assert_eq!(next_game.hands()[0], Priestess);
+    assert_eq!(next_game.hands()[3], Some(Wizard));
+    assert_eq!(next_game.hands()[0], Some(Priestess));
 }
 
 #[test]
