@@ -310,8 +310,16 @@ fn judge(game: Game, current_player: uint, dealt_card: Card,
         Ok(card) => card,
         Err(e) => return Err(e),
     };
-    match play {
-        (played_card, Attack(target)) => {
+
+    let (played_card, play_data) = play;
+
+    let unplayed_card = match other((current_card, dealt_card), played_card) {
+        Some(card) => card,
+        None       => return Err(InvalidPlay),
+    };
+
+    match play_data {
+         Attack(target) => {
             let target_card = match game.get_hand(target) {
                 Err(e)   => return Err(e),
                 Ok(card) => card,
@@ -319,19 +327,12 @@ fn judge(game: Game, current_player: uint, dealt_card: Card,
 
             match played_card {
                 General => {
-                    let non_general = match other((current_card, dealt_card), General) {
-                        Some(card) => card,
-                        None       => return Err(InvalidPlay),
-                    };
-
                     // XXX: maybe need to take priestess into account here
-                    Ok(SwapHands(current_player, target, non_general))
+                    Ok(SwapHands(current_player, target, unplayed_card))
                 },
 
                 Knight => {
-                    let non_knight = if current_card == Knight { dealt_card } else { current_card };
-
-                    match non_knight.cmp(&target_card) {
+                    match unplayed_card.cmp(&target_card) {
                         Less    => Ok(EliminatePlayer(current_player)),
                         Greater => Ok(EliminatePlayer(target)),
                         Equal   => Ok(NoChange),
@@ -638,6 +639,17 @@ fn test_knight_draw() {
     let next_card = g._stack.pop().unwrap();
     let result = judge(g, 0, next_card, (Knight, Attack(1)));
     assert_eq!(NoChange, result.unwrap());
+}
+
+#[test]
+fn test_knight_no_card() {
+    let mut g = Game::from_manual(
+        [Some(Soldier), Some(Soldier), None, Some(Priestess)],
+        [Soldier, Minister, Princess, Soldier, Wizard]).unwrap();
+    // XXX: Messing with internals: a sign of bad design!
+    let next_card = g._stack.pop().unwrap();
+    let result = judge(g, 0, next_card, (Knight, Attack(1)));
+    assert_eq!(InvalidPlay, result.unwrap_err());
 }
 
 #[test]
