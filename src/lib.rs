@@ -275,6 +275,8 @@ enum PlayError {
     CardNotFound(Card, (Card, Card)),
     // Targeted a player who is no longer in the game.
     InactivePlayer(uint),
+    // Tried to play a card against yourself.
+    SelfTarget(uint, Card),
 }
 
 
@@ -314,7 +316,10 @@ fn judge(game: Game, current_player: uint, dealt_card: Card,
     };
 
     match play_data {
-         Attack(target) => {
+        Attack(target) => {
+            if target == current_player {
+                return Err(SelfTarget(target, played_card));
+            }
             let target_card = match game.get_hand(target) {
                 Err(e)   => return Err(e),
                 Ok(card) => card,
@@ -339,6 +344,10 @@ fn judge(game: Game, current_player: uint, dealt_card: Card,
         }
     }
 }
+
+
+// XXX: [rust]: It's getting unwieldy having all of these tests in the same
+// text file. I wonder if there's a good way to break them up, ala Python.
 
 #[test]
 fn test_card_ordering() {
@@ -586,6 +595,17 @@ fn test_general_with_no_general() {
     let result = judge(g, 0, next_card, (General, Attack(2)));
     assert_eq!(
         CardNotFound(General, (Soldier, Wizard)), result.unwrap_err());
+}
+
+#[test]
+fn test_self_targeting() {
+    let mut g = Game::from_manual(
+        [Some(General), Some(Clown), Some(Knight), Some(Priestess)],
+        [Soldier, Minister, Princess, Soldier, Wizard]).unwrap();
+    // XXX: Messing with internals: a sign of bad design!
+    let next_card = g._stack.pop().unwrap();
+    let result = judge(g, 0, next_card, (General, Attack(0)));
+    assert_eq!(SelfTarget(0, General), result.unwrap_err());
 }
 
 // XXX: [emacs] Snippets would be incredibly useful! Figure out why they
