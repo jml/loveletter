@@ -295,6 +295,9 @@ enum Action {
     EliminatePlayer(uint),
 }
 
+// XXX: Probably would have been a good idea to write down the notation for a
+// game before I started all of this.
+
 // XXX: Probably should make this *not* update the game, but rather return a
 // new data type that just has the decision.
 
@@ -308,37 +311,40 @@ fn judge(game: Game, current_player: uint, dealt_card: Card,
         Err(e) => return Err(e),
     };
     match play {
-        (General, Attack(target)) => {
-            match game.get_hand(target) {
-                Err(e) => return Err(e),
-                _      => (),
-            }
+        (played_card, Attack(target)) => {
+            let target_card = match game.get_hand(target) {
+                Err(e)   => return Err(e),
+                Ok(card) => card,
+            };
 
-            if !(current_card == General || dealt_card == General) {
-                return Err(InvalidPlay);
-            }
+            match played_card {
+                General => {
+                    if !(current_card == General || dealt_card == General) {
+                        return Err(InvalidPlay);
+                    }
 
-            // XXX: might want to extract 'get the one that's not this' logic.
-            let non_general = if current_card == General { dealt_card } else { current_card };
+                    // XXX: might want to extract 'get the one that's not this' logic.
+                    let non_general = if current_card == General { dealt_card } else { current_card };
 
-            // XXX: maybe need to take priestess into account here
-            Ok(SwapHands(current_player, target, non_general))
-        },
-        (Knight, Attack(target)) => {
-            let non_knight = if current_card == Knight { dealt_card } else { current_card };
-            match game.get_hand(target) {
-                Ok(card) => match non_knight.cmp(&card) {
-                    Less    => Ok(EliminatePlayer(current_player)),
-                    Greater => Ok(EliminatePlayer(target)),
-                    Equal   => Ok(NoChange),
+                    // XXX: maybe need to take priestess into account here
+                    Ok(SwapHands(current_player, target, non_general))
                 },
-                Err(e) => Err(e),
+
+                Knight => {
+                    let non_knight = if current_card == Knight { dealt_card } else { current_card };
+
+                    match non_knight.cmp(&target_card) {
+                        Less    => Ok(EliminatePlayer(current_player)),
+                        Greater => Ok(EliminatePlayer(target)),
+                        Equal   => Ok(NoChange),
+                    }
+                },
+
+                _ => Err(InvalidPlay),
             }
         }
-        _ => Err(InvalidPlay),
     }
 }
-
 
 #[test]
 fn test_card_ordering() {
