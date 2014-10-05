@@ -69,3 +69,18 @@ Don't think there's a data-driven way to do this in rust.
         UsePrincess,
     }
 ```
+
+## Notation
+
+A game *starts* with a shuffled deck that looks like this:
+
+    [Soldier, Soldier, Soldier, Soldier, Soldier,
+     Clown, Clown, Knight, Knight, Priestess, Priestess,
+     Wizard, Wizard, General, Minister, Princess]
+
+The first card is burned, the remaining top 5 cards are dealt, each to one
+player.
+
+Player 1 draws a card (a Clown), and then must choose to play either a Soldier
+or a Clown.
+
