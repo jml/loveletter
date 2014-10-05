@@ -265,8 +265,8 @@ fn minister_bust(a: Card, b: Card) -> bool {
 //
 // Where 'Action' combines card & parameters (target player, guess)
 
-enum Action {
-    UseGeneral(uint),
+enum Play {
+    Attack(uint),
 }
 
 // XXX: Will probably make sense to move it into the Game object, but let's
@@ -283,17 +283,20 @@ enum PlayError {
     InactivePlayer(uint),
 }
 
+// XXX: Probably should make this *not* update the game, but rather return a
+// new data type that just has the decision.
+
 // XXX: With Wizard, will need to check if they are forced to play the Princess.
 fn judge(game: Game, current_player: uint, dealt_card: Card,
-         action: Action) -> Result<Game, PlayError> {
+         play: Play) -> Result<Game, PlayError> {
     // XXX: my spider sense is telling me this can be modeled as a
     // non-deterministic finite automata.
     let current_card = match game.get_hand(current_player) {
         Ok(card) => card,
         Err(e) => return Err(e),
     };
-    match action {
-        UseGeneral(target) => {
+    match play {
+        Attack(target) => {
             match game.get_hand(target) {
                 Err(e) => return Err(e),
                 _      => (),
@@ -305,6 +308,9 @@ fn judge(game: Game, current_player: uint, dealt_card: Card,
 
             let mut new_game = game;
             if current_card == General {
+                // XXX: This breaks abstraction and is mutatey, but I think
+                // the design will be better served by fulling implementing
+                // the rules before cleaning this up.
                 new_game._hands.as_mut_slice()[current_player] = Some(dealt_card);
             }
 
@@ -524,7 +530,7 @@ fn test_judge_invalid_player() {
     let g = Game::from_manual(
         [Some(General), Some(Clown), Some(Knight), Some(Priestess)],
         [Soldier, Minister, Princess, Soldier, Wizard]).unwrap();
-    let err = judge(g, 5, Soldier, UseGeneral(2)).unwrap_err();
+    let err = judge(g, 5, Soldier, Attack(2)).unwrap_err();
     assert_eq!(InvalidPlayer(5), err);
 }
 
@@ -539,7 +545,7 @@ fn test_general_swap() {
     assert_eq!(Wizard, next_card);
     assert_eq!(Some(General), g.hands()[0]);
 
-    let next_game = judge(g, 0, next_card, UseGeneral(3)).unwrap();
+    let next_game = judge(g, 0, next_card, Attack(3)).unwrap();
     assert_eq!(next_game.hands()[3], Some(Wizard));
     assert_eq!(next_game.hands()[0], Some(Priestess));
 }
@@ -551,7 +557,7 @@ fn test_general_swap_bad_target() {
         [Soldier, Minister, Princess, Soldier, Wizard]).unwrap();
     // XXX: Messing with internals: a sign of bad design!
     let next_card = g._stack.pop().unwrap();
-    let next_game = judge(g, 0, next_card, UseGeneral(4));
+    let next_game = judge(g, 0, next_card, Attack(4));
     assert_eq!(InvalidPlayer(4), next_game.unwrap_err());
 }
 
@@ -562,7 +568,7 @@ fn test_general_with_no_general() {
         [Soldier, Minister, Princess, Soldier, Wizard]).unwrap();
     // XXX: Messing with internals: a sign of bad design!
     let next_card = g._stack.pop().unwrap();
-    let next_game = judge(g, 0, next_card, UseGeneral(2));
+    let next_game = judge(g, 0, next_card, Attack(2));
     assert_eq!(InvalidAction, next_game.unwrap_err());
 }
 
@@ -576,7 +582,7 @@ fn test_general_at_inactive_players() {
         [Soldier, Minister, Princess, Soldier, Wizard]).unwrap();
     // XXX: Messing with internals: a sign of bad design!
     let next_card = g._stack.pop().unwrap();
-    let next_game = judge(g, 0, next_card, UseGeneral(2));
+    let next_game = judge(g, 0, next_card, Attack(2));
     assert_eq!(InactivePlayer(2), next_game.unwrap_err());
 }
 
