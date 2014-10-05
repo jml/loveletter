@@ -279,7 +279,7 @@ enum Play {
 #[deriving(PartialEq, Eq, Show)]
 enum PlayError {
     InvalidPlayer(uint),
-    InvalidAction,
+    InvalidPlay,
     InactivePlayer(uint),
 }
 
@@ -303,7 +303,7 @@ fn judge(game: Game, current_player: uint, dealt_card: Card,
             }
 
             if !(current_card == General || dealt_card == General) {
-                return Err(InvalidAction);
+                return Err(InvalidPlay);
             }
 
             let mut new_game = game;
@@ -569,7 +569,7 @@ fn test_general_with_no_general() {
     // XXX: Messing with internals: a sign of bad design!
     let next_card = g._stack.pop().unwrap();
     let next_game = judge(g, 0, next_card, Attack(2));
-    assert_eq!(InvalidAction, next_game.unwrap_err());
+    assert_eq!(InvalidPlay, next_game.unwrap_err());
 }
 
 // XXX: [emacs] My work config has M-f and M-b break at underscores. It's
