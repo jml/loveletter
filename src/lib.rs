@@ -828,3 +828,16 @@ fn test_vector_diff_contains_novel_elements() {
     let ys = vec![4];
     assert_eq!(None, subtract_vector(xs, ys))
 }
+
+/// Given a tuple `(a, b)` and a value `x`, return whichever of `(a, b)` is
+/// not `x`. If neither is `x`, return None.
+fn other<T: Eq>((a, b): (T, T), x: T) -> Option<T> {
+    if x == a { Some(b) } else { if x == b { Some(a) } else { None } }
+}
+
+#[test]
+fn test_other_one() {
+    assert_eq!(None, other((1u, 2u), 0u));
+    assert_eq!(Some(2), other((1u, 2u), 1u));
+    assert_eq!(Some(1), other((1u, 2u), 2u));
+}
