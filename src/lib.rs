@@ -2,9 +2,9 @@ use std::collections;
 use std::rand;
 use std::rand::Rng;
 
-// XXX: Make a loveletter namespace (figure out how to do this properly).
+// XXX: [rust] Make a loveletter namespace (figure out how to do this properly).
 
-// XXX: Stop playing whack-a-mole with references & ownership and start
+// XXX: [rust] Stop playing whack-a-mole with references & ownership and start
 // actually *understanding* it.
 
 #[deriving(PartialEq, PartialOrd, Eq, Ord, Show, Clone)]
@@ -70,7 +70,7 @@ impl Deck {
         if cards.len() != CARDS_IN_DECK {
             return Err(WrongNumber(cards.len()));
         }
-        // XXX: Is there a way I can do this without needing to explicitly
+        // XXX: [rust] Is there a way I can do this without needing to explicitly
         // mention any element?
         let card_array: [Card, ..CARDS_IN_DECK] = [
             cards[0],
@@ -102,7 +102,7 @@ impl Deck {
 }
 
 fn is_valid_deck(deck: &[Card]) -> bool {
-    // XXX: Probably don't need to collect & sort the full deck here, since
+    // XXX: [rust] Probably don't need to collect & sort the full deck here, since
     // it's already sorted. Not sure if there's a way to assert that at
     // compile time.
     let mut full_deck: Vec<&Card> = DECK.iter().collect();
@@ -247,9 +247,6 @@ fn minister_bust(a: Card, b: Card) -> bool {
 // XXX: Want to have a simple, pure function that knows all of the rules and
 // assumes as little as it can. Still not sure the best way to do that.
 // Kind of getting blocked on details:
-// - what should it return?
-// - should the rules function be responsible for things like updating hands,
-//   discard piles, etc.
 // - how to represent
 //   - 'protected by priestess'
 //   - 'kicked out of game'
@@ -269,12 +266,6 @@ enum Play {
     Attack(uint),
 }
 
-// XXX: Will probably make sense to move it into the Game object, but let's
-// keep it separate for now.
-
-
-// XXX: has to assume that the dealt_card is no longer on the stack, because
-// Wizard will force another player to draw from the deck.
 
 #[deriving(PartialEq, Eq, Show)]
 enum PlayError {
@@ -298,10 +289,10 @@ enum Action {
 // XXX: Probably would have been a good idea to write down the notation for a
 // game before I started all of this.
 
-// XXX: Probably should make this *not* update the game, but rather return a
-// new data type that just has the decision.
-
 // XXX: With Wizard, will need to check if they are forced to play the Princess.
+
+// XXX: Will probably make sense to move it into the Game object, but let's
+// keep it separate for now.
 fn judge(game: Game, current_player: uint, dealt_card: Card,
          play: (Card, Play)) -> Result<Action, PlayError> {
     // XXX: my spider sense is telling me this can be modeled as a
@@ -514,8 +505,6 @@ fn test_from_deck() {
 
 #[test]
 fn test_manual_game() {
-    // XXX: How to specify eliminated players?
-
     // XXX: Will need to update to take current player, because it won't be
     // able to figure out when previous players were eliminated.
     let hands = [Some(Soldier), Some(Clown), Some(Soldier), Some(Princess)];
@@ -593,6 +582,9 @@ fn test_general_with_no_general() {
     let result = judge(g, 0, next_card, (General, Attack(2)));
     assert_eq!(InvalidPlay, result.unwrap_err());
 }
+
+// XXX: [emacs] Snippets would be incredibly useful! Figure out why they
+// aren't working.
 
 // XXX: [emacs] My work config has M-f and M-b break at underscores. It's
 // extremely useful, and I should set it up in my home config.
