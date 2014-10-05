@@ -319,12 +319,10 @@ fn judge(game: Game, current_player: uint, dealt_card: Card,
 
             match played_card {
                 General => {
-                    if !(current_card == General || dealt_card == General) {
-                        return Err(InvalidPlay);
-                    }
-
-                    // XXX: might want to extract 'get the one that's not this' logic.
-                    let non_general = if current_card == General { dealt_card } else { current_card };
+                    let non_general = match other((current_card, dealt_card), General) {
+                        Some(card) => card,
+                        None       => return Err(InvalidPlay),
+                    };
 
                     // XXX: maybe need to take priestess into account here
                     Ok(SwapHands(current_player, target, non_general))
