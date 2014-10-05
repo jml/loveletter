@@ -262,9 +262,12 @@ fn minister_bust(a: Card, b: Card) -> bool {
 //
 // Where 'Action' combines card & parameters (target player, guess)
 
+#[deriving(PartialEq, Eq, Show)]
 enum Play {
     Attack(uint),
 }
+
+// XXX: I really want to have a data association from Cards to possible movies.
 
 
 #[deriving(PartialEq, Eq, Show)]
@@ -277,6 +280,8 @@ enum PlayError {
     InactivePlayer(uint),
     // Tried to play a card against yourself.
     SelfTarget(uint, Card),
+    // Tried to play an action for a card that doesn't support it.
+    BadActionForCard(Play, Card),
 }
 
 
@@ -289,6 +294,10 @@ enum Action {
     SwapHands(uint, uint, Card),
     // You have lost
     EliminatePlayer(uint),
+    // Discard your current card and draw a new one
+    ForceDiscard(uint),
+    // Show your card (from, to, value)
+    ForceReveal(uint, uint, Card)
 }
 
 // XXX: Probably would have been a good idea to write down the notation for a
@@ -326,11 +335,9 @@ fn judge(game: Game, current_player: uint, dealt_card: Card,
             };
 
             match played_card {
-                General => {
-                    // XXX: maybe need to take priestess into account here
-                    Ok(SwapHands(current_player, target, unplayed_card))
+                Clown => {
+                    Ok(ForceReveal(current_player, target, target_card))
                 },
-
                 Knight => {
                     match unplayed_card.cmp(&target_card) {
                         Less    => Ok(EliminatePlayer(current_player)),
@@ -338,8 +345,14 @@ fn judge(game: Game, current_player: uint, dealt_card: Card,
                         Equal   => Ok(NoChange),
                     }
                 },
-
-                card => fail!("Have not implemented rule yet! {}", card),
+                Wizard => {
+                    Ok(ForceDiscard(target))
+                },
+                General => {
+                    // XXX: maybe need to take priestess into account here
+                    Ok(SwapHands(current_player, target, unplayed_card))
+                },
+                _ => Err(BadActionForCard(play_data, played_card)),
             }
         }
     }
@@ -689,6 +702,39 @@ fn test_knight_inactive_player() {
     let next_card = g._stack.pop().unwrap();
     let result = judge(g, 0, next_card, (Knight, Attack(2)));
     assert_eq!(InactivePlayer(2), result.unwrap_err());
+}
+
+#[test]
+fn test_wizard() {
+    let mut g = Game::from_manual(
+        [Some(Wizard), Some(Soldier), None, Some(Priestess)],
+        [Soldier, Minister, Princess, Soldier, Knight]).unwrap();
+    // XXX: Messing with internals: a sign of bad design!
+    let next_card = g._stack.pop().unwrap();
+    let result = judge(g, 0, next_card, (Wizard, Attack(1)));
+    assert_eq!(ForceDiscard(1), result.unwrap());
+}
+
+#[test]
+fn test_clown() {
+    let mut g = Game::from_manual(
+        [Some(Clown), Some(Soldier), None, Some(Priestess)],
+        [Soldier, Minister, Princess, Soldier, Knight]).unwrap();
+    // XXX: Messing with internals: a sign of bad design!
+    let next_card = g._stack.pop().unwrap();
+    let result = judge(g, 0, next_card, (Clown, Attack(1)));
+    assert_eq!(ForceReveal(0, 1, Soldier), result.unwrap());
+}
+
+#[test]
+fn test_non_attack() {
+    let mut g = Game::from_manual(
+        [Some(Clown), Some(Soldier), None, Some(Priestess)],
+        [Soldier, Minister, Princess, Soldier, Knight]).unwrap();
+    // XXX: Messing with internals: a sign of bad design!
+    let next_card = g._stack.pop().unwrap();
+    let result = judge(g, 1, next_card, (Soldier, Attack(0)));
+    assert_eq!(BadActionForCard(Attack(0), Soldier), result.unwrap_err());
 }
 
 #[test]
