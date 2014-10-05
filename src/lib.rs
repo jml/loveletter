@@ -269,8 +269,11 @@ enum Play {
 
 #[deriving(PartialEq, Eq, Show)]
 enum PlayError {
+    // Targeted a player who has never existed.
     InvalidPlayer(uint),
-    InvalidPlay,
+    // Tried to play a card that's not in the hand.
+    CardNotFound(Card, (Card, Card)),
+    // Targeted a player who is no longer in the game.
     InactivePlayer(uint),
 }
 
@@ -306,7 +309,8 @@ fn judge(game: Game, current_player: uint, dealt_card: Card,
 
     let unplayed_card = match other((current_card, dealt_card), played_card) {
         Some(card) => card,
-        None       => return Err(InvalidPlay),
+        None       => return Err(
+            CardNotFound(played_card, (current_card, dealt_card))),
     };
 
     match play_data {
@@ -330,7 +334,7 @@ fn judge(game: Game, current_player: uint, dealt_card: Card,
                     }
                 },
 
-                _ => Err(InvalidPlay),
+                card => fail!("Have not implemented rule yet! {}", card),
             }
         }
     }
@@ -580,7 +584,8 @@ fn test_general_with_no_general() {
     // XXX: Messing with internals: a sign of bad design!
     let next_card = g._stack.pop().unwrap();
     let result = judge(g, 0, next_card, (General, Attack(2)));
-    assert_eq!(InvalidPlay, result.unwrap_err());
+    assert_eq!(
+        CardNotFound(General, (Soldier, Wizard)), result.unwrap_err());
 }
 
 // XXX: [emacs] Snippets would be incredibly useful! Figure out why they
@@ -641,7 +646,7 @@ fn test_knight_no_card() {
     // XXX: Messing with internals: a sign of bad design!
     let next_card = g._stack.pop().unwrap();
     let result = judge(g, 0, next_card, (Knight, Attack(1)));
-    assert_eq!(InvalidPlay, result.unwrap_err());
+    assert_eq!(CardNotFound(Knight, (Soldier, Wizard)), result.unwrap_err());
 }
 
 #[test]
