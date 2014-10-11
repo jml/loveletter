@@ -2,6 +2,8 @@ use std::collections;
 use std::rand;
 use std::rand::Rng;
 
+mod util;
+
 // XXX: [rust] Make a loveletter namespace (figure out how to do this properly).
 
 // XXX: [rust] Stop playing whack-a-mole with references & ownership and start
@@ -153,7 +155,7 @@ impl Game {
         for x in hands.as_slice().iter().filter_map(|&x| x) {
             all_cards.push(x);
         }
-        let difference = subtract_vector(DECK.iter().map(|&x| x).collect(), all_cards);
+        let difference = util::subtract_vector(DECK.iter().map(|&x| x).collect(), all_cards);
         match difference {
             Some(_) => Ok(Game {
                 _hands: hands.iter().map(|&x| x).collect(),
@@ -313,7 +315,7 @@ fn judge(game: Game, current_player: uint, dealt_card: Card,
 
     let (played_card, play_data) = play;
 
-    let unplayed_card = match other((current_card, dealt_card), played_card) {
+    let unplayed_card = match util::other((current_card, dealt_card), played_card) {
         Some(card) => card,
         None       => return Err(
             CardNotFound(played_card, (current_card, dealt_card))),
@@ -831,73 +833,3 @@ fn test_deck_variable_too_many() {
 }
 
 
-// XXX: This is algorithmically slow and probably slow in other ways.
-// I'm just doing the bare minimum, as I want to pop my yak-stack a little.
-//
-// NB: it's only order-preserving because it makes the tests easier.
-fn subtract_vector<A: PartialEq>(xs: Vec<A>, ys: Vec<A>) -> Option<Vec<A>> {
-    let mut zs = xs;
-    for y in ys.iter() {
-        let pos = zs.iter().position(|x| x == y);
-        match pos {
-            Some(i) => { zs.remove(i); }
-            None => return None
-        };
-    }
-    Some(zs)
-}
-
-#[test]
-fn test_vector_diff_trivial() {
-    let xs: Vec<int> = vec![];
-    let ys = vec![];
-    assert_eq!(Some(vec![]), subtract_vector(xs, ys))
-}
-
-#[test]
-fn test_vector_diff_identity() {
-    let xs: Vec<int> = vec![1, 2, 3];
-    let ys = vec![];
-    assert_eq!(Some(vec![1, 2, 3]), subtract_vector(xs, ys))
-}
-
-#[test]
-fn test_vector_diff_removes() {
-    let xs: Vec<int> = vec![1, 2, 3];
-    let ys = vec![2];
-    assert_eq!(Some(vec![1, 3]), subtract_vector(xs, ys))
-}
-
-#[test]
-fn test_vector_diff_only_removes_one() {
-    let xs: Vec<int> = vec![1, 2, 3, 2];
-    let ys = vec![2];
-    assert_eq!(Some(vec![1, 3, 2]), subtract_vector(xs, ys))
-}
-
-#[test]
-fn test_vector_diff_contains_excess_elements() {
-    let xs: Vec<int> = vec![1, 2, 3, 2];
-    let ys = vec![2, 2, 2];
-    assert_eq!(None, subtract_vector(xs, ys))
-}
-
-#[test]
-fn test_vector_diff_contains_novel_elements() {
-    let xs: Vec<int> = vec![1, 2, 3, 2];
-    let ys = vec![4];
-    assert_eq!(None, subtract_vector(xs, ys))
-}
-
-/// Given a tuple `(a, b)` and a value `x`, return whichever of `(a, b)` is
-/// not `x`. If neither is `x`, return None.
-fn other<T: Eq>((a, b): (T, T), x: T) -> Option<T> {
-    if x == a { Some(b) } else { if x == b { Some(a) } else { None } }
-}
-
-#[test]
-fn test_other_one() {
-    assert_eq!(None, other((1u, 2u), 0u));
-    assert_eq!(Some(2), other((1u, 2u), 1u));
-    assert_eq!(Some(1), other((1u, 2u), 2u));
-}
