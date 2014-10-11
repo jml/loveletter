@@ -47,7 +47,8 @@ static DECK: [Card, ..CARDS_IN_DECK] = [
     ];
 
 
-struct Deck(Vec<Card>);
+#[deriving(Show)]
+pub struct Deck(Vec<Card>);
 
 #[deriving(Show, PartialEq, Eq)]
 enum DeckError {
@@ -57,7 +58,7 @@ enum DeckError {
 
 impl Deck {
     /// Returns a new, shuffled deck.
-    fn new() -> Deck {
+    pub fn new() -> Deck {
         // Safe to unwrap because we know that DECK has CARDS_IN_DECK
         // elements.
         Deck::from_slice(&DECK).unwrap().shuffled()
@@ -73,7 +74,7 @@ impl Deck {
         }
     }
 
-    fn shuffled(&self) -> Deck {
+    pub fn shuffled(&self) -> Deck {
         let &Deck(ref cards) = self;
         let mut new_cards = cards.clone();
         let mut rng = rand::task_rng();
