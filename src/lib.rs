@@ -33,28 +33,34 @@ pub struct Game {
     // more complicated. I wonder if that would matter.
     _hands: Vec<Option<deck::Card>>,
     _stack: Vec<deck::Card>,
+    _num_players: uint,
 }
 
 
 impl Game {
-    pub fn new() -> Game {
-        Game::from_deck(deck::Deck::new())
+    pub fn new(num_players: uint) -> Game {
+        Game::from_deck(num_players, deck::Deck::new())
+    }
+
+    pub fn num_players(&self) -> uint {
+        self._num_players
     }
 
     fn _player_set() -> collections::BitvSet {
         collections::BitvSet::from_bitv(collections::Bitv::with_capacity(4, true))
     }
 
-    fn from_deck(deck: deck::Deck) -> Game {
+    fn from_deck(num_players: uint, deck: deck::Deck) -> Game {
         let cards = deck.as_slice();
         let hand_end = NUM_PLAYERS + 1;
         Game {
             _hands: cards.slice(1, hand_end).iter().map(|&x| Some(x)).collect(),
             _stack: cards.slice_from(hand_end).iter().map(|&x| x).collect(),
+            _num_players: num_players
         }
     }
 
-    fn from_manual(hands: [Option<deck::Card>, ..NUM_PLAYERS], deck: &[deck::Card]) -> Result<Game, deck::DeckError> {
+    fn from_manual(hands: &[Option<deck::Card>], deck: &[deck::Card]) -> Result<Game, deck::DeckError> {
         let stack: Vec<deck::Card> = deck.iter().map(|&x| x).collect();
         let mut all_cards = stack.clone();
         for x in hands.as_slice().iter().filter_map(|&x| x) {
@@ -64,6 +70,7 @@ impl Game {
             Ok(Game {
                 _hands: hands.iter().map(|&x| x).collect(),
                 _stack: stack,
+                _num_players: hands.len(),
             })
         } else {
             Err(deck::WrongCards)
@@ -97,7 +104,11 @@ impl Game {
             Ok(..) => {
                 let mut hands = self._hands.clone();
                 hands.as_mut_slice()[player] = None;
-                Ok(Game { _hands: hands, _stack: self._stack.clone() })
+                Ok(Game {
+                    _hands: hands,
+                    _stack: self._stack.clone(),
+                    _num_players: self._num_players,
+                })
             }
         }
     }
@@ -108,7 +119,11 @@ impl Game {
             Ok(..) => {
                 let mut hands = self._hands.clone();
                 hands.as_mut_slice().swap(p1, p2);
-                Ok(Game { _hands: hands, _stack: self._stack.clone() })
+                Ok(Game {
+                    _hands: hands,
+                    _stack: self._stack.clone(),
+                    _num_players: self._num_players,
+                })
             }
         }
     }
@@ -260,11 +275,20 @@ mod test {
     use super::{Attack};
     use super::{InvalidPlayer, CardNotFound, InactivePlayer, SelfTarget, BadActionForCard};
 
+    fn make_arbitrary_game() -> Game {
+        Game::new(super::NUM_PLAYERS)
+    }
+
+    #[test]
+    fn test_num_players() {
+        assert_eq!(3, Game::new(3).num_players());
+    }
+
     #[test]
     fn test_num_cards_remaining_on_new() {
         // make a new game, make sure that the number & kinds of cards matches the
         // rules (5 soldiers, 2 clowns, etc.)
-        let g = Game::new();
+        let g = make_arbitrary_game();
         assert_eq!(11, g.num_cards_remaining())
     }
 
@@ -337,7 +361,7 @@ mod test {
     fn test_all_cards_in_game() {
         // make a new game, make sure that the number & kinds of cards matches the
         // rules (5 soldiers, 2 clowns, etc.). One card is 'burned' before dealing.
-        let g = Game::new();
+        let g = make_arbitrary_game();
         let mut full_deck: Vec<Card> = deck::Deck::new().iter().map(|x| *x).collect();
         full_deck.sort();
         let mut found_cards: Vec<Card> = g.deck().iter().map(|x| *x).collect();
@@ -386,7 +410,7 @@ mod test {
             Wizard,
             ];
         let deck = deck::Deck::from_slice(cards).unwrap();
-        let g = Game::from_deck(deck);
+        let g = Game::from_deck(4, deck);
         assert_eq!(
             cards.slice(1, 5)
                 .iter()
@@ -395,6 +419,7 @@ mod test {
                 .as_slice(),
             g.hands());
         assert_eq!(cards.slice_from(5), g.deck());
+        assert_eq!(4, g.num_players());
     }
 
 
@@ -402,11 +427,12 @@ mod test {
     fn test_manual_game() {
         // XXX: Will need to update to take current player, because it won't be
         // able to figure out when previous players were eliminated.
-        let hands = [Some(Soldier), Some(Clown), Some(Soldier), Some(Princess)];
+        let hands = [Some(Soldier), Some(Clown), Some(Soldier)];
         let stack = [Soldier, Soldier, Minister];
         let game = Game::from_manual(hands, stack).unwrap();
         assert_eq!(hands.as_slice(), game.hands());
         assert_eq!(stack.as_slice(), game.deck().as_slice());
+        assert_eq!(hands.len(), game.num_players());
     }
 
     #[test]
