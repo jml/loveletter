@@ -83,6 +83,11 @@ impl Deck {
         Deck(new_cards)
     }
 
+    fn as_slice(&self) -> &[Card] {
+        let &Deck(ref cards) = self;
+        cards.as_slice()
+    }
+
     fn iter(&self) -> slice::Items<Card> {
         let &Deck(ref cards) = self;
         cards.iter()
@@ -129,7 +134,7 @@ impl Game {
     }
 
     fn from_deck(deck: Deck) -> Game {
-        let Deck(cards) = deck;
+        let cards = deck.as_slice();
         let hand_end = NUM_PLAYERS + 1;
         Game {
             _hands: cards.slice(1, hand_end).iter().map(|&x| Some(x)).collect(),
