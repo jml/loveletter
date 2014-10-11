@@ -46,7 +46,8 @@ static DECK: [Card, ..CARDS_IN_DECK] = [
     Princess,
     ];
 
-struct Deck([Card, ..CARDS_IN_DECK]);
+
+struct Deck(Vec<Card>);
 
 #[deriving(Show, PartialEq, Eq)]
 enum DeckError {
@@ -57,47 +58,27 @@ enum DeckError {
 impl Deck {
     /// Returns a new, shuffled deck.
     fn new() -> Deck {
-        Deck(DECK).shuffled()
-    }
-
-    fn from_array(cards: [Card, ..CARDS_IN_DECK]) -> Result<Deck, DeckError> {
-        if is_valid_deck(cards.as_slice()) {
-            Ok(Deck(cards))
-        } else {
-            Err(WrongCards)
-        }
+        // Safe to unwrap because we know that DECK has CARDS_IN_DECK
+        // elements.
+        Deck::from_slice(&DECK).unwrap().shuffled()
     }
 
     fn from_slice(cards: &[Card]) -> Result<Deck, DeckError> {
         if cards.len() != CARDS_IN_DECK {
             return Err(WrongNumber(cards.len()));
+        } else if is_valid_deck(cards) {
+            Ok(Deck(cards.iter().map(|x| *x).collect()))
+        } else {
+            Err(WrongCards)
         }
-        let card_array: [Card, ..CARDS_IN_DECK] = [
-            cards[0],
-            cards[1],
-            cards[2],
-            cards[3],
-            cards[4],
-            cards[5],
-            cards[6],
-            cards[7],
-            cards[8],
-            cards[9],
-            cards[10],
-            cards[11],
-            cards[12],
-            cards[13],
-            cards[14],
-            cards[15],
-            ];
-        Deck::from_array(card_array)
     }
 
     fn shuffled(&self) -> Deck {
-        let &Deck(mut cards) = self;
+        let &Deck(ref cards) = self;
+        let mut new_cards = cards.clone();
         let mut rng = rand::task_rng();
-        rng.shuffle(cards);
-        Deck(cards)
+        rng.shuffle(new_cards.as_mut_slice());
+        Deck(new_cards)
     }
 }
 
@@ -511,7 +492,7 @@ fn test_from_deck() {
         Soldier,
         Wizard,
         ];
-    let deck = Deck(cards);
+    let deck = Deck::from_slice(cards).unwrap();
     let g = Game::from_deck(deck);
     assert_eq!(
         cards.slice(1, 5)
@@ -746,16 +727,16 @@ fn test_deck_shuffle() {
 #[test]
 fn test_deck_shuffle_does_not_modify() {
     let deck = Deck::new();
-    let Deck(cards) = deck;
+    let Deck(ref cards) = deck;
     let old_cards = cards.clone();
     deck.shuffled();
-    let Deck(new_cards) = deck;
+    let Deck(ref new_cards) = deck;
     assert_eq!(old_cards.as_slice(), new_cards.as_slice());
 }
 
 #[test]
 fn test_deck_fixed_good() {
-    match Deck::from_array(DECK) {
+    match Deck::from_slice(DECK.as_slice()) {
         Ok(Deck(cards)) => assert_eq!(cards.as_slice(), DECK.as_slice()),
         Err(e) => fail!("Unexpected error: {}", e),
     }
@@ -781,7 +762,7 @@ fn test_deck_fixed_too_many_soldiers() {
         Soldier,
         Soldier,
         ];
-    match Deck::from_array(cards) {
+    match Deck::from_slice(cards) {
         Ok(Deck(cards)) => fail!("Should not have been OK: {}", cards.as_slice()),
         Err(error) => assert_eq!(error, WrongCards),
     }
