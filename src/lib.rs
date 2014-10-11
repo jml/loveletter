@@ -1,8 +1,8 @@
 use std::collections;
-use std::rand;
-use std::rand::Rng;
-use std::slice;
 
+use deck::{Card, Soldier, Clown, Knight, Priestess, Wizard, General, Minister, Princess};
+
+mod deck;
 mod util;
 
 // XXX: [rust] Make a loveletter namespace (figure out how to do this properly).
@@ -10,101 +10,11 @@ mod util;
 // XXX: [rust] Stop playing whack-a-mole with references & ownership and start
 // actually *understanding* it.
 
-#[deriving(PartialEq, PartialOrd, Eq, Ord, Show, Clone)]
-enum Card {
-    Soldier,
-    Clown,
-    Knight,
-    Priestess,
-    Wizard,
-    General,
-    Minister,
-    Princess,
-}
-
-
-static CARDS_IN_DECK: uint = 16;
-
 // Love Letter is a game for exactly four players.
 static NUM_PLAYERS: uint = 4;
 
-static DECK: [Card, ..CARDS_IN_DECK] = [
-    Soldier,
-    Soldier,
-    Soldier,
-    Soldier,
-    Soldier,
-    Clown,
-    Clown,
-    Knight,
-    Knight,
-    Priestess,
-    Priestess,
-    Wizard,
-    Wizard,
-    General,
-    Minister,
-    Princess,
-    ];
 
 
-#[deriving(Show)]
-pub struct Deck(Vec<Card>);
-
-#[deriving(Show, PartialEq, Eq)]
-enum DeckError {
-    WrongCards,
-    WrongNumber(uint),
-}
-
-impl Deck {
-    /// Returns a new, shuffled deck.
-    pub fn new() -> Deck {
-        // Safe to unwrap because we know that DECK has CARDS_IN_DECK
-        // elements.
-        Deck::from_slice(&DECK).unwrap().shuffled()
-    }
-
-    fn from_slice(cards: &[Card]) -> Result<Deck, DeckError> {
-        if cards.len() != CARDS_IN_DECK {
-            return Err(WrongNumber(cards.len()));
-        } else if is_valid_deck(cards) {
-            Ok(Deck(cards.iter().map(|x| *x).collect()))
-        } else {
-            Err(WrongCards)
-        }
-    }
-
-    pub fn shuffled(&self) -> Deck {
-        let &Deck(ref cards) = self;
-        let mut new_cards = cards.clone();
-        let mut rng = rand::task_rng();
-        rng.shuffle(new_cards.as_mut_slice());
-        Deck(new_cards)
-    }
-
-    fn as_slice(&self) -> &[Card] {
-        let &Deck(ref cards) = self;
-        cards.as_slice()
-    }
-
-    fn iter(&self) -> slice::Items<Card> {
-        let &Deck(ref cards) = self;
-        cards.iter()
-    }
-}
-
-fn is_valid_deck(deck: &[Card]) -> bool {
-    let mut full_deck: Vec<&Card> = DECK.iter().collect();
-    let mut sorted_deck: Vec<&Card> = deck.iter().collect();
-    full_deck.sort();
-    sorted_deck.sort();
-    full_deck == sorted_deck
-}
-
-fn is_valid_subdeck(cards: &[Card]) -> bool {
-    util::subtract_vector(DECK.iter().map(|&x| x).collect(), cards).is_some()
-}
 
 // Game state:
 // - discarded ('burnt') card
@@ -130,14 +40,14 @@ struct Game {
 
 impl Game {
     fn new() -> Game {
-        Game::from_deck(Deck::new())
+        Game::from_deck(deck::Deck::new())
     }
 
     fn _player_set() -> collections::BitvSet {
         collections::BitvSet::from_bitv(collections::Bitv::with_capacity(4, true))
     }
 
-    fn from_deck(deck: Deck) -> Game {
+    fn from_deck(deck: deck::Deck) -> Game {
         let cards = deck.as_slice();
         let hand_end = NUM_PLAYERS + 1;
         Game {
@@ -146,19 +56,19 @@ impl Game {
         }
     }
 
-    fn from_manual(hands: [Option<Card>, ..NUM_PLAYERS], deck: &[Card]) -> Result<Game, DeckError> {
+    fn from_manual(hands: [Option<Card>, ..NUM_PLAYERS], deck: &[Card]) -> Result<Game, deck::DeckError> {
         let stack: Vec<Card> = deck.iter().map(|&x| x).collect();
         let mut all_cards = stack.clone();
         for x in hands.as_slice().iter().filter_map(|&x| x) {
             all_cards.push(x);
         }
-        if is_valid_subdeck(all_cards.as_slice()) {
+        if deck::is_valid_subdeck(all_cards.as_slice()) {
             Ok(Game {
                 _hands: hands.iter().map(|&x| x).collect(),
                 _stack: stack,
             })
         } else {
-            Err(WrongCards)
+            Err(deck::WrongCards)
         }
     }
 
@@ -465,9 +375,9 @@ fn test_all_cards_in_game() {
     // make a new game, make sure that the number & kinds of cards matches the
     // rules (5 soldiers, 2 clowns, etc.). One card is 'burned' before dealing.
     let g = Game::new();
-    let mut full_deck: Vec<&Card> = DECK.iter().collect();
+    let mut full_deck: Vec<Card> = deck::Deck::new().iter().map(|x| *x).collect();
     full_deck.sort();
-    let mut found_cards: Vec<Card> = g.deck().iter().map(|&x| x).collect();
+    let mut found_cards: Vec<Card> = g.deck().iter().map(|x| *x).collect();
     for card in g.hands().iter() {
         match *card {
             Some(c) => found_cards.push(c),
@@ -476,15 +386,19 @@ fn test_all_cards_in_game() {
     }
     found_cards.sort();
     for card in found_cards.iter() {
-        let found = full_deck.iter().position(|&c| c == card);
+        let found = full_deck.iter().position(|c| c == card);
         match found {
             Some(i) => full_deck.swap_remove(i),
             None    => fail!("card in game that's not in deck: {}", card),
         };
     }
     assert_eq!(1, full_deck.len());
-    found_cards.push(*full_deck[0]);
-    assert!(is_valid_deck(found_cards.as_slice()));
+    found_cards.push(full_deck[0]);
+
+    let mut fresh_deck: Vec<Card> = deck::Deck::new().iter().map(|x| *x).collect();
+    fresh_deck.sort();
+    found_cards.sort();
+    assert_eq!(fresh_deck, found_cards);
 }
 
 
@@ -508,7 +422,7 @@ fn test_from_deck() {
         Soldier,
         Wizard,
         ];
-    let deck = Deck::from_slice(cards).unwrap();
+    let deck = deck::Deck::from_slice(cards).unwrap();
     let g = Game::from_deck(deck);
     assert_eq!(
         cards.slice(1, 5)
@@ -539,7 +453,7 @@ fn test_invalid_manual_game() {
     let result = Game::from_manual(hands, stack);
     match result {
         Ok(_)  => fail!("Had two Princesses, should not be ok."),
-        Err(e) => assert_eq!(e, WrongCards)
+        Err(e) => assert_eq!(e, deck::WrongCards)
     }
 }
 
@@ -721,119 +635,4 @@ fn test_non_attack() {
     let next_card = g._stack.pop().unwrap();
     let result = judge(g, 1, next_card, (Soldier, Attack(0)));
     assert_eq!(BadActionForCard(Attack(0), Soldier), result.unwrap_err());
-}
-
-#[test]
-fn test_deck_new() {
-    let Deck(mut cards) = Deck::new();
-    cards.sort();
-    assert_eq!(DECK.as_slice(), cards.as_slice());
-}
-
-#[test]
-fn test_deck_shuffle() {
-    let deck = Deck::new();
-    let Deck(mut shuffled_cards) = deck.shuffled();
-    let Deck(mut cards) = deck;
-    cards.sort();
-    shuffled_cards.sort();
-    assert_eq!(cards.as_slice(), shuffled_cards.as_slice());
-}
-
-#[test]
-fn test_deck_shuffle_does_not_modify() {
-    let deck = Deck::new();
-    let Deck(ref cards) = deck;
-    let old_cards = cards.clone();
-    deck.shuffled();
-    let Deck(ref new_cards) = deck;
-    assert_eq!(old_cards.as_slice(), new_cards.as_slice());
-}
-
-#[test]
-fn test_deck_fixed_good() {
-    match Deck::from_slice(DECK.as_slice()) {
-        Ok(Deck(cards)) => assert_eq!(cards.as_slice(), DECK.as_slice()),
-        Err(e) => fail!("Unexpected error: {}", e),
-    }
-}
-
-#[test]
-fn test_deck_fixed_too_many_soldiers() {
-    let cards = [
-        Soldier,
-        Soldier,
-        Soldier,
-        Soldier,
-        Soldier,
-        Soldier,
-        Soldier,
-        Soldier,
-        Soldier,
-        Soldier,
-        Soldier,
-        Soldier,
-        Soldier,
-        Soldier,
-        Soldier,
-        Soldier,
-        ];
-    match Deck::from_slice(cards) {
-        Ok(Deck(cards)) => fail!("Should not have been OK: {}", cards.as_slice()),
-        Err(error) => assert_eq!(error, WrongCards),
-    }
-}
-
-#[test]
-fn test_deck_variable_good() {
-    match Deck::from_slice(DECK.as_slice()) {
-        Ok(Deck(cards)) => assert_eq!(cards.as_slice(), DECK.as_slice()),
-        Err(e) => fail!("Unexpected error: {}", e),
-    }
-}
-
-#[test]
-fn test_deck_variable_too_few() {
-    let cards = [Soldier];
-    match Deck::from_slice(cards.as_slice()) {
-        Ok(Deck(cards)) => fail!("Should not have been OK: {}", cards.as_slice()),
-        Err(error) => assert_eq!(error, WrongNumber(cards.len())),
-    }
-}
-
-#[test]
-fn test_deck_variable_too_many() {
-    // One soldier too many
-    let cards = [
-        Soldier,
-        Soldier,
-        Soldier,
-        Soldier,
-        Soldier,
-        Soldier,
-        Clown,
-        Clown,
-        Knight,
-        Knight,
-        Priestess,
-        Priestess,
-        Wizard,
-        Wizard,
-        General,
-        Minister,
-        Princess,
-        ];
-    match Deck::from_slice(cards.as_slice()) {
-        Ok(Deck(cards)) => fail!("Should not have been OK: {}", cards.as_slice()),
-        Err(error) => assert_eq!(error, WrongNumber(cards.len())),
-    }
-}
-
-#[test]
-fn test_deck_iter() {
-    let deck = Deck::new();
-    let i = deck.iter();
-    let new_cards: Vec<Card> = i.map(|x| *x).collect();
-    let Deck(ref cards) = deck;
-    assert_eq!(*cards, new_cards);
 }
