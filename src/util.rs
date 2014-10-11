@@ -2,7 +2,7 @@
 // I'm just doing the bare minimum, as I want to pop my yak-stack a little.
 //
 // NB: it's only order-preserving because it makes the tests easier.
-pub fn subtract_vector<A: PartialEq>(xs: Vec<A>, ys: Vec<A>) -> Option<Vec<A>> {
+pub fn subtract_vector<A: PartialEq>(xs: Vec<A>, ys: &[A]) -> Option<Vec<A>> {
     let mut zs = xs;
     for y in ys.iter() {
         let pos = zs.iter().position(|x| x == y);
@@ -28,42 +28,42 @@ mod test {
     #[test]
     fn test_vector_diff_trivial() {
         let xs: Vec<int> = vec![];
-        let ys = vec![];
+        let ys = [];
         assert_eq!(Some(vec![]), subtract_vector(xs, ys))
     }
 
     #[test]
     fn test_vector_diff_identity() {
         let xs: Vec<int> = vec![1, 2, 3];
-        let ys = vec![];
+        let ys = [];
         assert_eq!(Some(vec![1, 2, 3]), subtract_vector(xs, ys))
     }
 
     #[test]
     fn test_vector_diff_removes() {
         let xs: Vec<int> = vec![1, 2, 3];
-        let ys = vec![2];
+        let ys = [2];
         assert_eq!(Some(vec![1, 3]), subtract_vector(xs, ys))
     }
 
     #[test]
     fn test_vector_diff_only_removes_one() {
         let xs: Vec<int> = vec![1, 2, 3, 2];
-        let ys = vec![2];
+        let ys = [2];
         assert_eq!(Some(vec![1, 3, 2]), subtract_vector(xs, ys))
     }
 
     #[test]
     fn test_vector_diff_contains_excess_elements() {
         let xs: Vec<int> = vec![1, 2, 3, 2];
-        let ys = vec![2, 2, 2];
+        let ys = [2, 2, 2];
         assert_eq!(None, subtract_vector(xs, ys))
     }
 
     #[test]
     fn test_vector_diff_contains_novel_elements() {
         let xs: Vec<int> = vec![1, 2, 3, 2];
-        let ys = vec![4];
+        let ys = [4];
         assert_eq!(None, subtract_vector(xs, ys))
     }
 

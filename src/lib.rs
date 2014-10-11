@@ -102,6 +102,10 @@ fn is_valid_deck(deck: &[Card]) -> bool {
     full_deck == sorted_deck
 }
 
+fn is_valid_subdeck(cards: &[Card]) -> bool {
+    util::subtract_vector(DECK.iter().map(|&x| x).collect(), cards).is_some()
+}
+
 // Game state:
 // - discarded ('burnt') card
 // - the remaining deck
@@ -148,13 +152,13 @@ impl Game {
         for x in hands.as_slice().iter().filter_map(|&x| x) {
             all_cards.push(x);
         }
-        let difference = util::subtract_vector(DECK.iter().map(|&x| x).collect(), all_cards);
-        match difference {
-            Some(_) => Ok(Game {
+        if is_valid_subdeck(all_cards.as_slice()) {
+            Ok(Game {
                 _hands: hands.iter().map(|&x| x).collect(),
                 _stack: stack,
-            }),
-            None    => Err(WrongCards),
+            })
+        } else {
+            Err(WrongCards)
         }
     }
 
