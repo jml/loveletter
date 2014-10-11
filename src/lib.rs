@@ -117,18 +117,6 @@ impl Game {
         self._stack.len()
     }
 
-    fn active_players(&self) -> Vec<uint> {
-        // XXX: I think we might only need this for testing, so fudge over it.
-        let mut vec = Vec::with_capacity(NUM_PLAYERS);
-        for (i, card) in self._hands.iter().enumerate() {
-            match *card {
-                Some(_) => vec.push(i),
-                None    => ()
-            }
-        }
-        vec
-    }
-
     //fn handle_turn(&self, |Game, Card| -> Action) -> Game {
         // TODO: UNTESTED:
         // - pop a card off the deck
@@ -281,12 +269,6 @@ mod test {
     }
 
     #[test]
-    fn test_active_players_on_new() {
-        let g = Game::new();
-        assert_eq!(vec![0, 1, 2, 3], g.active_players());
-    }
-
-    #[test]
     fn test_get_card_active_player() {
         let g = Game::from_manual(
             [Some(General), Some(Clown), Some(Knight), Some(Priestess)],
@@ -308,23 +290,6 @@ mod test {
             [Some(General), Some(Clown), None, Some(Priestess)],
             [Soldier, Minister, Princess, Soldier, Wizard]).unwrap();
         assert_eq!(g.get_hand(2), Err(InactivePlayer(2)));
-    }
-
-    #[test]
-    fn test_no_hand_means_not_active() {
-        let g = Game::from_manual(
-            [Some(General), Some(Clown), None, Some(Priestess)],
-            [Soldier, Minister, Princess, Soldier, Wizard]).unwrap();
-        assert_eq!(vec![0, 1, 3], g.active_players());
-    }
-
-    #[test]
-    fn test_eliminate_player() {
-        let g = Game::from_manual(
-            [Some(General), Some(Clown), None, Some(Priestess)],
-            [Soldier, Minister, Princess, Soldier, Wizard]).unwrap();
-        let new_game = g.eliminate(0).unwrap();
-        assert_eq!(vec![1, 3], new_game.active_players());
     }
 
     #[test]
