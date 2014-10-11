@@ -52,7 +52,7 @@ impl Game {
 
     fn from_deck(num_players: uint, deck: deck::Deck) -> Game {
         let cards = deck.as_slice();
-        let hand_end = NUM_PLAYERS + 1;
+        let hand_end = num_players + 1;
         Game {
             _hands: cards.slice(1, hand_end).iter().map(|&x| Some(x)).collect(),
             _stack: cards.slice_from(hand_end).iter().map(|&x| x).collect(),
@@ -60,6 +60,7 @@ impl Game {
         }
     }
 
+    #[cfg(test)]
     fn from_manual(hands: &[Option<deck::Card>], deck: &[deck::Card]) -> Result<Game, deck::DeckError> {
         let stack: Vec<deck::Card> = deck.iter().map(|&x| x).collect();
         let mut all_cards = stack.clone();
@@ -81,6 +82,7 @@ impl Game {
         self._hands.as_slice()
     }
 
+    #[cfg(test)]
     fn deck(&self) -> &[deck::Card] {
         self._stack.as_slice()
     }
@@ -410,18 +412,18 @@ mod test {
             Wizard,
             ];
         let deck = deck::Deck::from_slice(cards).unwrap();
-        let g = Game::from_deck(4, deck);
+        let num_players = 3u;
+        let g = Game::from_deck(num_players, deck);
         assert_eq!(
-            cards.slice(1, 5)
+            cards.slice(1, num_players + 1)
                 .iter()
                 .map(|&x| Some(x))
                 .collect::<Vec<Option<Card>>>()
                 .as_slice(),
             g.hands());
-        assert_eq!(cards.slice_from(5), g.deck());
-        assert_eq!(4, g.num_players());
+        assert_eq!(cards.slice_from(num_players + 1), g.deck());
+        assert_eq!(num_players, g.num_players());
     }
-
 
     #[test]
     fn test_manual_game() {
