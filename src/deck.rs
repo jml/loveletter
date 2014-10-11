@@ -97,118 +97,123 @@ pub fn is_valid_subdeck(cards: &[Card]) -> bool {
     util::subtract_vector(DECK.iter().map(|&x| x).collect(), cards).is_some()
 }
 
+#[cfg(test)]
+mod test {
+    use super::{DECK, Deck};
+    use super::{Card, Soldier, Clown, Knight, Priestess, Wizard, General, Minister, Princess};
 
-#[test]
-fn test_deck_new() {
-    let Deck(mut cards) = Deck::new();
-    cards.sort();
-    assert_eq!(DECK.as_slice(), cards.as_slice());
-}
-
-#[test]
-fn test_deck_shuffle() {
-    let deck = Deck::new();
-    let Deck(mut shuffled_cards) = deck.shuffled();
-    let Deck(mut cards) = deck;
-    cards.sort();
-    shuffled_cards.sort();
-    assert_eq!(cards.as_slice(), shuffled_cards.as_slice());
-}
-
-#[test]
-fn test_deck_shuffle_does_not_modify() {
-    let deck = Deck::new();
-    let Deck(ref cards) = deck;
-    let old_cards = cards.clone();
-    deck.shuffled();
-    let Deck(ref new_cards) = deck;
-    assert_eq!(old_cards.as_slice(), new_cards.as_slice());
-}
-
-#[test]
-fn test_deck_fixed_good() {
-    match Deck::from_slice(DECK.as_slice()) {
-        Ok(Deck(cards)) => assert_eq!(cards.as_slice(), DECK.as_slice()),
-        Err(e) => fail!("Unexpected error: {}", e),
+    #[test]
+    fn test_deck_new() {
+        let Deck(mut cards) = Deck::new();
+        cards.sort();
+        assert_eq!(DECK.as_slice(), cards.as_slice());
     }
-}
 
-#[test]
-fn test_deck_fixed_too_many_soldiers() {
-    let cards = [
-        Soldier,
-        Soldier,
-        Soldier,
-        Soldier,
-        Soldier,
-        Soldier,
-        Soldier,
-        Soldier,
-        Soldier,
-        Soldier,
-        Soldier,
-        Soldier,
-        Soldier,
-        Soldier,
-        Soldier,
-        Soldier,
-        ];
-    match Deck::from_slice(cards) {
-        Ok(Deck(cards)) => fail!("Should not have been OK: {}", cards.as_slice()),
-        Err(error) => assert_eq!(error, WrongCards),
+    #[test]
+    fn test_deck_shuffle() {
+        let deck = Deck::new();
+        let Deck(mut shuffled_cards) = deck.shuffled();
+        let Deck(mut cards) = deck;
+        cards.sort();
+        shuffled_cards.sort();
+        assert_eq!(cards.as_slice(), shuffled_cards.as_slice());
     }
-}
 
-#[test]
-fn test_deck_variable_good() {
-    match Deck::from_slice(DECK.as_slice()) {
-        Ok(Deck(cards)) => assert_eq!(cards.as_slice(), DECK.as_slice()),
-        Err(e) => fail!("Unexpected error: {}", e),
+    #[test]
+    fn test_deck_shuffle_does_not_modify() {
+        let deck = Deck::new();
+        let Deck(ref cards) = deck;
+        let old_cards = cards.clone();
+        deck.shuffled();
+        let Deck(ref new_cards) = deck;
+        assert_eq!(old_cards.as_slice(), new_cards.as_slice());
     }
-}
 
-#[test]
-fn test_deck_variable_too_few() {
-    let cards = [Soldier];
-    match Deck::from_slice(cards.as_slice()) {
-        Ok(Deck(cards)) => fail!("Should not have been OK: {}", cards.as_slice()),
-        Err(error) => assert_eq!(error, WrongNumber(cards.len())),
+    #[test]
+    fn test_deck_fixed_good() {
+        match Deck::from_slice(DECK.as_slice()) {
+            Ok(Deck(cards)) => assert_eq!(cards.as_slice(), DECK.as_slice()),
+            Err(e) => fail!("Unexpected error: {}", e),
+        }
     }
-}
 
-#[test]
-fn test_deck_variable_too_many() {
-    // One soldier too many
-    let cards = [
-        Soldier,
-        Soldier,
-        Soldier,
-        Soldier,
-        Soldier,
-        Soldier,
-        Clown,
-        Clown,
-        Knight,
-        Knight,
-        Priestess,
-        Priestess,
-        Wizard,
-        Wizard,
-        General,
-        Minister,
-        Princess,
-        ];
-    match Deck::from_slice(cards.as_slice()) {
-        Ok(Deck(cards)) => fail!("Should not have been OK: {}", cards.as_slice()),
-        Err(error) => assert_eq!(error, WrongNumber(cards.len())),
+    #[test]
+    fn test_deck_fixed_too_many_soldiers() {
+        let cards = [
+            Soldier,
+            Soldier,
+            Soldier,
+            Soldier,
+            Soldier,
+            Soldier,
+            Soldier,
+            Soldier,
+            Soldier,
+            Soldier,
+            Soldier,
+            Soldier,
+            Soldier,
+            Soldier,
+            Soldier,
+            Soldier,
+            ];
+        match Deck::from_slice(cards) {
+            Ok(Deck(cards)) => fail!("Should not have been OK: {}", cards.as_slice()),
+            Err(error) => assert_eq!(error, super::WrongCards),
+        }
     }
-}
 
-#[test]
-fn test_deck_iter() {
-    let deck = Deck::new();
-    let i = deck.iter();
-    let new_cards: Vec<Card> = i.map(|x| *x).collect();
-    let Deck(ref cards) = deck;
-    assert_eq!(*cards, new_cards);
+    #[test]
+    fn test_deck_variable_good() {
+        match Deck::from_slice(DECK.as_slice()) {
+            Ok(Deck(cards)) => assert_eq!(cards.as_slice(), DECK.as_slice()),
+            Err(e) => fail!("Unexpected error: {}", e),
+        }
+    }
+
+    #[test]
+    fn test_deck_variable_too_few() {
+        let cards = [Soldier];
+        match Deck::from_slice(cards.as_slice()) {
+            Ok(Deck(cards)) => fail!("Should not have been OK: {}", cards.as_slice()),
+            Err(error) => assert_eq!(error, super::WrongNumber(cards.len())),
+        }
+    }
+
+    #[test]
+    fn test_deck_variable_too_many() {
+        // One soldier too many
+        let cards = [
+            Soldier,
+            Soldier,
+            Soldier,
+            Soldier,
+            Soldier,
+            Soldier,
+            Clown,
+            Clown,
+            Knight,
+            Knight,
+            Priestess,
+            Priestess,
+            Wizard,
+            Wizard,
+            General,
+            Minister,
+            Princess,
+            ];
+        match Deck::from_slice(cards.as_slice()) {
+            Ok(Deck(cards)) => fail!("Should not have been OK: {}", cards.as_slice()),
+            Err(error) => assert_eq!(error, super::WrongNumber(cards.len())),
+        }
+    }
+
+    #[test]
+    fn test_deck_iter() {
+        let deck = Deck::new();
+        let i = deck.iter();
+        let new_cards: Vec<Card> = i.map(|x| *x).collect();
+        let Deck(ref cards) = deck;
+        assert_eq!(*cards, new_cards);
+    }
 }
