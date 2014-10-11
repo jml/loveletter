@@ -70,8 +70,6 @@ impl Deck {
         if cards.len() != CARDS_IN_DECK {
             return Err(WrongNumber(cards.len()));
         }
-        // XXX: [rust] Is there a way I can do this without needing to explicitly
-        // mention any element?
         let card_array: [Card, ..CARDS_IN_DECK] = [
             cards[0],
             cards[1],
@@ -102,9 +100,6 @@ impl Deck {
 }
 
 fn is_valid_deck(deck: &[Card]) -> bool {
-    // XXX: [rust] Probably don't need to collect & sort the full deck here, since
-    // it's already sorted. Not sure if there's a way to assert that at
-    // compile time.
     let mut full_deck: Vec<&Card> = DECK.iter().collect();
     let mut sorted_deck: Vec<&Card> = deck.iter().collect();
     full_deck.sort();
@@ -425,8 +420,6 @@ fn test_eliminate_player() {
     assert_eq!(vec![1, 3], new_game.active_players());
 }
 
-// XXX: [emacs] How do I jump to the last mark? glyph wrote about that once.
-
 #[test]
 fn test_eliminate_nonexistent_player() {
     let g = Game::from_manual(
@@ -620,12 +613,6 @@ fn test_self_targeting() {
     let result = judge(g, 0, next_card, (General, Attack(0)));
     assert_eq!(SelfTarget(0, General), result.unwrap_err());
 }
-
-// XXX: [emacs] Snippets would be incredibly useful! Figure out why they
-// aren't working.
-
-// XXX: [emacs] My work config has M-f and M-b break at underscores. It's
-// extremely useful, and I should set it up in my home config.
 
 #[test]
 fn test_general_at_inactive_players() {
