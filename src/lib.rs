@@ -1,5 +1,3 @@
-use std::collections;
-
 mod deck;
 mod util;
 
@@ -24,7 +22,7 @@ static NUM_PLAYERS: uint = 4;
 
 // XXX: Should we wrap up 'Player'?
 
-#[deriving(Show)]
+#[deriving(Show, PartialEq, Eq)]
 pub struct Game {
     // XXX: [rust]: Why can't I derive show while this has a size? Why can't I
     // make it a slice?
@@ -37,8 +35,15 @@ pub struct Game {
 }
 
 
+#[deriving(Show, PartialEq, Eq, PartialOrd, Ord)]
+enum GameError {
+    InvalidPlayers(uint),
+    BadDeck,
+}
+
+
 impl Game {
-    pub fn new(num_players: uint) -> Game {
+    pub fn new(num_players: uint) -> Option<Game> {
         Game::from_deck(num_players, deck::Deck::new())
     }
 
@@ -46,22 +51,29 @@ impl Game {
         self._num_players
     }
 
-    fn _player_set() -> collections::BitvSet {
-        collections::BitvSet::from_bitv(collections::Bitv::with_capacity(4, true))
+    fn valid_player_count(num_players: uint) -> bool {
+        2 <= num_players && num_players <= 4
     }
 
-    fn from_deck(num_players: uint, deck: deck::Deck) -> Game {
+    fn from_deck(num_players: uint, deck: deck::Deck) -> Option<Game> {
+        if !Game::valid_player_count(num_players) {
+            return None
+        }
         let cards = deck.as_slice();
         let hand_end = num_players + 1;
-        Game {
+        Some(Game {
             _hands: cards.slice(1, hand_end).iter().map(|&x| Some(x)).collect(),
             _stack: cards.slice_from(hand_end).iter().map(|&x| x).collect(),
             _num_players: num_players
-        }
+        })
     }
 
     #[cfg(test)]
-    fn from_manual(hands: &[Option<deck::Card>], deck: &[deck::Card]) -> Result<Game, deck::DeckError> {
+    fn from_manual(hands: &[Option<deck::Card>], deck: &[deck::Card]) -> Result<Game, GameError> {
+        let num_players = hands.len();
+        if !Game::valid_player_count(num_players) {
+            return Err(InvalidPlayers(num_players));
+        }
         let stack: Vec<deck::Card> = deck.iter().map(|&x| x).collect();
         let mut all_cards = stack.clone();
         for x in hands.as_slice().iter().filter_map(|&x| x) {
@@ -74,7 +86,7 @@ impl Game {
                 _num_players: hands.len(),
             })
         } else {
-            Err(deck::WrongCards)
+            Err(BadDeck)
         }
     }
 
@@ -278,12 +290,22 @@ mod test {
     use super::{InvalidPlayer, CardNotFound, InactivePlayer, SelfTarget, BadActionForCard};
 
     fn make_arbitrary_game() -> Game {
-        Game::new(super::NUM_PLAYERS)
+        Game::new(super::NUM_PLAYERS).unwrap()
     }
 
     #[test]
     fn test_num_players() {
-        assert_eq!(3, Game::new(3).num_players());
+        assert_eq!(3, Game::new(3).unwrap().num_players());
+    }
+
+    #[test]
+    fn test_too_few_players() {
+        assert_eq!(None, Game::new(1));
+    }
+
+    #[test]
+    fn test_too_many_players() {
+        assert_eq!(None, Game::new(5));
     }
 
     #[test]
@@ -413,7 +435,7 @@ mod test {
             ];
         let deck = deck::Deck::from_slice(cards).unwrap();
         let num_players = 3u;
-        let g = Game::from_deck(num_players, deck);
+        let g = Game::from_deck(num_players, deck).unwrap();
         assert_eq!(
             cards.slice(1, num_players + 1)
                 .iter()
@@ -444,8 +466,13 @@ mod test {
         let result = Game::from_manual(hands, stack);
         match result {
             Ok(_)  => fail!("Had two Princesses, should not be ok."),
-            Err(e) => assert_eq!(e, deck::WrongCards)
+            Err(e) => assert_eq!(e, super::BadDeck)
         }
+    }
+
+    #[test]
+    fn test_manual_game_bad_players() {
+        assert_eq!(Err(super::InvalidPlayers(0)), Game::from_manual([], []));
     }
 
 
