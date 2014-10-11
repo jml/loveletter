@@ -25,7 +25,7 @@ static NUM_PLAYERS: uint = 4;
 // XXX: Should we wrap up 'Player'?
 
 #[deriving(Show)]
-struct Game {
+pub struct Game {
     // XXX: [rust]: Why can't I derive show while this has a size? Why can't I
     // make it a slice?
     //
@@ -37,7 +37,7 @@ struct Game {
 
 
 impl Game {
-    fn new() -> Game {
+    pub fn new() -> Game {
         Game::from_deck(deck::Deck::new())
     }
 
