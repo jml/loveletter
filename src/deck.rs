@@ -216,4 +216,11 @@ mod test {
         let Deck(ref cards) = deck;
         assert_eq!(*cards, new_cards);
     }
+
+    #[test]
+    fn test_card_ordering() {
+        assert!(Soldier <= Soldier);
+        assert!(Soldier < Clown);
+        assert!(Soldier < Princess);
+    }
 }
