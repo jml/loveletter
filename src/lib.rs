@@ -1,6 +1,7 @@
 use std::collections;
 use std::rand;
 use std::rand::Rng;
+use std::slice;
 
 mod util;
 
@@ -80,6 +81,11 @@ impl Deck {
         let mut rng = rand::task_rng();
         rng.shuffle(new_cards.as_mut_slice());
         Deck(new_cards)
+    }
+
+    fn iter(&self) -> slice::Items<Card> {
+        let &Deck(ref cards) = self;
+        cards.iter()
     }
 }
 
@@ -814,4 +820,11 @@ fn test_deck_variable_too_many() {
     }
 }
 
-
+#[test]
+fn test_deck_iter() {
+    let deck = Deck::new();
+    let i = deck.iter();
+    let new_cards: Vec<Card> = i.map(|x| *x).collect();
+    let Deck(ref cards) = deck;
+    assert_eq!(*cards, new_cards);
+}
