@@ -146,7 +146,7 @@ impl Game {
         self._stack.len()
     }
 
-    fn draw(&self) -> (Game, Option<deck::Card>) {
+    pub fn draw(&self) -> (Game, Option<deck::Card>) {
         let mut new_game = Game { _hands: self._hands.clone(),
                                   _stack: self._stack.clone(),
                                   _num_players: self._num_players };
