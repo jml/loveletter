@@ -21,6 +21,7 @@ pub struct Game {
     _hands: Vec<Option<deck::Card>>,
     _stack: Vec<deck::Card>,
     _num_players: uint,
+    _current_player: uint,
 }
 
 
@@ -41,7 +42,7 @@ impl Game {
     }
 
     fn current_player(&self) -> uint {
-        0
+        self._current_player
     }
 
     fn valid_player_count(num_players: uint) -> bool {
@@ -57,7 +58,8 @@ impl Game {
         Some(Game {
             _hands: cards.slice(1, hand_end).iter().map(|&x| Some(x)).collect(),
             _stack: cards.slice_from(hand_end).iter().map(|&x| x).collect(),
-            _num_players: num_players
+            _num_players: num_players,
+            _current_player: 0,
         })
     }
 
@@ -77,6 +79,7 @@ impl Game {
                 _hands: hands.iter().map(|&x| x).collect(),
                 _stack: stack,
                 _num_players: hands.len(),
+                _current_player: 0,
             })
         } else {
             Err(BadDeck)
@@ -132,9 +135,20 @@ impl Game {
         self._stack.len()
     }
 
+    pub fn _draw(&mut self) -> Option<deck::Card> {
+        self._stack.pop()
+    }
+
     pub fn draw(&self) -> (Game, Option<deck::Card>) {
         let mut new_game = self.clone();
-        let card = new_game._stack.pop();
+        let card = new_game._draw();
+        (new_game, card)
+    }
+
+    fn next_player(&self) -> (Game, Option<deck::Card>) {
+        let mut new_game = self.clone();
+        let card = new_game._draw();
+        new_game._current_player = (new_game._current_player + 1) % new_game._hands.len();
         (new_game, card)
     }
 
@@ -304,6 +318,29 @@ mod test {
     #[test]
     fn test_current_player_at_start() {
         assert_eq!(0, make_arbitrary_game().current_player());
+    }
+
+    #[test]
+    fn test_current_player_after_next() {
+        let g = make_arbitrary_game();
+        let (g2, _) = g.next_player();
+        assert_eq!(1, g2.current_player());
+    }
+
+    #[test]
+    fn test_next_player_gets_draw() {
+        let g = make_arbitrary_game();
+        let (_, draw) = g.next_player();
+        let (_, expected) = g.draw();
+        assert_eq!(draw, expected);
+    }
+
+    #[test]
+    fn test_next_player_cycles() {
+        let g = Game::new(2).unwrap();
+        let (g, _) = g.next_player();
+        let (g, _) = g.next_player();
+        assert_eq!(0, g.current_player());
     }
 
 
