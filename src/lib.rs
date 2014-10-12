@@ -146,6 +146,14 @@ impl Game {
         self._stack.len()
     }
 
+    fn draw(&self) -> (Game, Option<deck::Card>) {
+        let mut new_game = Game { _hands: self._hands.clone(),
+                                  _stack: self._stack.clone(),
+                                  _num_players: self._num_players };
+        let card = new_game._stack.pop();
+        (new_game, card)
+    }
+
     //fn handle_turn(&self, |Game, Card| -> Action) -> Game {
         // TODO: UNTESTED:
         // - pop a card off the deck
@@ -655,4 +663,24 @@ mod test {
         let result = judge(g, 1, next_card, (Soldier, Attack(0)));
         assert_eq!(BadActionForCard(Attack(0), Soldier), result.unwrap_err());
     }
+
+    #[test]
+    fn test_draw_card() {
+        let g = Game::from_manual(
+            [Some(Clown), Some(Soldier)],
+            [Soldier, Minister, Princess, Soldier, Knight]).unwrap();
+        let (new_game, next_card) = g.draw();
+        let expected: &[Card] = [Soldier, Minister, Princess, Soldier];
+        assert_eq!(Some(Knight), next_card);
+        assert_eq!(expected, new_game.deck());
+    }
+
+    #[test]
+    fn test_draw_card_no_more_cards() {
+        let g = Game::from_manual([Some(Clown), Some(Soldier)], []).unwrap();
+        let (new_game, next_card) = g.draw();
+        assert_eq!(None, next_card);
+        assert_eq!(g, new_game);
+    }
+
 }
