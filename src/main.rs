@@ -42,30 +42,22 @@ fn main() {
         let (new_game, turn) = current_game.next_player();
         current_game = new_game;
 
-        let (current_player, draw_card) = match turn {
+        let turn = match turn {
             Some(x) => x,
             None => break,
         };
 
-        let current_card = match current_game.current_hand() {
-            Some(c) => c,
-            None => {
-                println!("player {} has no card!", current_player);
-                return;
-            }
-        };
-
         repeated_prompt(
-            format!("Pick a card: {}, {}", current_card, draw_card).as_slice(),
+            format!("Pick a card: {}, {}", turn.hand, turn.draw).as_slice(),
             |x| match x.trim() {
-                "1" => Ok(current_card),
-                "2" => Ok(draw_card),
+                "1" => Ok(turn.hand),
+                "2" => Ok(turn.draw),
                 _ => Err("1 or 2"),
             });
 
         // XXX: Allow to pick which of draw_card or current_card
         let result = loveletter::judge(
-            &current_game, 0, draw_card, (draw_card, loveletter::Attack(1)));
+            &current_game, 0, turn.draw, (turn.draw, loveletter::Attack(1)));
         // XXX: Apply the action
         // XXX: Discard the played card
         // XXX: Advance to the next player

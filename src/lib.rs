@@ -11,6 +11,23 @@ mod util;
 
 // XXX: Should we wrap up 'Player'?
 
+#[deriving(Show, PartialEq, Eq)]
+pub struct Turn {
+    pub player: uint,
+    pub hand: deck::Card,
+    pub draw: deck::Card,
+}
+
+impl Turn {
+    pub fn new(player: uint, hand: deck::Card, draw: deck::Card) -> Turn {
+        Turn {
+            player: player,
+            hand: hand,
+            draw: draw,
+        }
+    }
+}
+
 #[deriving(Show, PartialEq, Eq, Clone)]
 pub struct Game {
     // XXX: [rust]: Why can't I derive show while this has a size? Why can't I
@@ -153,15 +170,25 @@ impl Game {
         (new_game, card)
     }
 
-    pub fn next_player(&self) -> (Game, Option<(uint, deck::Card)>) {
+    pub fn next_player(&self) -> (Game, Option<Turn>) {
         let mut new_game = self.clone();
         let card = new_game._draw();
-        let new_player = match new_game._current_player {
-            Some(n) => (n + 1) % new_game._hands.len(),
-            None => 0
-        };
-        new_game._current_player = Some(new_player);
-        (new_game, card.map(|c| (new_player, c)))
+        match card {
+            None => (new_game, None),
+            Some(c) => {
+                let new_player = match new_game._current_player {
+                    Some(n) => (n + 1) % new_game._hands.len(),
+                    None => 0
+                };
+                new_game._current_player = Some(new_player);
+                let hand = new_game._hands[new_player];
+                (new_game, Some(Turn {
+                    player: new_player,
+                    draw: c,
+                    hand: hand.expect("Activated disabled player"),
+                }))
+            }
+        }
     }
 
     //fn handle_turn(&self, |Game, Card| -> Action) -> Game {
@@ -342,9 +369,10 @@ mod test {
     #[test]
     fn test_next_player_gets_draw() {
         let g = make_arbitrary_game();
-        let (_, draw) = g.next_player();
+        let (_, turn) = g.next_player();
+        let super::Turn { player: p, draw: d, hand: _ } = turn.unwrap();
         let (_, expected) = g.draw();
-        assert_eq!(draw, Some((0, expected.unwrap())));
+        assert_eq!((p, d), (0, expected.unwrap()));
     }
 
     #[test]
