@@ -11,7 +11,7 @@ mod util;
 
 // XXX: Should we wrap up 'Player'?
 
-#[deriving(Show, PartialEq, Eq)]
+#[deriving(Show, PartialEq, Eq, Clone)]
 pub struct Game {
     // XXX: [rust]: Why can't I derive show while this has a size? Why can't I
     // make it a slice?
@@ -38,6 +38,10 @@ impl Game {
 
     pub fn num_players(&self) -> uint {
         self._num_players
+    }
+
+    fn current_player(&self) -> uint {
+        0
     }
 
     fn valid_player_count(num_players: uint) -> bool {
@@ -102,33 +106,26 @@ impl Game {
     }
 
     fn eliminate(&self, player: uint) -> Result<Game, PlayError> {
+        let mut new_game = self.clone();
         match self.get_hand(player) {
-            Err(e) => Err(e),
+            Err(e) => { return Err(e); },
             Ok(..) => {
-                let mut hands = self._hands.clone();
-                hands.as_mut_slice()[player] = None;
-                Ok(Game {
-                    _hands: hands,
-                    _stack: self._stack.clone(),
-                    _num_players: self._num_players,
-                })
+                let player = new_game._hands.get_mut(player);
+                *player = None;
             }
-        }
+        };
+        Ok(new_game)
     }
 
     fn swap_hands(&self, p1: uint, p2: uint) -> Result<Game, PlayError> {
+        let mut new_game = self.clone();
         match self.get_hand(p2).and(self.get_hand(p1)) {
-            Err(e) => Err(e),
+            Err(e) => { return Err(e); },
             Ok(..) => {
-                let mut hands = self._hands.clone();
-                hands.as_mut_slice().swap(p1, p2);
-                Ok(Game {
-                    _hands: hands,
-                    _stack: self._stack.clone(),
-                    _num_players: self._num_players,
-                })
+                new_game._hands.as_mut_slice().swap(p1, p2);
             }
-        }
+        };
+        Ok(new_game)
     }
 
     fn num_cards_remaining(&self) -> uint {
@@ -136,9 +133,7 @@ impl Game {
     }
 
     pub fn draw(&self) -> (Game, Option<deck::Card>) {
-        let mut new_game = Game { _hands: self._hands.clone(),
-                                  _stack: self._stack.clone(),
-                                  _num_players: self._num_players };
+        let mut new_game = self.clone();
         let card = new_game._stack.pop();
         (new_game, card)
     }
@@ -305,6 +300,12 @@ mod test {
     fn test_too_many_players() {
         assert_eq!(None, Game::new(5));
     }
+
+    #[test]
+    fn test_current_player_at_start() {
+        assert_eq!(0, make_arbitrary_game().current_player());
+    }
+
 
     #[test]
     fn test_num_cards_remaining_on_new() {
