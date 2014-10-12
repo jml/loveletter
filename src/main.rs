@@ -48,20 +48,22 @@ fn main() {
         };
 
         let chosen = repeated_prompt(
-            format!("Player {}: pick a card: {}, {}", turn.player, turn.hand, turn.draw).as_slice(),
+            format!(
+                "Player {}: pick a card:\n  1. {}\n  2. {}",
+                turn.player + 1, turn.hand, turn.draw).as_slice(),
             |x| match x.trim() {
                 "1" => Ok(turn.hand),
                 "2" => Ok(turn.draw),
                 _ => Err("1 or 2"),
             });
 
-        // XXX: Allow to pick which of draw_card or current_card
+        // XXX: Allow choosing action
+        // XXX: For Attack, Choose the target
         let result = loveletter::judge(
             &current_game, turn.player, turn.draw,
             (chosen, loveletter::Attack((turn.player + 1) % 2)));
         // XXX: Apply the action
         // XXX: Discard the played card
-        // XXX: Advance to the next player
         println!("Result: {}", result);
         println!("");
     }
