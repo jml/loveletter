@@ -88,7 +88,7 @@ impl Game {
         self._stack.as_slice()
     }
 
-    fn get_hand(&self, player: uint) -> Result<deck::Card, PlayError> {
+    pub fn get_hand(&self, player: uint) -> Result<deck::Card, PlayError> {
         // XXX: Maybe a good idea to return an error if the player is
         // protected by the priestess
         if player < self._hands.len() {
