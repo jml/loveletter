@@ -123,7 +123,7 @@ impl Game {
     pub fn get_hand(&self, player: uint) -> Result<deck::Card, PlayError> {
         // XXX: Maybe a good idea to return an error if the player is
         // protected by the priestess
-        if player < self._hands.len() {
+        if player < self.num_players() {
             match self._hands[player] {
                 Some(card) => Ok(card),
                 None => Err(InactivePlayer(player)),
@@ -170,16 +170,24 @@ impl Game {
         (new_game, card)
     }
 
+    fn _next_player(&self) -> Option<uint> {
+        let current = match self._current_player {
+            None    => -1,
+            Some(x) => x,
+        };
+        let num_players = self.num_players();
+        range(1, num_players)
+            .map(|i| (current + i) % num_players)
+            .find(|i| self._hands[*i].is_some())
+    }
+
     pub fn next_player(&self) -> (Game, Option<Turn>) {
         let mut new_game = self.clone();
         let card = new_game._draw();
         match card {
             None => (new_game, None),
             Some(c) => {
-                let new_player = match new_game._current_player {
-                    Some(n) => (n + 1) % new_game._hands.len(),
-                    None => 0
-                };
+                let new_player = new_game._next_player().expect("No more players");
                 new_game._current_player = Some(new_player);
                 let hand = new_game._hands[new_player];
                 (new_game, Some(Turn {
@@ -441,6 +449,17 @@ mod test {
         let error = g.eliminate(2).unwrap_err();
         assert_eq!(InactivePlayer(2), error);
     }
+
+    #[test]
+    fn test_skip_eliminated_player() {
+        let g = Game::new(3).unwrap();
+        let (g, _) = g.next_player();
+        let g = g.eliminate(1).unwrap();
+        let (g, t) = g.next_player();
+        assert_eq!(g.current_player(), Some(2));
+        assert_eq!(t.unwrap().player, 2);
+    }
+
 
     #[test]
     fn test_swap_cards() {
