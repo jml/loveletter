@@ -29,7 +29,16 @@ fn choose(_game: &loveletter::Game, turn: &loveletter::Turn) -> (loveletter::Car
             "2" => Ok(turn.draw),
             _ => Err("1 or 2"),
         });
-    (chosen, loveletter::Attack((turn.player + 1) % 2))
+    // TODO: Allow specifying other.
+    let other = (turn.player + 1) % 2;
+    let action = match chosen {
+        loveletter::Priestess | loveletter::Minister | loveletter::Princess => loveletter::NoEffect,
+        // TODO: Allow specifying guess.
+        loveletter::Soldier => loveletter::Guess(other, loveletter::Wizard),
+        _ => loveletter::Attack(other),
+    };
+    println!("Player {} => {}: {}", turn.player + 1, chosen, action);
+    (chosen, action)
 }
 
 
@@ -62,5 +71,5 @@ fn main() {
         println!("{}", current_game);
         println!("");
     }
-    // XXX: Announce the winner
+    // TODO: Announce the winner
 }

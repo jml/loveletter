@@ -1,4 +1,4 @@
-pub use deck::Card;
+pub use deck::{Card, Soldier, Clown, Knight, Priestess, Wizard, General, Minister, Princess};
 
 mod deck;
 mod util;
@@ -11,7 +11,12 @@ mod util;
 // - each player's discard
 //   - publicly available
 
-// XXX: Should we wrap up 'Player'?
+// XXX: Should we wrap up 'Player'? Especially interesting if we have the Game
+// store separate discarded card logs. Also useful for keeping 'Priestess'
+// protection data.
+
+// TODO: Data structure for all of the publicly visible actions in a game.
+// Must be enough to reconstruct the whole game.
 
 
 #[deriving(Show, PartialEq, Eq)]
@@ -33,11 +38,6 @@ impl Turn {
 
 #[deriving(Show, PartialEq, Eq, Clone)]
 pub struct Game {
-    // XXX: [rust]: Why can't I derive show while this has a size? Why can't I
-    // make it a slice?
-    //
-    // XXX: I reckon I can make '_hands' an array without making the code much
-    // more complicated. I wonder if that would matter.
     _hands: Vec<Option<deck::Card>>,
     _stack: Vec<deck::Card>,
     _num_players: uint,
@@ -67,10 +67,6 @@ impl Game {
 
     fn current_player(&self) -> Option<uint> {
         self._current_player
-    }
-
-    fn current_hand(&self) -> Option<deck::Card> {
-        self._current_player.and_then(|i| self.get_hand(i).ok())
     }
 
     fn valid_player_count(num_players: uint) -> bool {
@@ -160,6 +156,8 @@ impl Game {
     }
 
     fn discard_and_draw(&self, player: uint) -> Result<Game, PlayError> {
+        // TODO: Check that they are not playing Princess. If they are,
+        // eliminate them.
         let mut game = self.clone();
         let new_card = game._draw();
         match self.get_hand(player) {
@@ -202,6 +200,11 @@ impl Game {
         match card {
             None => (new_game, None),
             Some(c) => {
+                // TODO: Handle there being no more players. This means that
+                // the game is over and the sole surviving player won. Still
+                // unsure how to encode this. Returning None is the easiest,
+                // and is also how we handle there being no more cards left in
+                // the deck.
                 let new_player = new_game._next_player().expect("No more players");
                 new_game._current_player = Some(new_player);
                 let hand = new_game._hands[new_player];
@@ -213,6 +216,8 @@ impl Game {
             }
         }
     }
+
+    // TODO: Some routine for identifying the winners.
 
     fn apply_action(&self, action: Action) -> Result<Game, PlayError> {
         let new_game = self.clone();
@@ -233,6 +238,9 @@ impl Game {
             None => return Ok(None),
             Some(turn) => turn,
         };
+        // TODO: It is at this point which,
+        // - priestess expires
+        // - minister can bite you
         let (card, play) = f(&new_game, &turn);
 
         let action = match judge(&new_game, turn.player, turn.draw, (card, play)) {
@@ -245,8 +253,8 @@ impl Game {
             *card = Some(turn.draw);
         }
 
-        // XXX: Apply the action
-        println!("Applying action: {}", action);
+        // XXX: Probably should return the action so that an external client can
+        // infer what happened?
         new_game = match new_game.apply_action(action) {
             Ok(g) => g,
             Err(e) => return Err(e),
@@ -262,27 +270,12 @@ fn minister_bust(a: deck::Card, b: deck::Card) -> bool {
 }
 
 
-// XXX: Want to have a simple, pure function that knows all of the rules and
-// assumes as little as it can. Still not sure the best way to do that.
-// Kind of getting blocked on details:
-// - how to represent
-//   - 'protected by priestess'
-//   - 'kicked out of game'
-// - how to make sure only allowable actions are played
-//   - don't play actions for cards you don't have
-//   - soldier
-//     - don't allow soldier as guess
-//   - for soldier, clown, knight, wizard, general
-//     - don't allow self as target
-//
-// Current best guess at signature:
-//   fn judge(current: GameState, dealt_card: Card, action: Action) -> GameState
-//
-// Where 'Action' combines card & parameters (target player, guess)
 
 #[deriving(PartialEq, Eq, Show)]
 pub enum Play {
+    NoEffect,
     Attack(uint),
+    Guess(uint, Card),
 }
 
 // XXX: I really want to have a data association from Cards to possible movies.
@@ -318,10 +311,6 @@ pub enum Action {
     ForceReveal(uint, uint, deck::Card)
 }
 
-// XXX: Probably would have been a good idea to write down the notation for a
-// game before I started all of this.
-
-// XXX: With Wizard, will need to check if they are forced to play the Princess.
 
 // XXX: Will probably make sense to move it into the Game object, but let's
 // keep it separate for now.
@@ -343,9 +332,17 @@ fn judge(game: &Game, current_player: uint, dealt_card: deck::Card,
     };
 
     match play_data {
+        NoEffect => match played_card {
+            // TODO: Handle priestess rules
+            deck::Priestess => Ok(NoChange),
+            // TODO: Handle minister rules.
+            deck::Minister => Ok(NoChange),
+            deck::Princess => Ok(EliminatePlayer(current_player)),
+            _ => Err(BadActionForCard(play_data, played_card)),
+        },
         Attack(target) => {
             if target == current_player {
-                // XXX: You can target yourself with a wizard.
+                // TODO: Make sure you target yourself with a wizard. (Add tests).
                 return Err(SelfTarget(target, played_card));
             }
             let target_card = match game.get_hand(target) {
@@ -368,8 +365,25 @@ fn judge(game: &Game, current_player: uint, dealt_card: deck::Card,
                     Ok(ForceDiscard(target))
                 },
                 deck::General => {
-                    // XXX: maybe need to take priestess into account here
                     Ok(SwapHands(current_player, target, unplayed_card))
+                },
+                _ => Err(BadActionForCard(play_data, played_card)),
+            }
+        }
+        Guess(target, guessed_card) => {
+            // TODO: make it so you cannot guess at yourself & add tests.
+            // TODO: tests for guessing right, guessing wrong, targeting invalid person,
+            // Guess action w/ non-soldier.
+            let target_card = match game.get_hand(target) {
+                Err(e)   => return Err(e),
+                Ok(card) => card,
+            };
+
+            match played_card {
+                deck::Soldier => if guessed_card == target_card {
+                    Ok(EliminatePlayer(target))
+                } else {
+                    Ok(NoChange)
                 },
                 _ => Err(BadActionForCard(play_data, played_card)),
             }
@@ -627,8 +641,6 @@ mod test {
 
     #[test]
     fn test_manual_game() {
-        // XXX: Will need to update to take current player, because it won't be
-        // able to figure out when previous players were eliminated.
         let hands = [Some(Soldier), Some(Clown), Some(Soldier)];
         let stack = [Soldier, Soldier, Minister];
         let game = Game::from_manual(hands, stack).unwrap();
