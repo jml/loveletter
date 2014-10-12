@@ -508,159 +508,136 @@ mod test {
 
     #[test]
     fn test_general_swap() {
-        let mut g = Game::from_manual(
+        let g = Game::from_manual(
             [Some(General), Some(Clown), Some(Knight), Some(Priestess)],
-            [Soldier, Minister, Princess, Soldier, Wizard]).unwrap();
-        // XXX: Messing with internals: a sign of bad design!
-        let next_card = g._stack.pop().unwrap();
-        assert_eq!(Wizard, next_card);
-        assert_eq!(Some(General), g.hands()[0]);
-
-        let result = judge(g, 0, next_card, (General, Attack(3))).unwrap();
+            [Soldier, Minister, Princess, Soldier]).unwrap();
+        let arbitrary_card = Wizard;
+        let result = judge(g, 0, arbitrary_card, (General, Attack(3))).unwrap();
         assert_eq!(result, SwapHands(0, 3, Wizard));
     }
 
     #[test]
     fn test_general_swap_bad_target() {
-        let mut g = Game::from_manual(
+        let g = Game::from_manual(
             [Some(General), Some(Clown), Some(Knight), Some(Priestess)],
-            [Soldier, Minister, Princess, Soldier, Wizard]).unwrap();
-        // XXX: Messing with internals: a sign of bad design!
-        let next_card = g._stack.pop().unwrap();
-        let result = judge(g, 0, next_card, (General, Attack(4)));
+            [Soldier, Minister, Princess, Soldier]).unwrap();
+        let arbitrary_card = Wizard;
+        let result = judge(g, 0, arbitrary_card, (General, Attack(4)));
         assert_eq!(InvalidPlayer(4), result.unwrap_err());
     }
 
     #[test]
     fn test_general_with_no_general() {
-        let mut g = Game::from_manual(
+        let g = Game::from_manual(
             [Some(Soldier), Some(Clown), Some(Knight), Some(Priestess)],
-            [Soldier, Minister, Princess, Soldier, Wizard]).unwrap();
-        // XXX: Messing with internals: a sign of bad design!
-        let next_card = g._stack.pop().unwrap();
-        let result = judge(g, 0, next_card, (General, Attack(2)));
+            [Soldier, Minister, Princess, Soldier]).unwrap();
+        let arbitrary_card = Wizard;
+        let result = judge(g, 0, arbitrary_card, (General, Attack(2)));
         assert_eq!(
             CardNotFound(General, (Soldier, Wizard)), result.unwrap_err());
     }
 
     #[test]
     fn test_self_targeting() {
-        let mut g = Game::from_manual(
+        let g = Game::from_manual(
             [Some(General), Some(Clown), Some(Knight), Some(Priestess)],
-            [Soldier, Minister, Princess, Soldier, Wizard]).unwrap();
-        // XXX: Messing with internals: a sign of bad design!
-        let next_card = g._stack.pop().unwrap();
-        let result = judge(g, 0, next_card, (General, Attack(0)));
+            [Soldier, Minister, Princess, Soldier]).unwrap();
+        let arbitrary_card = Wizard;
+        let result = judge(g, 0, arbitrary_card, (General, Attack(0)));
         assert_eq!(SelfTarget(0, General), result.unwrap_err());
     }
 
     #[test]
     fn test_general_at_inactive_players() {
-        let mut g = Game::from_manual(
+        let g = Game::from_manual(
             [Some(General), Some(Clown), None, Some(Priestess)],
-            [Soldier, Minister, Princess, Soldier, Wizard]).unwrap();
-        // XXX: Messing with internals: a sign of bad design!
-        let next_card = g._stack.pop().unwrap();
-        let result = judge(g, 0, next_card, (General, Attack(2)));
+            [Soldier, Minister, Princess, Soldier]).unwrap();
+        let arbitrary_card = Wizard;
+        let result = judge(g, 0, arbitrary_card, (General, Attack(2)));
         assert_eq!(InactivePlayer(2), result.unwrap_err());
     }
 
     #[test]
     fn test_knight_win() {
-        let mut g = Game::from_manual(
+        let g = Game::from_manual(
             [Some(General), Some(Clown), None, Some(Priestess)],
-            [Soldier, Minister, Princess, Soldier, Knight]).unwrap();
-        // XXX: Messing with internals: a sign of bad design!
-        let next_card = g._stack.pop().unwrap();
-        let result = judge(g, 0, next_card, (Knight, Attack(3)));
+            [Soldier, Minister, Princess, Soldier]).unwrap();
+        let result = judge(g, 0, Knight, (Knight, Attack(3)));
         assert_eq!(EliminatePlayer(3), result.unwrap());
     }
 
     #[test]
     fn test_knight_lose() {
-        let mut g = Game::from_manual(
+        let g = Game::from_manual(
             [Some(General), Some(Clown), None, Some(Priestess)],
-            [Soldier, Minister, Princess, Soldier, Knight]).unwrap();
-        // XXX: Messing with internals: a sign of bad design!
-        let next_card = g._stack.pop().unwrap();
-        let result = judge(g, 1, next_card, (Knight, Attack(3)));
+            [Soldier, Minister, Princess, Soldier]).unwrap();
+        let result = judge(g, 1, Knight, (Knight, Attack(3)));
         assert_eq!(EliminatePlayer(1), result.unwrap());
     }
 
     #[test]
     fn test_knight_draw() {
-        let mut g = Game::from_manual(
+        let g = Game::from_manual(
             [Some(Soldier), Some(Soldier), None, Some(Priestess)],
-            [Soldier, Minister, Princess, Soldier, Knight]).unwrap();
-        // XXX: Messing with internals: a sign of bad design!
-        let next_card = g._stack.pop().unwrap();
-        let result = judge(g, 0, next_card, (Knight, Attack(1)));
+            [Soldier, Minister, Princess, Soldier]).unwrap();
+        let result = judge(g, 0, Knight, (Knight, Attack(1)));
         assert_eq!(NoChange, result.unwrap());
     }
 
     #[test]
     fn test_knight_no_card() {
-        let mut g = Game::from_manual(
+        let g = Game::from_manual(
             [Some(Soldier), Some(Soldier), None, Some(Priestess)],
-            [Soldier, Minister, Princess, Soldier, Wizard]).unwrap();
-        // XXX: Messing with internals: a sign of bad design!
-        let next_card = g._stack.pop().unwrap();
-        let result = judge(g, 0, next_card, (Knight, Attack(1)));
+            [Soldier, Minister, Princess, Soldier]).unwrap();
+        let result = judge(g, 0, Wizard, (Knight, Attack(1)));
         assert_eq!(CardNotFound(Knight, (Soldier, Wizard)), result.unwrap_err());
     }
 
     #[test]
     fn test_knight_invalid_player() {
-        let mut g = Game::from_manual(
+        let g = Game::from_manual(
             [Some(Soldier), Some(Soldier), None, Some(Priestess)],
-            [Soldier, Minister, Princess, Soldier, Knight]).unwrap();
-        // XXX: Messing with internals: a sign of bad design!
-        let next_card = g._stack.pop().unwrap();
-        let result = judge(g, 0, next_card, (Knight, Attack(5)));
+            [Soldier, Minister, Princess, Soldier]).unwrap();
+        let result = judge(g, 0, Knight, (Knight, Attack(5)));
         assert_eq!(InvalidPlayer(5), result.unwrap_err());
     }
 
     #[test]
     fn test_knight_inactive_player() {
-        let mut g = Game::from_manual(
+        let g = Game::from_manual(
             [Some(Soldier), Some(Soldier), None, Some(Priestess)],
-            [Soldier, Minister, Princess, Soldier, Knight]).unwrap();
-        // XXX: Messing with internals: a sign of bad design!
-        let next_card = g._stack.pop().unwrap();
-        let result = judge(g, 0, next_card, (Knight, Attack(2)));
+            [Soldier, Minister, Princess, Soldier]).unwrap();
+        let result = judge(g, 0, Knight, (Knight, Attack(2)));
         assert_eq!(InactivePlayer(2), result.unwrap_err());
     }
 
     #[test]
     fn test_wizard() {
-        let mut g = Game::from_manual(
+        let g = Game::from_manual(
             [Some(Wizard), Some(Soldier), None, Some(Priestess)],
             [Soldier, Minister, Princess, Soldier, Knight]).unwrap();
-        // XXX: Messing with internals: a sign of bad design!
-        let next_card = g._stack.pop().unwrap();
-        let result = judge(g, 0, next_card, (Wizard, Attack(1)));
+        let arbitrary_card = Soldier;
+        let result = judge(g, 0, arbitrary_card, (Wizard, Attack(1)));
         assert_eq!(ForceDiscard(1), result.unwrap());
     }
 
     #[test]
     fn test_clown() {
-        let mut g = Game::from_manual(
+        let g = Game::from_manual(
             [Some(Clown), Some(Soldier), None, Some(Priestess)],
             [Soldier, Minister, Princess, Soldier, Knight]).unwrap();
-        // XXX: Messing with internals: a sign of bad design!
-        let next_card = g._stack.pop().unwrap();
-        let result = judge(g, 0, next_card, (Clown, Attack(1)));
+        let arbitrary_card = Wizard;
+        let result = judge(g, 0, arbitrary_card, (Clown, Attack(1)));
         assert_eq!(ForceReveal(0, 1, Soldier), result.unwrap());
     }
 
     #[test]
     fn test_non_attack() {
-        let mut g = Game::from_manual(
+        let g = Game::from_manual(
             [Some(Clown), Some(Soldier), None, Some(Priestess)],
-            [Soldier, Minister, Princess, Soldier, Knight]).unwrap();
-        // XXX: Messing with internals: a sign of bad design!
-        let next_card = g._stack.pop().unwrap();
-        let result = judge(g, 1, next_card, (Soldier, Attack(0)));
+            [Soldier, Minister, Princess, Soldier]).unwrap();
+        let arbitrary_card = Knight;
+        let result = judge(g, 1, arbitrary_card, (Soldier, Attack(0)));
         assert_eq!(BadActionForCard(Attack(0), Soldier), result.unwrap_err());
     }
 
