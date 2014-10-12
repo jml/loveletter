@@ -38,14 +38,14 @@ fn main() {
     //   Process it
     //   Advance to the next player
     let mut current_game = game;
-    let current_player = 0u;
     loop {
-        let (new_game, card) = current_game.draw();
+        let (new_game, card) = current_game.next_player();
         current_game = new_game;
-        let current_card = match current_game.get_hand(current_player) {
-            Ok(c) => c,
-            Err(e) => {
-                println!("player {} has no card!: {}", current_player, e);
+        let current_player = current_game.current_player().expect("Should always have a player");
+        let current_card = match current_game.current_hand() {
+            Some(c) => c,
+            None => {
+                println!("player {} has no card!", current_player);
                 return;
             }
         };

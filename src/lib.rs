@@ -21,7 +21,11 @@ pub struct Game {
     _hands: Vec<Option<deck::Card>>,
     _stack: Vec<deck::Card>,
     _num_players: uint,
-    _current_player: uint,
+    // None before any hand is played. Not 100% sure I like this, because it
+    // means we're always checking whether it's the first player's turn.
+    // Alternative is to initialize the game with the first player having
+    // drawn their card.
+    _current_player: Option<uint>,
 }
 
 
@@ -41,8 +45,12 @@ impl Game {
         self._num_players
     }
 
-    fn current_player(&self) -> uint {
+    pub fn current_player(&self) -> Option<uint> {
         self._current_player
+    }
+
+    pub fn current_hand(&self) -> Option<deck::Card> {
+        self._current_player.and_then(|i| self.get_hand(i).ok())
     }
 
     fn valid_player_count(num_players: uint) -> bool {
@@ -59,7 +67,7 @@ impl Game {
             _hands: cards.slice(1, hand_end).iter().map(|&x| Some(x)).collect(),
             _stack: cards.slice_from(hand_end).iter().map(|&x| x).collect(),
             _num_players: num_players,
-            _current_player: 0,
+            _current_player: None,
         })
     }
 
@@ -79,7 +87,7 @@ impl Game {
                 _hands: hands.iter().map(|&x| x).collect(),
                 _stack: stack,
                 _num_players: hands.len(),
-                _current_player: 0,
+                _current_player: None,
             })
         } else {
             Err(BadDeck)
@@ -139,16 +147,19 @@ impl Game {
         self._stack.pop()
     }
 
-    pub fn draw(&self) -> (Game, Option<deck::Card>) {
+    fn draw(&self) -> (Game, Option<deck::Card>) {
         let mut new_game = self.clone();
         let card = new_game._draw();
         (new_game, card)
     }
 
-    fn next_player(&self) -> (Game, Option<deck::Card>) {
+    pub fn next_player(&self) -> (Game, Option<deck::Card>) {
         let mut new_game = self.clone();
         let card = new_game._draw();
-        new_game._current_player = (new_game._current_player + 1) % new_game._hands.len();
+        new_game._current_player = Some(match new_game._current_player {
+            Some(n) => (n + 1) % new_game._hands.len(),
+            None => 0
+        });
         (new_game, card)
     }
 
@@ -317,14 +328,14 @@ mod test {
 
     #[test]
     fn test_current_player_at_start() {
-        assert_eq!(0, make_arbitrary_game().current_player());
+        assert_eq!(None, make_arbitrary_game().current_player());
     }
 
     #[test]
     fn test_current_player_after_next() {
         let g = make_arbitrary_game();
         let (g2, _) = g.next_player();
-        assert_eq!(1, g2.current_player());
+        assert_eq!(Some(0), g2.current_player());
     }
 
     #[test]
@@ -336,13 +347,21 @@ mod test {
     }
 
     #[test]
+    fn test_next_player_increments() {
+        let g = Game::new(2).unwrap();
+        let (g, _) = g.next_player();
+        let (g, _) = g.next_player();
+        assert_eq!(Some(1), g.current_player());
+    }
+
+    #[test]
     fn test_next_player_cycles() {
         let g = Game::new(2).unwrap();
         let (g, _) = g.next_player();
         let (g, _) = g.next_player();
-        assert_eq!(0, g.current_player());
+        let (g, _) = g.next_player();
+        assert_eq!(Some(0), g.current_player());
     }
-
 
     #[test]
     fn test_num_cards_remaining_on_new() {
