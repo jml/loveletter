@@ -159,6 +159,18 @@ impl Game {
         Ok(new_game)
     }
 
+    fn discard_and_draw(&self, player: uint) -> Result<Game, PlayError> {
+        let mut game = self.clone();
+        let new_card = game._draw();
+        match self.get_hand(player) {
+            Err(e) => return Err(e),
+            Ok(..) => {
+                game._hands.as_mut_slice()[player] = new_card;
+            }
+        }
+        Ok(game)
+    }
+
     fn num_cards_remaining(&self) -> uint {
         self._stack.len()
     }
@@ -202,6 +214,17 @@ impl Game {
         }
     }
 
+    fn apply_action(&self, action: Action) -> Result<Game, PlayError> {
+        let new_game = self.clone();
+        match action {
+            NoChange => Ok(self.clone()),
+            EliminatePlayer(i) => self.eliminate(i),
+            SwapHands(p1, p2, _) => self.swap_hands(p1, p2),
+            ForceDiscard(i) => self.discard_and_draw(i),
+            ForceReveal(..) => Ok(new_game),
+        }
+    }
+
     pub fn handle_turn(&self, f: |&Game, &Turn| -> (deck::Card, Play)) -> Result<Option<Game>, PlayError> {
         // TODO: UNTESTED:
         let (new_game, turn) = self.next_player();
@@ -217,13 +240,18 @@ impl Game {
             Err(e) => return Err(e),
         };
 
-        // XXX: Apply the action
-        println!("Applying action: {}", action);
-
         if card == turn.hand {
             let card = new_game._hands.get_mut(turn.player);
             *card = Some(turn.draw);
         }
+
+        // XXX: Apply the action
+        println!("Applying action: {}", action);
+        new_game = match new_game.apply_action(action) {
+            Ok(g) => g,
+            Err(e) => return Err(e),
+        };
+
         Ok(Some(new_game))
     }
 }
@@ -501,6 +529,35 @@ mod test {
         assert_eq!(InvalidPlayer(5), error);
     }
 
+    #[test]
+    fn test_no_change() {
+        let g = make_arbitrary_game();
+        let new_g = g.apply_action(NoChange).unwrap();
+        assert_eq!(g, new_g);
+    }
+
+    #[test]
+    fn test_eliminate_action() {
+        let g = Game::new(3).unwrap();
+        let (g, _) = g.next_player();
+        let new_g = g.apply_action(EliminatePlayer(1)).unwrap();
+        let (_, t) = new_g.next_player();
+        assert_eq!(2, t.unwrap().player);
+    }
+
+    #[test]
+    fn test_force_swap() {
+        let g = Game::from_manual(
+            [Some(Soldier), Some(Clown), Some(Knight)],
+            [Soldier, Minister, Princess, Soldier, General]).unwrap();
+        let (g, t) = g.next_player();
+        let t = t.unwrap();
+        let ours = t.hand;
+        let theirs = g.get_hand(1).unwrap();
+        let new_g = g.apply_action(SwapHands(0, 1, ours)).unwrap();
+        assert_eq!(theirs, new_g.get_hand(0).unwrap());
+        assert_eq!(ours, new_g.get_hand(1).unwrap());
+    }
 
     #[test]
     fn test_all_cards_in_game() {

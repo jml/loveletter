@@ -54,10 +54,12 @@ fn main() {
     let mut current_game = game;
     loop {
         let result = current_game.handle_turn(choose);
-        current_game = match result.ok().expect("Invalid turn") {
-            None => break,
-            Some(game) => game,
+        current_game = match result {
+            Ok(None) => break,
+            Ok(Some(game)) => game,
+            Err(e) => { println!("Error: {}", e); return }
         };
+        println!("{}", current_game);
         println!("");
     }
     // XXX: Announce the winner
