@@ -19,6 +19,20 @@ fn repeated_prompt<T, E: std::fmt::Show>(prompt: &str, parser: |&str| -> Result<
 }
 
 
+fn choose(_game: &loveletter::Game, turn: &loveletter::Turn) -> (loveletter::Card, loveletter::Play) {
+    let chosen = repeated_prompt(
+        format!(
+            "Player {}: pick a card:\n  1. {}\n  2. {}",
+            turn.player + 1, turn.hand, turn.draw).as_slice(),
+        |x| match x.trim() {
+            "1" => Ok(turn.hand),
+            "2" => Ok(turn.draw),
+            _ => Err("1 or 2"),
+        });
+    (chosen, loveletter::Attack((turn.player + 1) % 2))
+}
+
+
 #[cfg(not(test))]
 fn main() {
     println!("Love Letter");
@@ -39,32 +53,11 @@ fn main() {
     //   Advance to the next player
     let mut current_game = game;
     loop {
-        let (new_game, turn) = current_game.next_player();
-        current_game = new_game;
-
-        let turn = match turn {
-            Some(x) => x,
+        let result = current_game.handle_turn(choose);
+        current_game = match result {
             None => break,
+            Some(game) => game,
         };
-
-        let chosen = repeated_prompt(
-            format!(
-                "Player {}: pick a card:\n  1. {}\n  2. {}",
-                turn.player + 1, turn.hand, turn.draw).as_slice(),
-            |x| match x.trim() {
-                "1" => Ok(turn.hand),
-                "2" => Ok(turn.draw),
-                _ => Err("1 or 2"),
-            });
-
-        // XXX: Allow choosing action
-        // XXX: For Attack, Choose the target
-        let result = loveletter::judge(
-            &current_game, turn.player, turn.draw,
-            (chosen, loveletter::Attack((turn.player + 1) % 2)));
-        // XXX: Apply the action
-        // XXX: Discard the played card
-        println!("Result: {}", result);
         println!("");
     }
     // XXX: Announce the winner

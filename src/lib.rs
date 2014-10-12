@@ -1,3 +1,5 @@
+pub use deck::Card;
+
 mod deck;
 mod util;
 
@@ -10,6 +12,7 @@ mod util;
 //   - publicly available
 
 // XXX: Should we wrap up 'Player'?
+
 
 #[deriving(Show, PartialEq, Eq)]
 pub struct Turn {
@@ -58,15 +61,15 @@ impl Game {
         Game::from_deck(num_players, deck::Deck::new())
     }
 
-    pub fn num_players(&self) -> uint {
+    fn num_players(&self) -> uint {
         self._num_players
     }
 
-    pub fn current_player(&self) -> Option<uint> {
+    fn current_player(&self) -> Option<uint> {
         self._current_player
     }
 
-    pub fn current_hand(&self) -> Option<deck::Card> {
+    fn current_hand(&self) -> Option<deck::Card> {
         self._current_player.and_then(|i| self.get_hand(i).ok())
     }
 
@@ -120,7 +123,7 @@ impl Game {
         self._stack.as_slice()
     }
 
-    pub fn get_hand(&self, player: uint) -> Result<deck::Card, PlayError> {
+    fn get_hand(&self, player: uint) -> Result<deck::Card, PlayError> {
         // XXX: Maybe a good idea to return an error if the player is
         // protected by the priestess
         if player < self.num_players() {
@@ -160,7 +163,7 @@ impl Game {
         self._stack.len()
     }
 
-    pub fn _draw(&mut self) -> Option<deck::Card> {
+    fn _draw(&mut self) -> Option<deck::Card> {
         self._stack.pop()
     }
 
@@ -181,7 +184,7 @@ impl Game {
             .find(|i| self._hands[*i].is_some())
     }
 
-    pub fn next_player(&self) -> (Game, Option<Turn>) {
+    fn next_player(&self) -> (Game, Option<Turn>) {
         let mut new_game = self.clone();
         let card = new_game._draw();
         match card {
@@ -199,15 +202,21 @@ impl Game {
         }
     }
 
-    //fn handle_turn(&self, |Game, Card| -> Action) -> Game {
+    pub fn handle_turn(&self, f: |&Game, &Turn| -> (deck::Card, Play)) -> Option<Game> {
         // TODO: UNTESTED:
-        // - pop a card off the deck
-        // - give it & this to the callback
-        // - process the action
-        // - update the current player's hand to have whichever card they
-        //   didn't discard
-        // - increment the internal player count if necessary
-    //}
+        let (new_game, turn) = self.next_player();
+        let mut new_game = new_game;
+        let turn = match turn {
+            None => return None,
+            Some(turn) => turn,
+        };
+        let (card, _) = f(&new_game, &turn);
+        if card == turn.hand {
+            let card = new_game._hands.get_mut(turn.player);
+            *card = Some(turn.draw);
+        }
+        Some(new_game)
+    }
 }
 
 
