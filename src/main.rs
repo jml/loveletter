@@ -39,9 +39,14 @@ fn main() {
     //   Advance to the next player
     let mut current_game = game;
     loop {
-        let (new_game, card) = current_game.next_player();
+        let (new_game, turn) = current_game.next_player();
         current_game = new_game;
-        let current_player = current_game.current_player().expect("Should always have a player");
+
+        let (current_player, draw_card) = match turn {
+            Some(x) => x,
+            None => break,
+        };
+
         let current_card = match current_game.current_hand() {
             Some(c) => c,
             None => {
@@ -49,10 +54,7 @@ fn main() {
                 return;
             }
         };
-        let draw_card = match card {
-            Some(card) => card,
-            None => break,
-        };
+
         repeated_prompt(
             format!("Pick a card: {}, {}", current_card, draw_card).as_slice(),
             |x| match x.trim() {
@@ -60,6 +62,7 @@ fn main() {
                 "2" => Ok(draw_card),
                 _ => Err("1 or 2"),
             });
+
         // XXX: Allow to pick which of draw_card or current_card
         let result = loveletter::judge(
             &current_game, 0, draw_card, (draw_card, loveletter::Attack(1)));

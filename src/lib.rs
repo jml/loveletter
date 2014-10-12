@@ -153,14 +153,15 @@ impl Game {
         (new_game, card)
     }
 
-    pub fn next_player(&self) -> (Game, Option<deck::Card>) {
+    pub fn next_player(&self) -> (Game, Option<(uint, deck::Card)>) {
         let mut new_game = self.clone();
         let card = new_game._draw();
-        new_game._current_player = Some(match new_game._current_player {
+        let new_player = match new_game._current_player {
             Some(n) => (n + 1) % new_game._hands.len(),
             None => 0
-        });
-        (new_game, card)
+        };
+        new_game._current_player = Some(new_player);
+        (new_game, card.map(|c| (new_player, c)))
     }
 
     //fn handle_turn(&self, |Game, Card| -> Action) -> Game {
@@ -343,7 +344,7 @@ mod test {
         let g = make_arbitrary_game();
         let (_, draw) = g.next_player();
         let (_, expected) = g.draw();
-        assert_eq!(draw, expected);
+        assert_eq!(draw, Some((0, expected.unwrap())));
     }
 
     #[test]
