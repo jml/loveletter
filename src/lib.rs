@@ -190,7 +190,7 @@ fn minister_bust(a: deck::Card, b: deck::Card) -> bool {
 // Where 'Action' combines card & parameters (target player, guess)
 
 #[deriving(PartialEq, Eq, Show)]
-enum Play {
+pub enum Play {
     Attack(uint),
 }
 
@@ -198,7 +198,7 @@ enum Play {
 
 
 #[deriving(PartialEq, Eq, Show)]
-enum PlayError {
+pub enum PlayError {
     // Targeted a player who has never existed.
     InvalidPlayer(uint),
     // Tried to play a card that's not in the hand.
@@ -214,7 +214,7 @@ enum PlayError {
 
 /// The result of a play.
 #[deriving(PartialEq, Eq, Show)]
-enum Action {
+pub enum Action {
     NoChange,
     // source, target, source card
     // source card is there in case we're swapping the card we just picked up.
@@ -234,8 +234,8 @@ enum Action {
 
 // XXX: Will probably make sense to move it into the Game object, but let's
 // keep it separate for now.
-fn judge(game: Game, current_player: uint, dealt_card: deck::Card,
-         play: (deck::Card, Play)) -> Result<Action, PlayError> {
+pub fn judge(game: &Game, current_player: uint, dealt_card: deck::Card,
+             play: (deck::Card, Play)) -> Result<Action, PlayError> {
     // XXX: my spider sense is telling me this can be modeled as a
     // non-deterministic finite automata.
     let current_card = match game.get_hand(current_player) {
@@ -501,7 +501,7 @@ mod test {
         let g = Game::from_manual(
             [Some(General), Some(Clown), Some(Knight), Some(Priestess)],
             [Soldier, Minister, Princess, Soldier, Wizard]).unwrap();
-        let err = judge(g, 5, Soldier, (General, Attack(2))).unwrap_err();
+        let err = judge(&g, 5, Soldier, (General, Attack(2))).unwrap_err();
         assert_eq!(InvalidPlayer(5), err);
     }
 
@@ -512,7 +512,7 @@ mod test {
             [Some(General), Some(Clown), Some(Knight), Some(Priestess)],
             [Soldier, Minister, Princess, Soldier]).unwrap();
         let arbitrary_card = Wizard;
-        let result = judge(g, 0, arbitrary_card, (General, Attack(3))).unwrap();
+        let result = judge(&g, 0, arbitrary_card, (General, Attack(3))).unwrap();
         assert_eq!(result, SwapHands(0, 3, Wizard));
     }
 
@@ -522,7 +522,7 @@ mod test {
             [Some(General), Some(Clown), Some(Knight), Some(Priestess)],
             [Soldier, Minister, Princess, Soldier]).unwrap();
         let arbitrary_card = Wizard;
-        let result = judge(g, 0, arbitrary_card, (General, Attack(4)));
+        let result = judge(&g, 0, arbitrary_card, (General, Attack(4)));
         assert_eq!(InvalidPlayer(4), result.unwrap_err());
     }
 
@@ -532,7 +532,7 @@ mod test {
             [Some(Soldier), Some(Clown), Some(Knight), Some(Priestess)],
             [Soldier, Minister, Princess, Soldier]).unwrap();
         let arbitrary_card = Wizard;
-        let result = judge(g, 0, arbitrary_card, (General, Attack(2)));
+        let result = judge(&g, 0, arbitrary_card, (General, Attack(2)));
         assert_eq!(
             CardNotFound(General, (Soldier, Wizard)), result.unwrap_err());
     }
@@ -543,7 +543,7 @@ mod test {
             [Some(General), Some(Clown), Some(Knight), Some(Priestess)],
             [Soldier, Minister, Princess, Soldier]).unwrap();
         let arbitrary_card = Wizard;
-        let result = judge(g, 0, arbitrary_card, (General, Attack(0)));
+        let result = judge(&g, 0, arbitrary_card, (General, Attack(0)));
         assert_eq!(SelfTarget(0, General), result.unwrap_err());
     }
 
@@ -553,7 +553,7 @@ mod test {
             [Some(General), Some(Clown), None, Some(Priestess)],
             [Soldier, Minister, Princess, Soldier]).unwrap();
         let arbitrary_card = Wizard;
-        let result = judge(g, 0, arbitrary_card, (General, Attack(2)));
+        let result = judge(&g, 0, arbitrary_card, (General, Attack(2)));
         assert_eq!(InactivePlayer(2), result.unwrap_err());
     }
 
@@ -562,7 +562,7 @@ mod test {
         let g = Game::from_manual(
             [Some(General), Some(Clown), None, Some(Priestess)],
             [Soldier, Minister, Princess, Soldier]).unwrap();
-        let result = judge(g, 0, Knight, (Knight, Attack(3)));
+        let result = judge(&g, 0, Knight, (Knight, Attack(3)));
         assert_eq!(EliminatePlayer(3), result.unwrap());
     }
 
@@ -571,7 +571,7 @@ mod test {
         let g = Game::from_manual(
             [Some(General), Some(Clown), None, Some(Priestess)],
             [Soldier, Minister, Princess, Soldier]).unwrap();
-        let result = judge(g, 1, Knight, (Knight, Attack(3)));
+        let result = judge(&g, 1, Knight, (Knight, Attack(3)));
         assert_eq!(EliminatePlayer(1), result.unwrap());
     }
 
@@ -580,7 +580,7 @@ mod test {
         let g = Game::from_manual(
             [Some(Soldier), Some(Soldier), None, Some(Priestess)],
             [Soldier, Minister, Princess, Soldier]).unwrap();
-        let result = judge(g, 0, Knight, (Knight, Attack(1)));
+        let result = judge(&g, 0, Knight, (Knight, Attack(1)));
         assert_eq!(NoChange, result.unwrap());
     }
 
@@ -589,7 +589,7 @@ mod test {
         let g = Game::from_manual(
             [Some(Soldier), Some(Soldier), None, Some(Priestess)],
             [Soldier, Minister, Princess, Soldier]).unwrap();
-        let result = judge(g, 0, Wizard, (Knight, Attack(1)));
+        let result = judge(&g, 0, Wizard, (Knight, Attack(1)));
         assert_eq!(CardNotFound(Knight, (Soldier, Wizard)), result.unwrap_err());
     }
 
@@ -598,7 +598,7 @@ mod test {
         let g = Game::from_manual(
             [Some(Soldier), Some(Soldier), None, Some(Priestess)],
             [Soldier, Minister, Princess, Soldier]).unwrap();
-        let result = judge(g, 0, Knight, (Knight, Attack(5)));
+        let result = judge(&g, 0, Knight, (Knight, Attack(5)));
         assert_eq!(InvalidPlayer(5), result.unwrap_err());
     }
 
@@ -607,7 +607,7 @@ mod test {
         let g = Game::from_manual(
             [Some(Soldier), Some(Soldier), None, Some(Priestess)],
             [Soldier, Minister, Princess, Soldier]).unwrap();
-        let result = judge(g, 0, Knight, (Knight, Attack(2)));
+        let result = judge(&g, 0, Knight, (Knight, Attack(2)));
         assert_eq!(InactivePlayer(2), result.unwrap_err());
     }
 
@@ -617,7 +617,7 @@ mod test {
             [Some(Wizard), Some(Soldier), None, Some(Priestess)],
             [Soldier, Minister, Princess, Soldier, Knight]).unwrap();
         let arbitrary_card = Soldier;
-        let result = judge(g, 0, arbitrary_card, (Wizard, Attack(1)));
+        let result = judge(&g, 0, arbitrary_card, (Wizard, Attack(1)));
         assert_eq!(ForceDiscard(1), result.unwrap());
     }
 
@@ -627,7 +627,7 @@ mod test {
             [Some(Clown), Some(Soldier), None, Some(Priestess)],
             [Soldier, Minister, Princess, Soldier, Knight]).unwrap();
         let arbitrary_card = Wizard;
-        let result = judge(g, 0, arbitrary_card, (Clown, Attack(1)));
+        let result = judge(&g, 0, arbitrary_card, (Clown, Attack(1)));
         assert_eq!(ForceReveal(0, 1, Soldier), result.unwrap());
     }
 
@@ -637,7 +637,7 @@ mod test {
             [Some(Clown), Some(Soldier), None, Some(Priestess)],
             [Soldier, Minister, Princess, Soldier]).unwrap();
         let arbitrary_card = Knight;
-        let result = judge(g, 1, arbitrary_card, (Soldier, Attack(0)));
+        let result = judge(&g, 1, arbitrary_card, (Soldier, Attack(0)));
         assert_eq!(BadActionForCard(Attack(0), Soldier), result.unwrap_err());
     }
 

@@ -17,10 +17,13 @@ fn main() {
     loop {
         let (new_game, card) = current.draw();
         current = new_game;
-        match card {
-            Some(card) => println!("Drew {}", card),
+        let draw_card = match card {
+            Some(card) => card,
             None => break,
-        }
+        };
+        println!("Drew {}", draw_card);
+        let result = loveletter::judge(&current, 0, draw_card, (draw_card, loveletter::Attack(1)));
+        println!("Result: {}", result);
     }
     // While the game is not over
     //   Draw a card
