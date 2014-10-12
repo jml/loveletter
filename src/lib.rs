@@ -202,20 +202,29 @@ impl Game {
         }
     }
 
-    pub fn handle_turn(&self, f: |&Game, &Turn| -> (deck::Card, Play)) -> Option<Game> {
+    pub fn handle_turn(&self, f: |&Game, &Turn| -> (deck::Card, Play)) -> Result<Option<Game>, PlayError> {
         // TODO: UNTESTED:
         let (new_game, turn) = self.next_player();
         let mut new_game = new_game;
         let turn = match turn {
-            None => return None,
+            None => return Ok(None),
             Some(turn) => turn,
         };
-        let (card, _) = f(&new_game, &turn);
+        let (card, play) = f(&new_game, &turn);
+
+        let action = match judge(&new_game, turn.player, turn.draw, (card, play)) {
+            Ok(a) => a,
+            Err(e) => return Err(e),
+        };
+
+        // XXX: Apply the action
+        println!("Applying action: {}", action);
+
         if card == turn.hand {
             let card = new_game._hands.get_mut(turn.player);
             *card = Some(turn.draw);
         }
-        Some(new_game)
+        Ok(Some(new_game))
     }
 }
 
@@ -288,8 +297,8 @@ pub enum Action {
 
 // XXX: Will probably make sense to move it into the Game object, but let's
 // keep it separate for now.
-pub fn judge(game: &Game, current_player: uint, dealt_card: deck::Card,
-             play: (deck::Card, Play)) -> Result<Action, PlayError> {
+fn judge(game: &Game, current_player: uint, dealt_card: deck::Card,
+         play: (deck::Card, Play)) -> Result<Action, PlayError> {
     // XXX: my spider sense is telling me this can be modeled as a
     // non-deterministic finite automata.
     let current_card = match game.get_hand(current_player) {

@@ -54,7 +54,7 @@ fn main() {
     let mut current_game = game;
     loop {
         let result = current_game.handle_turn(choose);
-        current_game = match result {
+        current_game = match result.ok().expect("Invalid turn") {
             None => break,
             Some(game) => game,
         };
