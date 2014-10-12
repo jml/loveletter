@@ -246,6 +246,7 @@ fn judge(game: Game, current_player: uint, dealt_card: deck::Card,
     match play_data {
         Attack(target) => {
             if target == current_player {
+                // XXX: You can target yourself with a wizard.
                 return Err(SelfTarget(target, played_card));
             }
             let target_card = match game.get_hand(target) {
