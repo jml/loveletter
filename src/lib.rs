@@ -1,17 +1,6 @@
 mod deck;
 mod util;
 
-// XXX: [rust] Make a loveletter namespace (figure out how to do this properly).
-
-// XXX: [rust] Stop playing whack-a-mole with references & ownership and start
-// actually *understanding* it.
-
-// Love Letter is a game for exactly four players.
-static NUM_PLAYERS: uint = 4;
-
-
-
-
 // Game state:
 // - discarded ('burnt') card
 // - the remaining deck
@@ -299,7 +288,7 @@ mod test {
     use super::{InvalidPlayer, CardNotFound, InactivePlayer, SelfTarget, BadActionForCard};
 
     fn make_arbitrary_game() -> Game {
-        Game::new(super::NUM_PLAYERS).unwrap()
+        Game::new(4).unwrap()
     }
 
     #[test]
