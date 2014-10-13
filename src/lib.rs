@@ -306,8 +306,8 @@ pub enum Action {
     EliminatePlayer(uint),
     // Discard your current card and draw a new one
     ForceDiscard(uint),
-    // Show your card (from, to, value)
-    ForceReveal(uint, uint, deck::Card)
+    // 2nd player shows their card to 1st. 
+    ForceReveal(uint, uint),
 }
 
 
@@ -351,7 +351,7 @@ fn judge(game: &Game, current_player: uint, dealt_card: deck::Card,
 
             match played_card {
                 deck::Clown => {
-                    Ok(ForceReveal(current_player, target, target_card))
+                    Ok(ForceReveal(current_player, target))
                 },
                 deck::Knight => {
                     match unplayed_card.cmp(&target_card) {
@@ -808,7 +808,7 @@ mod test {
             [Soldier, Minister, Princess, Soldier, Knight], None).unwrap();
         let arbitrary_card = Wizard;
         let result = judge(&g, 0, arbitrary_card, (Clown, Attack(1)));
-        assert_eq!(ForceReveal(0, 1, Soldier), result.unwrap());
+        assert_eq!(ForceReveal(0, 1), result.unwrap());
     }
 
     #[test]
