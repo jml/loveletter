@@ -49,7 +49,7 @@ pub struct Game {
 }
 
 
-#[deriving(Show, PartialEq, Eq, PartialOrd, Ord)]
+#[deriving(Show, PartialEq, Eq)]
 enum GameError {
     InvalidPlayers(uint),
     BadDeck,
