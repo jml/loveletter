@@ -1,6 +1,6 @@
 pub use deck::{Card, Soldier, Clown, Knight, Priestess, Wizard, General, Minister, Princess};
 
-mod deck;
+pub mod deck;
 mod util;
 
 // Game state:
@@ -73,7 +73,7 @@ impl Game {
         2 <= num_players && num_players <= 4
     }
 
-    fn from_deck(num_players: uint, deck: deck::Deck) -> Option<Game> {
+    pub fn from_deck(num_players: uint, deck: deck::Deck) -> Option<Game> {
         if !Game::valid_player_count(num_players) {
             return None
         }
