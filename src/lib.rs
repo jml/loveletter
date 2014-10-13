@@ -50,7 +50,7 @@ pub struct Game {
 
 
 #[deriving(Show, PartialEq, Eq)]
-enum GameError {
+pub enum GameError {
     InvalidPlayers(uint),
     BadDeck,
 }
@@ -87,9 +87,8 @@ impl Game {
         })
     }
 
-    #[cfg(test)]
-    fn from_manual(hands: &[Option<deck::Card>], deck: &[deck::Card],
-                   current_player: Option<uint>) -> Result<Game, GameError> {
+    pub fn from_manual(hands: &[Option<deck::Card>], deck: &[deck::Card],
+                       current_player: Option<uint>) -> Result<Game, GameError> {
         let num_players = hands.len();
         if !Game::valid_player_count(num_players) {
             return Err(InvalidPlayers(num_players));
