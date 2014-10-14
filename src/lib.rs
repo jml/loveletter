@@ -218,6 +218,20 @@ impl Game {
 
     // TODO: Some routine for identifying the winners.
 
+
+    fn eliminate_weaker(&self, p1: uint, p2: uint) -> Result<Action, PlayError> {
+        match (self.get_hand(p1), self.get_hand(p2)) {
+            (Ok(p1_card), Ok(p2_card)) =>
+                match p1_card.cmp(&p2_card) {
+                    Less    => Ok(EliminatePlayer(p1)),
+                    Greater => Ok(EliminatePlayer(p2)),
+                    Equal   => Ok(NoChange),
+                },
+            (Err(e), _) => Err(e),
+            (_, Err(e)) => Err(e),
+        }
+    }
+
     fn apply_action(&self, action: Action) -> Result<Game, PlayError> {
         let new_game = self.clone();
         match action {
@@ -226,6 +240,11 @@ impl Game {
             SwapHands(p1, p2, _) => self.swap_hands(p1, p2),
             ForceDiscard(i) => self.discard_and_draw(i),
             ForceReveal(..) => Ok(new_game),
+            EliminateWeaker(p1, p2) =>
+                match self.eliminate_weaker(p1, p2) {
+                    Ok(action) => self.apply_action(action),
+                    Err(e) => Err(e),
+                }
         }
     }
 
@@ -306,8 +325,9 @@ pub enum Action {
     EliminatePlayer(uint),
     // Discard your current card and draw a new one
     ForceDiscard(uint),
-    // 2nd player shows their card to 1st. 
+    // 2nd player shows their card to 1st.
     ForceReveal(uint, uint),
+    EliminateWeaker(uint, uint),
 }
 
 
@@ -344,21 +364,18 @@ fn judge(game: &Game, current_player: uint, dealt_card: deck::Card,
                 // TODO: Make sure you target yourself with a wizard. (Add tests).
                 return Err(SelfTarget(target, played_card));
             }
-            let target_card = match game.get_hand(target) {
+
+            match game.get_hand(target) {
                 Err(e)   => return Err(e),
-                Ok(card) => card,
-            };
+                _ => (),
+            }
 
             match played_card {
                 deck::Clown => {
                     Ok(ForceReveal(current_player, target))
                 },
                 deck::Knight => {
-                    match unplayed_card.cmp(&target_card) {
-                        Less    => Ok(EliminatePlayer(current_player)),
-                        Greater => Ok(EliminatePlayer(target)),
-                        Equal   => Ok(NoChange),
-                    }
+                    Ok(EliminateWeaker(current_player, target))
                 },
                 deck::Wizard => {
                     Ok(ForceDiscard(target))
@@ -398,7 +415,7 @@ mod test {
 
     use super::Game;
     use super::judge;
-    use super::{NoChange, SwapHands, EliminatePlayer, ForceDiscard, ForceReveal};
+    use super::{NoChange, SwapHands, EliminatePlayer, ForceDiscard, ForceReveal, EliminateWeaker};
     use super::{Attack};
     use super::{InvalidPlayer, CardNotFound, InactivePlayer, SelfTarget, BadActionForCard};
 
@@ -738,30 +755,12 @@ mod test {
     }
 
     #[test]
-    fn test_knight_win() {
+    fn test_knight() {
         let g = Game::from_manual(
             [Some(General), Some(Clown), None, Some(Priestess)],
             [Soldier, Minister, Princess, Soldier], None).unwrap();
         let result = judge(&g, 0, Knight, (Knight, Attack(3)));
-        assert_eq!(EliminatePlayer(3), result.unwrap());
-    }
-
-    #[test]
-    fn test_knight_lose() {
-        let g = Game::from_manual(
-            [Some(General), Some(Clown), None, Some(Priestess)],
-            [Soldier, Minister, Princess, Soldier], None).unwrap();
-        let result = judge(&g, 1, Knight, (Knight, Attack(3)));
-        assert_eq!(EliminatePlayer(1), result.unwrap());
-    }
-
-    #[test]
-    fn test_knight_draw() {
-        let g = Game::from_manual(
-            [Some(Soldier), Some(Soldier), None, Some(Priestess)],
-            [Soldier, Minister, Princess, Soldier], None).unwrap();
-        let result = judge(&g, 0, Knight, (Knight, Attack(1)));
-        assert_eq!(NoChange, result.unwrap());
+        assert_eq!(EliminateWeaker(0, 3), result.unwrap());
     }
 
     #[test]
