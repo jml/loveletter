@@ -244,6 +244,17 @@ impl Game {
                 match self.eliminate_weaker(p1, p2) {
                     Ok(action) => self.apply_action(action),
                     Err(e) => Err(e),
+                },
+            EliminateOnGuess(p1, card) =>
+                match self.get_hand(p1) {
+                    Ok(deck::Soldier) => Err(BadGuess),
+                    Ok(c) => self.apply_action(
+                        if card == c {
+                            EliminatePlayer(p1)
+                        } else {
+                            NoChange
+                        }),
+                    Err(err) => Err(err),
                 }
         }
     }
@@ -311,6 +322,8 @@ pub enum PlayError {
     SelfTarget(uint, deck::Card),
     // Tried to play an action for a card that doesn't support it.
     BadActionForCard(Play, deck::Card),
+    // Bad guess. You can't guess soldier.
+    BadGuess,
 }
 
 
@@ -328,6 +341,7 @@ pub enum Action {
     // 2nd player shows their card to 1st.
     ForceReveal(uint, uint),
     EliminateWeaker(uint, uint),
+    EliminateOnGuess(uint, deck::Card),
 }
 
 
@@ -390,17 +404,8 @@ fn judge(game: &Game, current_player: uint, dealt_card: deck::Card,
             // TODO: make it so you cannot guess at yourself & add tests.
             // TODO: tests for guessing right, guessing wrong, targeting invalid person,
             // Guess action w/ non-soldier.
-            let target_card = match game.get_hand(target) {
-                Err(e)   => return Err(e),
-                Ok(card) => card,
-            };
-
             match played_card {
-                deck::Soldier => if guessed_card == target_card {
-                    Ok(EliminatePlayer(target))
-                } else {
-                    Ok(NoChange)
-                },
+                deck::Soldier => Ok(EliminateOnGuess(target, guessed_card)),
                 _ => Err(BadActionForCard(play_data, played_card)),
             }
         }
