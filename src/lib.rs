@@ -384,8 +384,7 @@ fn play_to_action(
             _ => Err(BadActionForCard(play, played_card)),
         },
         Attack(target) => {
-            if target == current_player {
-                // TODO: Make sure you target yourself with a wizard. (Add tests).
+            if target == current_player && played_card != deck::Wizard {
                 return Err(SelfTarget(target, played_card));
             }
 
@@ -406,11 +405,17 @@ fn play_to_action(
             }
         }
         Guess(target, guessed_card) => {
-            // TODO: make it so you cannot guess at yourself & add tests.
-            // TODO: tests for guessing right, guessing wrong, targeting invalid person,
-            // Guess action w/ non-soldier.
+            if target == current_player {
+                return Err(SelfTarget(target, played_card));
+            }
+
             match played_card {
-                deck::Soldier => Ok(EliminateOnGuess(target, guessed_card)),
+                deck::Soldier =>
+                    if guessed_card == deck::Soldier {
+                        Err(BadGuess)
+                    } else {
+                        Ok(EliminateOnGuess(target, guessed_card))
+                    },
                 _ => Err(BadActionForCard(play, played_card)),
             }
         }
@@ -728,13 +733,16 @@ mod test {
 #[cfg(test)]
 mod test_adjudication {
 
-    use deck::{Soldier, Clown, Knight, Priestess, Wizard, General, Minister, Princess};
+    use deck::{
+        Soldier, Clown, Knight, Priestess, Wizard, General, Minister, Princess};
 
     use super::Game;
     use super::{judge, play_to_action};
-    use super::{SwapHands, ForceDiscard, ForceReveal, EliminateWeaker};
+    use super::{SwapHands, ForceDiscard, ForceReveal, EliminateWeaker,
+                EliminateOnGuess};
     use super::{Attack, Guess, NoEffect};
-    use super::{InvalidPlayer, CardNotFound, InactivePlayer, SelfTarget, BadActionForCard};
+    use super::{InvalidPlayer, CardNotFound, InactivePlayer, SelfTarget,
+                BadActionForCard, BadGuess};
 
     use super::make_arbitrary_game;
 
@@ -804,9 +812,21 @@ mod test_adjudication {
     }
 
     #[test]
-    fn test_self_targeting() {
+    fn test_self_target_attack() {
         let result = play_to_action(0, General, Wizard, Attack(0));
         assert_eq!(SelfTarget(0, General), result.unwrap_err());
+    }
+
+    #[test]
+    fn test_self_target_guess() {
+        let result = play_to_action(0, Soldier, Wizard, Guess(0, Wizard));
+        assert_eq!(SelfTarget(0, Soldier), result.unwrap_err());
+    }
+
+    #[test]
+    fn test_self_target_wizard() {
+        let result = play_to_action(0, Wizard, General, Attack(0));
+        assert_eq!(ForceDiscard(0), result.unwrap());
     }
 
     #[test]
@@ -832,4 +852,17 @@ mod test_adjudication {
         let result = play_to_action(1, Soldier, Knight, Attack(0));
         assert_eq!(BadActionForCard(Attack(0), Soldier), result.unwrap_err());
     }
+
+    #[test]
+    fn test_soldier() {
+        let result = play_to_action(0, Soldier, Wizard, Guess(1, Wizard));
+        assert_eq!(EliminateOnGuess(1, Wizard), result.unwrap());
+    }
+
+    #[test]
+    fn test_guess_soldier() {
+        let result = play_to_action(0, Soldier, Wizard, Guess(1, Soldier));
+        assert_eq!(BadGuess, result.unwrap_err());
+    }
+
 }
