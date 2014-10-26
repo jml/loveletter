@@ -188,19 +188,27 @@ impl Game {
         self._stack.len()
     }
 
+    fn num_players_remaining(&self) -> uint {
+        self._hands.iter().filter(|&h| h.is_some()).count()
+    }
+
     fn _draw(&mut self) -> Option<deck::Card> {
         self._stack.pop()
     }
 
-    fn _next_player(&self) -> Option<uint> {
-        let current = match self._current_player {
-            NotStarted => -1,
-            PlayerReady(i) => i,
-        };
-        let num_players = self.num_players();
-        range(1, num_players)
-            .map(|i| (current + i) % num_players)
-            .find(|i| self._hands[*i].is_some())
+    fn _next_player(&self, current: Option<uint>) -> Option<uint> {
+        if self.num_players_remaining() <= 1 {
+            None
+        } else {
+            let current_num = match current {
+                None => -1,
+                Some(i) => i,
+            };
+            let num_players = self.num_players();
+            range(1, num_players)
+                .map(|i| (current_num + i) % num_players)
+                .find(|i| self._hands[*i].is_some())
+        }
     }
 
     fn next_player(&self) -> (Game, Option<Turn>) {
@@ -209,8 +217,9 @@ impl Game {
         match card {
             None => (new_game, None),
             Some(c) => {
-                match new_game._next_player() {
-                    None => (new_game, None), // XXX: This branch not tested
+                let next_player = new_game._next_player(self.current_player());
+                match next_player {
+                    None => (self.clone(), None),
                     Some(new_player) => {
                         new_game._current_player = PlayerReady(new_player);
                         let hand = new_game._hands[new_player];
@@ -665,6 +674,27 @@ mod test {
     }
 
     #[test]
+    fn test_last_player() {
+        let g = Game::new(2).unwrap();
+        let (g, _) = g.next_player();
+        let g = g.eliminate(1).unwrap();
+        let (new_game, turn) = g.next_player();
+        assert_eq!(None, turn);
+        assert_eq!(new_game, g);
+    }
+
+    #[test]
+    fn test_eliminate_self_last_player() {
+        let g = Game::new(2).unwrap();
+        let (g, _) = g.next_player();
+        let g = g.eliminate(0).unwrap();
+        let (new_game, turn) = g.next_player();
+        assert_eq!(None, turn);
+        assert_eq!(new_game, g);
+    }
+
+
+    #[test]
     fn test_swap_cards() {
         let g = Game::from_manual(
             [Some(General), Some(Clown), None, Some(Priestess)],
@@ -715,34 +745,6 @@ mod test {
         assert_eq!(theirs, new_g.get_hand(0).unwrap());
         assert_eq!(ours, new_g.get_hand(1).unwrap());
     }
-
-
-    #[test]
-    #[should_fail]
-    fn test_weirdness() {
-        // TODO: I encountered this behaviour when I was exploring the
-        // interactive application. The bug is that player 0 eliminates
-        // themselves with a bad knight play, and then play proceeds to player
-        // 1, instead of correctly ending the game.
-        //
-        // I think the real solution is to start making integration tests that
-        // exercise 'handle_turn'.
-        let g = Game::from_manual(
-            [Some(Priestess), Some(Minister)],
-            [Wizard, Wizard, Soldier, Princess, Knight], Some(1)).unwrap();
-        let (g, turn) = g.next_player();
-        let mut g = g;
-        let turn = turn.unwrap();
-        let (card, play) = (Knight, Attack(1));
-        let action = judge(&g, turn.player, turn.draw, (card, play)).unwrap();
-        if card == turn.hand {
-            let card = g._hands.get_mut(turn.player);
-            *card = Some(turn.draw);
-        }
-        let new_game = g.apply_action(action).unwrap();
-        assert_eq!(new_game.get_hand(0), Ok(Priestess));
-    }
-
 }
 
 
