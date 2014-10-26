@@ -288,12 +288,6 @@ impl Game {
 }
 
 
-fn minister_bust(a: deck::Card, b: deck::Card) -> bool {
-    a == deck::Minister && b >= deck::Wizard || a >= deck::Wizard && b == deck::Minister
-}
-
-
-
 #[deriving(PartialEq, Eq, Show)]
 pub enum Play {
     NoEffect,
@@ -731,6 +725,7 @@ mod test {
 }
 
 
+#[cfg(test)]
 mod test_adjudication {
 
     use deck::{Soldier, Clown, Knight, Priestess, Wizard, General, Minister, Princess};
@@ -742,17 +737,6 @@ mod test_adjudication {
     use super::{InvalidPlayer, CardNotFound, InactivePlayer, SelfTarget, BadActionForCard};
 
     use super::make_arbitrary_game;
-
-    #[test]
-    fn test_minister_bust() {
-        assert!(!super::minister_bust(Soldier, Soldier));
-        assert!(super::minister_bust(Minister, Wizard));
-        assert!(super::minister_bust(Minister, General));
-        assert!(super::minister_bust(Minister, Princess));
-        assert!(super::minister_bust(Wizard, Minister));
-        assert!(super::minister_bust(General, Minister));
-        assert!(super::minister_bust(Princess, Minister));
-    }
 
     #[test]
     fn test_judge_invalid_player() {
