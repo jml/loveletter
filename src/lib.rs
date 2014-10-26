@@ -177,12 +177,6 @@ impl Game {
         self._stack.pop()
     }
 
-    fn draw(&self) -> (Game, Option<deck::Card>) {
-        let mut new_game = self.clone();
-        let card = new_game._draw();
-        (new_game, card)
-    }
-
     fn _next_player(&self) -> Option<uint> {
         let current = match self._current_player {
             None    => -1,
@@ -477,7 +471,7 @@ mod test {
         let g = make_arbitrary_game();
         let (_, turn) = g.next_player();
         let super::Turn { player: p, draw: d, hand: _ } = turn.unwrap();
-        let (_, expected) = g.draw();
+        let expected = g.clone()._draw();
         assert_eq!((p, d), (0, expected.unwrap()));
     }
 
