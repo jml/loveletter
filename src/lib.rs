@@ -731,7 +731,7 @@ mod test_adjudication {
     use deck::{Soldier, Clown, Knight, Priestess, Wizard, General, Minister, Princess};
 
     use super::Game;
-    use super::judge;
+    use super::{judge, play_to_action};
     use super::{SwapHands, ForceDiscard, ForceReveal, EliminateWeaker};
     use super::{Attack, Guess, NoEffect};
     use super::{InvalidPlayer, CardNotFound, InactivePlayer, SelfTarget, BadActionForCard};
@@ -799,61 +799,37 @@ mod test_adjudication {
 
     #[test]
     fn test_general_swap() {
-        let g = Game::from_manual(
-            [Some(General), Some(Clown), Some(Knight), Some(Priestess)],
-            [Soldier, Minister, Princess, Soldier], None).unwrap();
-        let arbitrary_card = Wizard;
-        let result = judge(&g, 0, arbitrary_card, (General, Attack(3))).unwrap();
+        let result = play_to_action(0, General, Wizard, Attack(3)).unwrap();
         assert_eq!(result, SwapHands(0, 3, Wizard));
     }
 
     #[test]
     fn test_self_targeting() {
-        let g = Game::from_manual(
-            [Some(General), Some(Clown), Some(Knight), Some(Priestess)],
-            [Soldier, Minister, Princess, Soldier], None).unwrap();
-        let arbitrary_card = Wizard;
-        let result = judge(&g, 0, arbitrary_card, (General, Attack(0)));
+        let result = play_to_action(0, General, Wizard, Attack(0));
         assert_eq!(SelfTarget(0, General), result.unwrap_err());
     }
 
     #[test]
     fn test_knight() {
-        let g = Game::from_manual(
-            [Some(General), Some(Clown), None, Some(Priestess)],
-            [Soldier, Minister, Princess, Soldier], None).unwrap();
-        let result = judge(&g, 0, Knight, (Knight, Attack(3)));
+        let result = play_to_action(0, Knight, Knight, Attack(3));
         assert_eq!(EliminateWeaker(0, 3), result.unwrap());
     }
 
     #[test]
     fn test_wizard() {
-        let g = Game::from_manual(
-            [Some(Wizard), Some(Soldier), None, Some(Priestess)],
-            [Soldier, Minister, Princess, Soldier, Knight], None).unwrap();
-        let arbitrary_card = Soldier;
-        let result = judge(&g, 0, arbitrary_card, (Wizard, Attack(1)));
+        let result = play_to_action(0, Wizard, Soldier, Attack(1));
         assert_eq!(ForceDiscard(1), result.unwrap());
     }
 
     #[test]
     fn test_clown() {
-        let g = Game::from_manual(
-            [Some(Clown), Some(Soldier), None, Some(Priestess)],
-            [Soldier, Minister, Princess, Soldier, Knight], None).unwrap();
-        let arbitrary_card = Wizard;
-        let result = judge(&g, 0, arbitrary_card, (Clown, Attack(1)));
+        let result = play_to_action(0, Clown, Wizard, Attack(1));
         assert_eq!(ForceReveal(0, 1), result.unwrap());
     }
 
     #[test]
     fn test_non_attack() {
-        let g = Game::from_manual(
-            [Some(Clown), Some(Soldier), None, Some(Priestess)],
-            [Soldier, Minister, Princess, Soldier], None).unwrap();
-        let arbitrary_card = Knight;
-        let result = judge(&g, 1, arbitrary_card, (Soldier, Attack(0)));
+        let result = play_to_action(1, Soldier, Knight, Attack(0));
         assert_eq!(BadActionForCard(Attack(0), Soldier), result.unwrap_err());
     }
-
 }
