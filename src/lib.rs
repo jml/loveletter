@@ -271,6 +271,7 @@ impl Game {
             Err(e) => return Err(e),
         };
 
+        // Set the player's hand to the card they didn't play.
         if card == turn.hand {
             let card = new_game._hands.get_mut(turn.player);
             *card = Some(turn.draw);
@@ -293,9 +294,8 @@ pub enum Play {
     NoEffect,
     Attack(uint),
     Guess(uint, Card),
-}
 
-// XXX: I really want to have a data association from Cards to possible movies.
+}
 
 
 #[deriving(PartialEq, Eq, Show)]
@@ -353,6 +353,7 @@ fn judge(game: &Game, current_player: uint, dealt_card: deck::Card,
 
     let (played_card, play_data) = play;
 
+    // Sort out which card we're playing, and which we're keeping.
     let unplayed_card = match util::other((current_card, dealt_card), played_card) {
         Some(card) => card,
         None => return Err(CardNotFound(played_card, (current_card, dealt_card))),
