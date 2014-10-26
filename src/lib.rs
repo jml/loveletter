@@ -36,6 +36,14 @@ impl Turn {
     }
 }
 
+
+#[deriving(Show, PartialEq, Eq, Clone)]
+enum GameState {
+    NotStarted,
+    PlayerReady(uint),
+}
+
+
 #[deriving(Show, PartialEq, Eq, Clone)]
 pub struct Game {
     _hands: Vec<Option<deck::Card>>,
@@ -45,7 +53,7 @@ pub struct Game {
     // means we're always checking whether it's the first player's turn.
     // Alternative is to initialize the game with the first player having
     // drawn their card.
-    _current_player: Option<uint>,
+    _current_player: GameState,
 }
 
 
@@ -66,7 +74,10 @@ impl Game {
     }
 
     fn current_player(&self) -> Option<uint> {
-        self._current_player
+        match self._current_player {
+            NotStarted => None,
+            PlayerReady(i) => Some(i)
+        }
     }
 
     fn valid_player_count(num_players: uint) -> bool {
@@ -83,7 +94,7 @@ impl Game {
             _hands: cards.slice(1, hand_end).iter().map(|&x| Some(x)).collect(),
             _stack: cards.slice_from(hand_end).iter().map(|&x| x).collect(),
             _num_players: num_players,
-            _current_player: None,
+            _current_player: NotStarted,
         })
     }
 
@@ -99,11 +110,15 @@ impl Game {
             all_cards.push(x);
         }
         if deck::is_valid_subdeck(all_cards.as_slice()) {
+            let state = match current_player {
+                None => NotStarted,
+                Some(i) => PlayerReady(i),
+            };
             Ok(Game {
                 _hands: hands.iter().map(|&x| x).collect(),
                 _stack: stack,
                 _num_players: hands.len(),
-                _current_player: current_player,
+                _current_player: state,
             })
         } else {
             Err(BadDeck)
@@ -179,8 +194,8 @@ impl Game {
 
     fn _next_player(&self) -> Option<uint> {
         let current = match self._current_player {
-            None    => -1,
-            Some(x) => x,
+            NotStarted => -1,
+            PlayerReady(i) => i,
         };
         let num_players = self.num_players();
         range(1, num_players)
@@ -197,7 +212,7 @@ impl Game {
                 match new_game._next_player() {
                     None => (new_game, None), // XXX: This branch not tested
                     Some(new_player) => {
-                        new_game._current_player = Some(new_player);
+                        new_game._current_player = PlayerReady(new_player);
                         let hand = new_game._hands[new_player];
                         (new_game, Some(Turn {
                             player: new_player,
