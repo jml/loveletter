@@ -1,9 +1,8 @@
-
 extern crate loveletter;
 
 use std::io;
 
-
+/// Repeatedly prompt the user until they give us something that parses.
 fn repeated_prompt<T, E: std::fmt::Show>(prompt: &str, parser: |&str| -> Result<T, E>) -> T {
     loop {
         println!("{}", prompt);
@@ -19,6 +18,7 @@ fn repeated_prompt<T, E: std::fmt::Show>(prompt: &str, parser: |&str| -> Result<
 }
 
 
+/// Allow the player to choose a card to play.
 fn choose(_game: &loveletter::Game, turn: &loveletter::Turn) -> (loveletter::Card, loveletter::Play) {
     let chosen = repeated_prompt(
         format!(
