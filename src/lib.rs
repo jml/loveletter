@@ -349,39 +349,56 @@ pub enum Action {
 // keep it separate for now.
 fn judge(game: &Game, current_player: uint, dealt_card: deck::Card,
          play: (deck::Card, Play)) -> Result<Action, PlayError> {
-    // XXX: my spider sense is telling me this can be modeled as a
-    // non-deterministic finite automata.
     let current_card = match game.get_hand(current_player) {
         Ok(card) => card,
         Err(e) => return Err(e),
     };
 
+    // Make sure we're targeting a valid, active player.
+    match play {
+        (_, Attack(target)) | (_, Guess(target, _))  => match game.get_hand(target) {
+            Err(e) => return Err(e),
+            _ => (),
+        },
+        _ => (),
+    }
+
     let (played_card, play_data) = play;
 
     let unplayed_card = match util::other((current_card, dealt_card), played_card) {
         Some(card) => card,
-        None       => return Err(
-            CardNotFound(played_card, (current_card, dealt_card))),
+        None => return Err(CardNotFound(played_card, (current_card, dealt_card))),
     };
 
-    match play_data {
+    // Only need `unplayed_card` for General.
+    play_to_action(current_player, played_card, unplayed_card, play_data)
+}
+
+
+/// Turn a play into an Action.
+///
+/// Translates a decision by a player to play a particular card in a
+/// particular way into an Action that can be applied to the game.
+///
+/// Returns an error if that particular card, play combination is not valid.
+fn play_to_action(
+    current_player: uint, played_card: deck::Card, unplayed_card: deck::Card,
+    play: Play) -> Result<Action, PlayError> {
+
+    // XXX: Ideally, I'd express this with a data structure that mapped card,
+    // play combinations to valid actions.
+
+    match play {
         NoEffect => match played_card {
-            // TODO: Handle priestess rules
             deck::Priestess => Ok(NoChange),
-            // TODO: Handle minister rules.
             deck::Minister => Ok(NoChange),
             deck::Princess => Ok(EliminatePlayer(current_player)),
-            _ => Err(BadActionForCard(play_data, played_card)),
+            _ => Err(BadActionForCard(play, played_card)),
         },
         Attack(target) => {
             if target == current_player {
                 // TODO: Make sure you target yourself with a wizard. (Add tests).
                 return Err(SelfTarget(target, played_card));
-            }
-
-            match game.get_hand(target) {
-                Err(e)   => return Err(e),
-                _ => (),
             }
 
             match played_card {
@@ -397,7 +414,7 @@ fn judge(game: &Game, current_player: uint, dealt_card: deck::Card,
                 deck::General => {
                     Ok(SwapHands(current_player, target, unplayed_card))
                 },
-                _ => Err(BadActionForCard(play_data, played_card)),
+                _ => Err(BadActionForCard(play, played_card)),
             }
         }
         Guess(target, guessed_card) => {
@@ -406,7 +423,7 @@ fn judge(game: &Game, current_player: uint, dealt_card: deck::Card,
             // Guess action w/ non-soldier.
             match played_card {
                 deck::Soldier => Ok(EliminateOnGuess(target, guessed_card)),
-                _ => Err(BadActionForCard(play_data, played_card)),
+                _ => Err(BadActionForCard(play, played_card)),
             }
         }
     }
