@@ -196,11 +196,11 @@ impl Game {
         self._stack.pop()
     }
 
-    fn _next_player(&self, current: Option<uint>) -> Option<uint> {
+    fn _next_player(&self) -> Option<uint> {
         if self.num_players_remaining() <= 1 {
             None
         } else {
-            let current_num = match current {
+            let current_num = match self.current_player() {
                 None => -1,
                 Some(i) => i,
             };
@@ -217,7 +217,7 @@ impl Game {
         match card {
             None => (new_game, None),
             Some(c) => {
-                let next_player = new_game._next_player(self.current_player());
+                let next_player = new_game._next_player();
                 match next_player {
                     None => (self.clone(), None),
                     Some(new_player) => {
