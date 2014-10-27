@@ -234,8 +234,23 @@ impl Game {
         }
     }
 
-    // TODO: Some routine for identifying the winners.
-
+    /// At the end of the game, return players and their hands.
+    fn survivors(&self) -> Vec<(uint, deck::Card)> {
+        // TODO: Write tests
+        // _next_player essentially functions as a 'is game over' predicate.
+        match self._next_player() {
+            Some(..) => vec![],
+            None => self._hands
+                .iter()
+                .enumerate()
+                .filter_map(
+                    |(i, &x)| match x {
+                        Some(y) => Some((i, y)),
+                        None => None,
+                    })
+                .collect()
+        }
+    }
 
     fn eliminate_weaker(&self, p1: uint, p2: uint) -> Result<Action, PlayError> {
         match (self.get_hand(p1), self.get_hand(p2)) {

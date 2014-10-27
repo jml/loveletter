@@ -20,6 +20,29 @@ pub fn other<T: Eq>((a, b): (T, T), x: T) -> Option<T> {
     if x == a { Some(b) } else { if x == b { Some(a) } else { None } }
 }
 
+
+// TODO: Write tests.
+// TODO: Use this to determine winners.
+// TODO: Figure out if this can be written in terms of slices rather than
+// vectors.
+pub fn maxima_by<'a, A, B: Ord>(xs: &'a Vec<A>, f: |&A| -> B) -> Vec<&'a A> {
+    let mut maxes = vec![];
+    let mut index = xs.iter().map(|a| (f(a), a));
+    let max = index.max_by(|&(ref b, _)| b);
+    match max {
+        None => maxes,
+        Some((value, _)) => {
+            for (b, a) in index {
+                if b >= value {
+                    maxes.push(a)
+                }
+            }
+            maxes
+        },
+    }
+}
+
+
 #[cfg(test)]
 mod test {
     use super::other;
