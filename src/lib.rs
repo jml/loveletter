@@ -1,6 +1,8 @@
 pub use deck::{Card, Soldier, Clown, Knight, Priestess, Wizard, General, Minister, Princess};
 
 pub mod deck;
+pub mod prompt;
+
 mod util;
 
 // Game state:
