@@ -72,4 +72,5 @@ fn main() {
         println!("");
     }
     // TODO: Announce the winner
+    println!("Winners! {}", current_game.winners());
 }

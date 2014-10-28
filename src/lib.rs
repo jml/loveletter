@@ -252,6 +252,16 @@ impl Game {
         }
     }
 
+    pub fn winners(&self) -> Vec<(uint, deck::Card)> {
+        let survivors = self.survivors();
+        let mut ws = vec![];
+        for x in util::maxima_by(&survivors, |&(_, card)| card).iter() {
+            let &&(i, c) = x;
+            ws.push((i, c))
+        }
+        ws
+    }
+
     fn eliminate_weaker(&self, p1: uint, p2: uint) -> Result<Action, PlayError> {
         match (self.get_hand(p1), self.get_hand(p2)) {
             (Ok(p1_card), Ok(p2_card)) =>
