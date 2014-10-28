@@ -26,8 +26,8 @@ fn repeated_prompt<T, E: std::fmt::Show>(prompt: &str, parser: |&str| -> Result<
 fn choose_card(turn: &loveletter::Turn) -> loveletter::Card {
     repeated_prompt(
         format!(
-            "Player {}: pick a card:\n  1. {}\n  2. {}\n>>> ",
-            turn.player + 1, turn.hand, turn.draw).as_slice(),
+            "Pick a card:\n  1. {}\n  2. {}\n>>> ",
+            turn.hand, turn.draw).as_slice(),
         |x| match x.trim() {
             "1" => Ok(turn.hand),
             "2" => Ok(turn.draw),
@@ -59,6 +59,8 @@ fn choose_target(game: &loveletter::Game) -> uint {
 /// Allow the player to choose a card to play.
 #[cfg(not(test))]
 fn choose(_game: &loveletter::Game, turn: &loveletter::Turn) -> (loveletter::Card, loveletter::Play) {
+    println!("Player {}", turn.player + 1);
+    println!("---------");
     let chosen = choose_card(turn);
     let action = match chosen {
         loveletter::Priestess | loveletter::Minister | loveletter::Princess => loveletter::NoEffect,
@@ -71,7 +73,7 @@ fn choose(_game: &loveletter::Game, turn: &loveletter::Turn) -> (loveletter::Car
             }
         },
     };
-    println!("Player {} => {}: {}", turn.player + 1, chosen, action);
+    println!("// action: player {} => {}: {}", turn.player + 1, chosen, action);
     (chosen, action)
 }
 
@@ -103,6 +105,9 @@ fn announce_winner(winners: Vec<(uint, loveletter::Card)>) {
 #[cfg(not(test))]
 fn main() {
     println!("Love Letter");
+    println!("===========");
+    println!("");
+
     let game = match loveletter::Game::new(2) {
         Some(g) => g,
         None => {
@@ -111,7 +116,7 @@ fn main() {
             return;
         }
     };
-    println!("{}", game);
+    println!("// game = {}\n", game);
     // While the game is not over
     //   Draw a card
     //   Give it to the player whose turn it is and ask them what their play is
@@ -124,10 +129,9 @@ fn main() {
         current_game = match result {
             Ok(None) => break,
             Ok(Some(game)) => game,
-            Err(e) => { println!("Error: {}", e); return }
+            Err(e) => { println!("Invalid move: {}\n", e); continue }
         };
-        println!("{}", current_game);
-        println!("");
+        println!("// game = {}\n", current_game);
     }
     // TODO: Announce the winner
     announce_winner(current_game.winners());
