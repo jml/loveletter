@@ -22,10 +22,9 @@ fn repeated_prompt<T, E: std::fmt::Show>(prompt: &str, parser: |&str| -> Result<
 }
 
 
-/// Allow the player to choose a card to play.
 #[cfg(not(test))]
-fn choose(_game: &loveletter::Game, turn: &loveletter::Turn) -> (loveletter::Card, loveletter::Play) {
-    let chosen = repeated_prompt(
+fn choose_card(turn: &loveletter::Turn) -> loveletter::Card {
+    repeated_prompt(
         format!(
             "Player {}: pick a card:\n  1. {}\n  2. {}\n>>> ",
             turn.player + 1, turn.hand, turn.draw).as_slice(),
@@ -33,14 +32,44 @@ fn choose(_game: &loveletter::Game, turn: &loveletter::Turn) -> (loveletter::Car
             "1" => Ok(turn.hand),
             "2" => Ok(turn.draw),
             _ => Err("1 or 2"),
-        });
-    // TODO: Allow specifying other.
-    let other = (turn.player + 1) % 2;
+        })
+}
+
+
+#[cfg(not(test))]
+fn choose_target(game: &loveletter::Game) -> uint {
+    let num_players = game.num_players();
+    repeated_prompt(
+        format!(
+            "Who are you playing it on? (1-{})\n>>> ",
+            num_players).as_slice(),
+        |x| match from_str(x.trim()) {
+            None => Err(format!(
+                "Please enter a player number between 1 and {}", num_players)),
+            Some(x) =>
+                if 1u <= x && x <= num_players {
+                    Ok(x - 1)
+                } else {
+                    Err(format!(
+                        "Please enter a player number between 1 and {}", num_players))
+                }
+        })
+}
+
+/// Allow the player to choose a card to play.
+#[cfg(not(test))]
+fn choose(_game: &loveletter::Game, turn: &loveletter::Turn) -> (loveletter::Card, loveletter::Play) {
+    let chosen = choose_card(turn);
     let action = match chosen {
         loveletter::Priestess | loveletter::Minister | loveletter::Princess => loveletter::NoEffect,
-        // TODO: Allow specifying guess.
-        loveletter::Soldier => loveletter::Guess(other, loveletter::Wizard),
-        _ => loveletter::Attack(other),
+        _ => {
+            let other = choose_target(_game);
+            match chosen {
+                // TODO: Allow specifying guess.
+                loveletter::Soldier => loveletter::Guess(other, loveletter::Wizard),
+                _ => loveletter::Attack(other),
+            }
+        },
     };
     println!("Player {} => {}: {}", turn.player + 1, chosen, action);
     (chosen, action)
