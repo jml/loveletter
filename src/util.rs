@@ -27,14 +27,14 @@ pub fn other<T: Eq>((a, b): (T, T), x: T) -> Option<T> {
 // vectors.
 pub fn maxima_by<'a, A, B: Ord>(xs: &'a Vec<A>, f: |&A| -> B) -> Vec<&'a A> {
     let mut maxes = vec![];
-    let mut index = xs.iter().map(|a| (f(a), a));
-    let max = index.max_by(|&(ref b, _)| b);
+    let indexes: Vec<(B, uint)> = xs.iter().enumerate().map(|(i, a)| (f(a), i)).collect();
+    let max = indexes.iter().max_by(|&&(ref b, _)| b);
     match max {
         None => maxes,
-        Some((value, _)) => {
-            for (b, a) in index {
-                if b >= value {
-                    maxes.push(a)
+        Some(&(ref value, _)) => {
+            for &(ref b, i) in indexes.iter() {
+                if *b >= *value {
+                    maxes.push(&xs[i])
                 }
             }
             maxes
@@ -96,4 +96,23 @@ mod test {
         assert_eq!(Some(2), other((1u, 2u), 1u));
         assert_eq!(Some(1), other((1u, 2u), 2u));
     }
+
+    #[test]
+    fn test_maxima_by_no_data() {
+        let xs: Vec<int> = vec![];
+        assert_eq!(vec![], super::maxima_by(&xs, |&x| x));
+    }
+
+    #[test]
+    fn test_maxima_by_id_function() {
+        let xs: Vec<int> = vec![1, 2, 3, 2, 3, 1];
+        assert_eq!(vec![&xs[2], &xs[4]], super::maxima_by(&xs, |&x| x));
+    }
+
+    #[test]
+    fn test_maxima_by_interesting_function() {
+        let xs = vec!["hello", "cat", "dog", "world"];
+        assert_eq!(vec![&xs[0], &xs[3]], super::maxima_by(&xs, |&x| x.len()));
+    }
+
 }
