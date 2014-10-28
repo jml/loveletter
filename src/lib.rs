@@ -2,7 +2,6 @@ pub use deck::{Card, Soldier, Clown, Knight, Priestess, Wizard, General, Ministe
 
 pub mod deck;
 pub mod prompt;
-
 mod util;
 
 // Game state:
@@ -317,30 +316,42 @@ impl Game {
             None => return Ok(None),
             Some(turn) => turn,
         };
-        // TODO: It is at this point which,
-        // - priestess expires
-        // - minister can bite you
-        let (card, play) = f(&new_game, &turn);
 
-        let action = match judge(&new_game, turn.player, turn.draw, (card, play)) {
-            Ok(a) => a,
-            Err(e) => return Err(e),
+        let action = if minister_bust(turn.draw, turn.hand) {
+            EliminatePlayer(turn.player)
+        } else {
+            // TODO: It is at this point which,
+            // - priestess expires
+            let (card, play) = f(&new_game, &turn);
+
+            let action = match judge(&new_game, turn.player, turn.draw, (card, play)) {
+                Ok(a) => a,
+                Err(e) => return Err(e),
+            };
+
+            // Set the player's hand to the card they didn't play.
+            if card == turn.hand {
+                let card = new_game._hands.get_mut(turn.player);
+                *card = Some(turn.draw);
+            }
+            action
         };
-
-        // Set the player's hand to the card they didn't play.
-        if card == turn.hand {
-            let card = new_game._hands.get_mut(turn.player);
-            *card = Some(turn.draw);
-        }
 
         // XXX: Probably should return the action so that an external client can
         // infer what happened?
-        new_game = match new_game.apply_action(action) {
-            Ok(g) => g,
+        match new_game.apply_action(action) {
+            Ok(g) => Ok(Some(g)),
             Err(e) => return Err(e),
-        };
+        }
+    }
+}
 
-        Ok(Some(new_game))
+
+fn minister_bust(a: deck::Card, b: deck::Card) -> bool {
+    match util::other((a, b), deck::Minister) {
+        Some(deck::Wizard) | Some(deck::General) | Some(deck::Princess) => true,
+        Some(deck::Minister) => fail!("Called with 2 ministers!"),
+        _ => false,
     }
 }
 
