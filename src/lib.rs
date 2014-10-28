@@ -473,6 +473,14 @@ fn play_to_action(
 }
 
 
+// Got this error:
+// Player 2: pick a card:
+//   1. Priestess
+//   2. Soldier
+// 2
+// Player 2 => Soldier: Guess(0, Wizard)
+// Error: BadGuess
+
 
 #[cfg(test)]
 fn make_arbitrary_game() -> Game {
@@ -606,9 +614,7 @@ mod test {
     use deck::{Soldier, Clown, Knight, Priestess, Wizard, General, Minister, Princess};
 
     use super::Game;
-    use super::judge;
     use super::{NoChange, SwapHands, EliminatePlayer};
-    use super::{Attack};
     use super::{InvalidPlayer, InactivePlayer};
 
     use super::make_arbitrary_game;
