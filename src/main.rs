@@ -42,6 +42,29 @@ fn choose(_game: &loveletter::Game, turn: &loveletter::Turn) -> (loveletter::Car
 }
 
 
+fn announce_winner(winners: Vec<(uint, loveletter::Card)>) {
+    // TODO: Probably want to report on all survivors.
+    // TODO: Probably want to say *why* the game is over: no more players or
+    // no more cards.
+    // TODO: Message for last player standing should be different from highest
+    // card.
+    println!("GAME OVER");
+    match winners.len() {
+        0 => println!("Something went wrong. No winners at all. Is the game over yet?"),
+        1 => {
+            let (i, card) = winners[0];
+            println!("Player {} wins, holding {}", i + 1, card);
+        },
+        n => {
+            println!("Game tied between {} players.", n);
+            for &(i, card) in winners.iter() {
+                println!("  Player {} holds a {}", i + 1, card);
+            }
+        }
+    }
+}
+
+
 #[cfg(not(test))]
 fn main() {
     println!("Love Letter");
@@ -72,5 +95,5 @@ fn main() {
         println!("");
     }
     // TODO: Announce the winner
-    println!("Winners! {}", current_game.winners());
+    announce_winner(current_game.winners());
 }
