@@ -1,8 +1,12 @@
 extern crate loveletter;
 
+// XXX: [rust]: After marking all of the other code below as not part of test,
+// then I get unused-import warning for this. What's the correct way to have a
+// main module that doesn't emit warnings?
 use std::io;
 
 /// Repeatedly prompt the user until they give us something that parses.
+#[cfg(not(test))]
 fn repeated_prompt<T, E: std::fmt::Show>(prompt: &str, parser: |&str| -> Result<T, E>) -> T {
     loop {
         println!("{}", prompt);
@@ -19,6 +23,7 @@ fn repeated_prompt<T, E: std::fmt::Show>(prompt: &str, parser: |&str| -> Result<
 
 
 /// Allow the player to choose a card to play.
+#[cfg(not(test))]
 fn choose(_game: &loveletter::Game, turn: &loveletter::Turn) -> (loveletter::Card, loveletter::Play) {
     let chosen = repeated_prompt(
         format!(
@@ -42,6 +47,7 @@ fn choose(_game: &loveletter::Game, turn: &loveletter::Turn) -> (loveletter::Car
 }
 
 
+#[cfg(not(test))]
 fn announce_winner(winners: Vec<(uint, loveletter::Card)>) {
     // TODO: Probably want to report on all survivors.
     // TODO: Probably want to say *why* the game is over: no more players or

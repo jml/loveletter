@@ -125,6 +125,7 @@ impl Game {
         }
     }
 
+    #[cfg(test)]
     fn hands(&self) -> &[Option<deck::Card>] {
         self._hands.as_slice()
     }
@@ -184,6 +185,7 @@ impl Game {
         Ok(game)
     }
 
+    #[cfg(test)]
     fn num_cards_remaining(&self) -> uint {
         self._stack.len()
     }
