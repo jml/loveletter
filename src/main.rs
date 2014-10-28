@@ -20,6 +20,20 @@ fn choose_target(game: &loveletter::Game) -> uint {
 }
 
 
+#[cfg(not(test))]
+fn choose_guess() -> loveletter::Card {
+    *loveletter::prompt::choose_from_list(
+        "Which card do you guess?",
+        [loveletter::Clown,
+         loveletter::Knight,
+         loveletter::Priestess,
+         loveletter::Wizard,
+         loveletter::General,
+         loveletter::Minister,
+         loveletter::Princess])
+}
+
+
 /// Allow the player to choose a card to play.
 #[cfg(not(test))]
 fn choose(_game: &loveletter::Game, turn: &loveletter::Turn) -> (loveletter::Card, loveletter::Play) {
@@ -31,8 +45,10 @@ fn choose(_game: &loveletter::Game, turn: &loveletter::Turn) -> (loveletter::Car
         _ => {
             let other = choose_target(_game);
             match chosen {
-                // TODO: Allow specifying guess.
-                loveletter::Soldier => loveletter::Guess(other, loveletter::Wizard),
+                loveletter::Soldier => {
+                    let guess = choose_guess();
+                    loveletter::Guess(other, guess)
+                },
                 _ => loveletter::Attack(other),
             }
         },
