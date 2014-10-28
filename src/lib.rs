@@ -291,15 +291,18 @@ impl Game {
                     Err(e) => Err(e),
                 },
             EliminateOnGuess(p1, card) =>
-                match self.get_hand(p1) {
-                    Ok(deck::Soldier) => Err(BadGuess),
-                    Ok(c) => self.apply_action(
-                        if card == c {
-                            EliminatePlayer(p1)
-                        } else {
-                            NoChange
-                        }),
-                    Err(err) => Err(err),
+                if card == Soldier {
+                    Err(BadGuess)
+                } else {
+                    match self.get_hand(p1) {
+                        Ok(c) => self.apply_action(
+                            if card == c {
+                                EliminatePlayer(p1)
+                            } else {
+                                NoChange
+                            }),
+                        Err(err) => Err(err),
+                    }
                 }
         }
     }
@@ -475,15 +478,6 @@ fn play_to_action(
 }
 
 
-// Got this error:
-// Player 2: pick a card:
-//   1. Priestess
-//   2. Soldier
-// 2
-// Player 2 => Soldier: Guess(0, Wizard)
-// Error: BadGuess
-
-
 #[cfg(test)]
 fn make_arbitrary_game() -> Game {
     Game::new(4).unwrap()
@@ -606,7 +600,6 @@ mod test_game {
     fn test_manual_game_bad_players() {
         assert_eq!(Err(super::InvalidPlayers(0)), Game::from_manual([], [], None));
     }
-
 }
 
 
@@ -778,6 +771,38 @@ mod test {
         assert_eq!(theirs, new_g.get_hand(0).unwrap());
         assert_eq!(ours, new_g.get_hand(1).unwrap());
     }
+
+    #[test]
+    fn test_eliminate_on_guess_incorrect() {
+        // Got this error:
+        // Player 2: pick a card:
+        //   1. Priestess
+        //   2. Soldier
+        // 2
+        // Player 2 => Soldier: Guess(0, Wizard)
+        // Error: BadGuess
+        let g = Game::from_manual(
+            [Some(Soldier), Some(Soldier)], [Wizard, Wizard], Some(0)).unwrap();
+        let result = g.apply_action(super::EliminateOnGuess(1, Clown));
+        assert_eq!(Ok(g), result);
+    }
+
+    #[test]
+    fn test_eliminate_on_guess_correct() {
+        let g = Game::from_manual(
+            [Some(Soldier), Some(Clown)], [Wizard, Wizard], Some(0)).unwrap();
+        let result = g.apply_action(super::EliminateOnGuess(1, Clown));
+        assert_eq!(g.eliminate(1), result);
+    }
+
+    #[test]
+    fn test_eliminate_on_guess_soldier() {
+        let g = Game::from_manual(
+            [Some(Soldier), Some(Soldier)], [Wizard, Wizard], Some(0)).unwrap();
+        let result = g.apply_action(super::EliminateOnGuess(1, Soldier));
+        assert_eq!(Err(super::BadGuess), result);
+    }
+
 }
 
 
