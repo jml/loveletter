@@ -9,7 +9,7 @@ use std::io;
 #[cfg(not(test))]
 fn repeated_prompt<T, E: std::fmt::Show>(prompt: &str, parser: |&str| -> Result<T, E>) -> T {
     loop {
-        println!("{}", prompt);
+        print!("{}", prompt);
         let input = io::stdin()
             .read_line()
             .ok()
@@ -27,7 +27,7 @@ fn repeated_prompt<T, E: std::fmt::Show>(prompt: &str, parser: |&str| -> Result<
 fn choose(_game: &loveletter::Game, turn: &loveletter::Turn) -> (loveletter::Card, loveletter::Play) {
     let chosen = repeated_prompt(
         format!(
-            "Player {}: pick a card:\n  1. {}\n  2. {}",
+            "Player {}: pick a card:\n  1. {}\n  2. {}\n>>> ",
             turn.player + 1, turn.hand, turn.draw).as_slice(),
         |x| match x.trim() {
             "1" => Ok(turn.hand),

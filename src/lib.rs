@@ -69,7 +69,7 @@ impl Game {
         Game::from_deck(num_players, deck::Deck::new())
     }
 
-    fn num_players(&self) -> uint {
+    pub fn num_players(&self) -> uint {
         self._num_players
     }
 
@@ -239,7 +239,7 @@ impl Game {
     /// At the end of the game, return players and their hands.
     fn survivors(&self) -> Vec<(uint, deck::Card)> {
         // TODO: Write tests
-        // _next_player essentially functions as a 'is game over' predicate.
+        // next_player essentially functions as a 'is game over' predicate.
         match self.next_player() {
             (_, Some(..)) => vec![],
             (_, None) => self._hands
@@ -491,11 +491,6 @@ mod test_game {
     use deck::{Card, Soldier, Clown, Knight, Priestess, Wizard, General, Minister, Princess};
     use super::Game;
     use super::make_arbitrary_game;
-
-    #[test]
-    fn test_num_players() {
-        assert_eq!(3, Game::new(3).unwrap().num_players());
-    }
 
     #[test]
     fn test_current_player_at_start() {
