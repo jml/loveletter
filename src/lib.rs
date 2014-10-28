@@ -240,9 +240,9 @@ impl Game {
     fn survivors(&self) -> Vec<(uint, deck::Card)> {
         // TODO: Write tests
         // _next_player essentially functions as a 'is game over' predicate.
-        match self._next_player() {
-            Some(..) => vec![],
-            None => self._hands
+        match self.next_player() {
+            (_, Some(..)) => vec![],
+            (_, None) => self._hands
                 .iter()
                 .enumerate()
                 .filter_map(
@@ -599,6 +599,18 @@ mod test_game {
     #[test]
     fn test_manual_game_bad_players() {
         assert_eq!(Err(super::InvalidPlayers(0)), Game::from_manual([], [], None));
+    }
+
+    #[test]
+    fn test_survivors_at_game_end() {
+        let g = Game::from_manual([Some(Knight), Some(Princess)], [], Some(0)).unwrap();
+        assert_eq!(vec![(0, Knight), (1, Princess)], g.survivors());
+    }
+
+    #[test]
+    fn test_winner_from_multiple_survivors() {
+        let g = Game::from_manual([Some(Knight), Some(Princess)], [], Some(0)).unwrap();
+        assert_eq!(vec![(1, Princess)], g.winners());
     }
 }
 
