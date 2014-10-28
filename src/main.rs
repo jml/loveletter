@@ -23,16 +23,38 @@ fn repeated_prompt<T, E: std::fmt::Show>(prompt: &str, parser: |&str| -> Result<
 
 
 #[cfg(not(test))]
+fn read_int_in_range(x: &str, upper: uint) -> Result<uint, String> {
+    match from_str(x.trim()) {
+        None => Err(format!(
+            "Please enter a number between 1 and {}", upper)),
+        Some(x) =>
+            if 1 <= x && x <= upper {
+                Ok(x - 1)
+            } else {
+                Err(format!("Please enter a number between 1 and {}", upper))
+            }
+    }
+}
+
+
+#[cfg(not(test))]
+fn choose_from_list<'a, T: std::fmt::Show>(prompt: &str, items: &'a [T]) -> &'a T {
+    let mut prompt_vec = vec![prompt.to_string()];
+    prompt_vec.push("\n".to_string());
+    for (i, x) in items.iter().enumerate() {
+        prompt_vec.push(format!("  {}. {}\n", i + 1, x));
+    }
+    prompt_vec.push(">>> ".to_string());
+    let i = repeated_prompt(prompt_vec.concat().as_slice(), |x| read_int_in_range(x, items.len()));
+    &items[i]
+}
+
+
+#[cfg(not(test))]
 fn choose_card(turn: &loveletter::Turn) -> loveletter::Card {
-    repeated_prompt(
-        format!(
-            "Pick a card:\n  1. {}\n  2. {}\n>>> ",
-            turn.hand, turn.draw).as_slice(),
-        |x| match x.trim() {
-            "1" => Ok(turn.hand),
-            "2" => Ok(turn.draw),
-            _ => Err("1 or 2"),
-        })
+    let list = [turn.hand, turn.draw];
+    let choice = choose_from_list("Pick a card", list);
+    *choice
 }
 
 
@@ -43,18 +65,9 @@ fn choose_target(game: &loveletter::Game) -> uint {
         format!(
             "Who are you playing it on? (1-{})\n>>> ",
             num_players).as_slice(),
-        |x| match from_str(x.trim()) {
-            None => Err(format!(
-                "Please enter a player number between 1 and {}", num_players)),
-            Some(x) =>
-                if 1u <= x && x <= num_players {
-                    Ok(x - 1)
-                } else {
-                    Err(format!(
-                        "Please enter a player number between 1 and {}", num_players))
-                }
-        })
+        |x| read_int_in_range(x, num_players))
 }
+
 
 /// Allow the player to choose a card to play.
 #[cfg(not(test))]
@@ -133,6 +146,5 @@ fn main() {
         };
         println!("// game = {}\n", current_game);
     }
-    // TODO: Announce the winner
     announce_winner(current_game.winners());
 }
