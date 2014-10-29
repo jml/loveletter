@@ -48,12 +48,23 @@ enum GameState {
 #[deriving(Show, PartialEq, Eq, Clone)]
 pub struct Game {
     _hands: Vec<Option<deck::Card>>,
+    // Whether a player is currently protected by the Priestess.
+    // XXX: Create a Player abstraction and merge this into that.
+    _protected: Vec<bool>,
     _stack: Vec<deck::Card>,
     _num_players: uint,
-    // None before any hand is played. Not 100% sure I like this, because it
-    // means we're always checking whether it's the first player's turn.
-    // Alternative is to initialize the game with the first player having
-    // drawn their card.
+    // Not sure I like this. The current Game class only accepts a callback,
+    // so a player is dealt a card and must respond in the same method. It is
+    // always some player's turn unless it's the beginning or end. A different
+    // concept would be to have a very high level game state enum which had
+    // different kinds of values depending on whether the game was over or
+    // not.
+    //
+    // e.g. Before the game, you have a Deck, a number of players and nothing
+    // else. During the game, there are methods to draw a card, to play it,
+    // and (probably) to inspect public state. After the game, the only thing
+    // that can happen is you look at who the survivors are, what their cards
+    // were, who the winner is, and what the burn card was.
     _current_player: GameState,
 }
 
@@ -96,6 +107,7 @@ impl Game {
             _stack: cards.slice_from(hand_end).iter().map(|&x| x).collect(),
             _num_players: num_players,
             _current_player: NotStarted,
+            _protected: Vec::from_elem(num_players, false),
         })
     }
 
@@ -120,6 +132,7 @@ impl Game {
                 _stack: stack,
                 _num_players: hands.len(),
                 _current_player: state,
+                _protected: Vec::from_elem(num_players, false),
             })
         } else {
             Err(BadDeck)
@@ -169,6 +182,15 @@ impl Game {
                 new_game._hands.as_mut_slice().swap(p1, p2);
             }
         };
+        Ok(new_game)
+    }
+
+    fn protect(&self, p: uint) -> Result<Game, PlayError> {
+        let mut new_game = self.clone();
+        {
+            let protected = new_game._protected.get_mut(p);
+            *protected = true;
+        }
         Ok(new_game)
     }
 
@@ -279,19 +301,31 @@ impl Game {
     }
 
     fn apply_action(&self, action: Action) -> Result<Game, PlayError> {
-        let new_game = self.clone();
+        match action {
+            EliminateOnGuess(i, _) =>
+                if self._protected[i] {
+                    return Ok(self.clone());
+                } else {
+                    ()
+                },
+            _ => (),
+        }
         match action {
             NoChange => Ok(self.clone()),
+            Protect(i) => self.protect(i),
             EliminatePlayer(i) => self.eliminate(i),
             SwapHands(p1, p2, _) => self.swap_hands(p1, p2),
             ForceDiscard(i) => self.discard_and_draw(i),
-            ForceReveal(..) => Ok(new_game),
+            // XXX: The fact that this is indistinguishable from NoChange
+            // means we've implemented it wrong.
+            ForceReveal(..) => Ok(self.clone()),
             EliminateWeaker(p1, p2) =>
                 match self.eliminate_weaker(p1, p2) {
                     Ok(action) => self.apply_action(action),
                     Err(e) => Err(e),
                 },
             EliminateOnGuess(p1, card) =>
+                // XXX: Factor some of this out into eliminate_on_guess method.
                 if card == Soldier {
                     Err(BadGuess)
                 } else {
@@ -304,7 +338,7 @@ impl Game {
                             }),
                         Err(err) => Err(err),
                     }
-                }
+                },
         }
     }
 
@@ -361,7 +395,6 @@ pub enum Play {
     NoEffect,
     Attack(uint),
     Guess(uint, Card),
-
 }
 
 
@@ -386,6 +419,7 @@ pub enum PlayError {
 #[deriving(PartialEq, Eq, Show)]
 pub enum Action {
     NoChange,
+    Protect(uint),
     // source, target, source card
     // source card is there in case we're swapping the card we just picked up.
     SwapHands(uint, uint, deck::Card),
@@ -446,7 +480,7 @@ fn play_to_action(
 
     match play {
         NoEffect => match played_card {
-            deck::Priestess => Ok(NoChange),
+            deck::Priestess => Ok(Protect(current_player)),
             deck::Minister => Ok(NoChange),
             deck::Princess => Ok(EliminatePlayer(current_player)),
             _ => Err(BadActionForCard(play, played_card)),
