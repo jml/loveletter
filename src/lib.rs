@@ -99,6 +99,17 @@ impl Game {
         new_game
     }
 
+    fn update_player_by(&self, player_id: uint, updater: |Player| -> Result<Player, player::Error>) -> Result<Game, PlayError> {
+        self.get_player(player_id)
+            .map(updater)
+            .and_then(
+                |result| match result {
+                    Ok(new_player) => Ok(self.update_player(player_id, new_player)),
+                    Err(player::Inactive) => Err(InactivePlayer(player_id)),
+                    Err(player::BadGuess) => Err(BadGuess),
+                })
+    }
+
     fn valid_player_count(num_players: uint) -> bool {
         2 <= num_players && num_players <= 4
     }
@@ -171,16 +182,7 @@ impl Game {
     }
 
     fn eliminate(&self, player_id: uint) -> Result<Game, PlayError> {
-        match self.get_player(player_id) {
-            Err(e) => { Err(e) },
-            Ok(p) => {
-                match p.eliminate() {
-                    Ok(new_p) => Ok(self.update_player(player_id, new_p)),
-                    Err(player::Inactive) => Err(InactivePlayer(player_id)),
-                    Err(e) => panic!(e),
-                }
-            }
-        }
+        self.update_player_by(player_id, |p| p.eliminate())
     }
 
     fn swap_hands(&self, src: uint, tgt: uint) -> Result<Game, PlayError> {
@@ -202,13 +204,7 @@ impl Game {
     }
 
     fn protect(&self, p: uint) -> Result<Game, PlayError> {
-        self.get_player(p)
-            .map(|player| player.protect(true))
-            .and_then(|result| match result {
-                Ok(player) => Ok(self.update_player(p, player)),
-                Err(player::Inactive) => Err(InactivePlayer(p)),
-                Err(e) => panic!(e),
-            })
+        self.update_player_by(p, |player| player.protect(true))
     }
 
     fn discard_and_draw(&self, player_id: uint) -> Result<Game, PlayError> {
@@ -348,14 +344,7 @@ impl Game {
                     Err(e) => Err(e),
                 },
             EliminateOnGuess(p1, card) =>
-                self.get_player(p1).and_then(
-                    |p| {
-                        match p.eliminate_if_guessed(card) {
-                            Ok(new_p) => Ok(self.update_player(p1, new_p)),
-                            Err(player::Inactive) => Err(InactivePlayer(p1)),
-                            Err(player::BadGuess) => Err(BadGuess),
-                        }
-                    })
+                self.update_player_by(p1, |p| p.eliminate_if_guessed(card))
         }
     }
 
