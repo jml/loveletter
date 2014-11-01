@@ -177,7 +177,7 @@ impl Game {
 
     #[cfg(test)]
     fn hands(&self) -> Vec<Option<deck::Card>> {
-        self._players.iter().map(|&x| x._hand).collect()
+        self._players.iter().map(|&x| x.get_hand()).collect()
     }
 
     #[cfg(test)]
@@ -189,7 +189,7 @@ impl Game {
         // XXX: Maybe a good idea to return an error if the player is
         // protected by the priestess
         if player < self.num_players() {
-            match self._players[player]._hand {
+            match self._players[player].get_hand() {
                 Some(card) => Ok(card),
                 None => Err(InactivePlayer(player)),
             }
@@ -282,7 +282,7 @@ impl Game {
                     None => (self.clone(), None),
                     Some(new_player) => {
                         new_game._current_player = PlayerReady(new_player);
-                        let hand = new_game._players[new_player]._hand;
+                        let hand = new_game._players[new_player].get_hand();
                         // Protection from the priestess expires when your
                         // turn begins.
                         new_game._players[new_player] = new_game._players[new_player].protect(false);
