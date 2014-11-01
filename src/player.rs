@@ -37,6 +37,14 @@ impl Player {
         }
     }
 
+    pub fn eliminate_if_guessed(&self, guess: deck::Card) -> (Player, bool) {
+        if self._hand == Some(guess) {
+            self.eliminate()
+        } else {
+            (*self, true)
+        }
+    }
+
     pub fn swap_hands(&self, other: Player) -> ((Player, Player), bool) {
         if self._protected {
             ((*self, other), false)

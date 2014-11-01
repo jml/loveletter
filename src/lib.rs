@@ -350,15 +350,15 @@ impl Game {
                 if card == Soldier {
                     Err(BadGuess)
                 } else {
-                    match self.get_hand(p1) {
-                        Ok(c) => self.apply_action(
-                            if card == c {
-                                EliminatePlayer(p1)
+                    self.get_player(p1).map(
+                        |p| {
+                            let (new_p, changed) = p.eliminate_if_guessed(card);
+                            if changed {
+                                self.update_player(p1, new_p)
                             } else {
-                                NoChange
-                            }),
-                        Err(err) => Err(err),
-                    }
+                                self.clone()
+                            }
+                        })
                 },
         }
     }
