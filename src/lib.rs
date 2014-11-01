@@ -67,7 +67,7 @@ pub struct Game {
     // and (probably) to inspect public state. After the game, the only thing
     // that can happen is you look at who the survivors are, what their cards
     // were, who the winner is, and what the burn card was.
-    _current_player: GameState,
+    _current: GameState,
 }
 
 
@@ -88,7 +88,7 @@ impl Game {
     }
 
     fn current_player(&self) -> Option<uint> {
-        match self._current_player {
+        match self._current {
             NotStarted => None,
             PlayerReady(i) => Some(i)
         }
@@ -113,7 +113,7 @@ impl Game {
         let hands: Vec<Option<deck::Card>> = cards.slice(1, hand_end).iter().map(|&x| Some(x)).collect();
         Some(Game {
             _stack: cards.slice_from(hand_end).iter().map(|&x| x).collect(),
-            _current_player: NotStarted,
+            _current: NotStarted,
             _players: hands.iter().map(|&x| Player::new(x)).collect(),
         })
     }
@@ -136,7 +136,7 @@ impl Game {
             };
             Ok(Game {
                 _stack: stack,
-                _current_player: state,
+                _current: state,
                 _players: hands.iter().map(|&x| Player::new(x)).collect(),
             })
         } else {
@@ -271,7 +271,7 @@ impl Game {
                 match next_player {
                     None => (self.clone(), None),
                     Some(new_player) => {
-                        new_game._current_player = PlayerReady(new_player);
+                        new_game._current = PlayerReady(new_player);
                         let hand = new_game._players[new_player].get_hand();
                         // Protection from the priestess expires when your
                         // turn begins.
