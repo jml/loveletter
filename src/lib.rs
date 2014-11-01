@@ -154,32 +154,32 @@ impl Game {
         self._stack.as_slice()
     }
 
-    fn get_player(&self, player: uint) -> Result<Player, PlayError> {
-        if player < self.num_players() {
-            let p = self._players[player];
+    fn get_player(&self, player_id: uint) -> Result<Player, PlayError> {
+        if player_id < self.num_players() {
+            let p = self._players[player_id];
             if p.active() {
                 Ok(p)
             } else {
-                Err(InactivePlayer(player))
+                Err(InactivePlayer(player_id))
             }
         } else {
-            Err(InvalidPlayer(player))
+            Err(InvalidPlayer(player_id))
         }
     }
 
-    fn get_hand(&self, player: uint) -> Result<deck::Card, PlayError> {
-        self.get_player(player).map(|p| p.get_hand().unwrap())
+    fn get_hand(&self, player_id: uint) -> Result<deck::Card, PlayError> {
+        self.get_player(player_id).map(|p| p.get_hand().unwrap())
     }
 
-    fn eliminate(&self, player: uint) -> Result<Game, PlayError> {
-        match self.get_player(player) {
+    fn eliminate(&self, player_id: uint) -> Result<Game, PlayError> {
+        match self.get_player(player_id) {
             Err(e) => { Err(e) },
             Ok(p) => {
                 let (new_p, changed) = p.eliminate();
                 if !changed {
                     Ok(self.clone())
                 } else {
-                    Ok(self.update_player(player, new_p))
+                    Ok(self.update_player(player_id, new_p))
                 }
             }
         }
@@ -206,15 +206,15 @@ impl Game {
         self.get_player(p).map(|player| self.update_player(p, player.protect(true)))
     }
 
-    fn discard_and_draw(&self, player: uint) -> Result<Game, PlayError> {
+    fn discard_and_draw(&self, player_id: uint) -> Result<Game, PlayError> {
         // TODO: Check that they are not playing Princess. If they are,
         // eliminate them.
         let mut game = self.clone();
         let new_card = game._draw();
-        match self.get_hand(player) {
+        match self.get_player(player_id) {
             Err(e) => return Err(e),
             Ok(..) => {
-                game._players[player] = game._players[player].replace(new_card);
+                game._players[player_id] = game._players[player_id].replace(new_card);
             }
         }
         Ok(game)
