@@ -394,7 +394,7 @@ impl Game {
 fn minister_bust(a: deck::Card, b: deck::Card) -> bool {
     match util::other((a, b), deck::Minister) {
         Some(deck::Wizard) | Some(deck::General) | Some(deck::Princess) => true,
-        Some(deck::Minister) => fail!("Called with 2 ministers!"),
+        Some(deck::Minister) => panic!("Called with 2 ministers!"),
         _ => false,
     }
 }
@@ -581,7 +581,7 @@ mod test_game {
             let found = full_deck.iter().position(|c| c == card);
             match found {
                 Some(i) => full_deck.swap_remove(i),
-                None    => fail!("card in game that's not in deck: {}", card),
+                None    => panic!("card in game that's not in deck: {}", card),
             };
         }
         assert_eq!(1, full_deck.len());
@@ -643,7 +643,7 @@ mod test_game {
         let stack = [Soldier, Princess, Minister];
         let result = Game::from_manual(hands, stack, None);
         match result {
-            Ok(_)  => fail!("Had two Princesses, should not be ok."),
+            Ok(_)  => panic!("Had two Princesses, should not be ok."),
             Err(e) => assert_eq!(e, super::BadDeck)
         }
     }

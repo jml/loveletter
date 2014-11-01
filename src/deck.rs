@@ -19,7 +19,7 @@ pub enum Card {
 
 static CARDS_IN_DECK: uint = 16;
 
-static DECK: [Card, ..CARDS_IN_DECK] = [
+static DECK: [Card, ..16] = [
     Soldier,
     Soldier,
     Soldier,
@@ -133,7 +133,7 @@ mod test {
     fn test_deck_fixed_good() {
         match Deck::from_slice(DECK.as_slice()) {
             Ok(Deck(cards)) => assert_eq!(cards.as_slice(), DECK.as_slice()),
-            Err(e) => fail!("Unexpected error: {}", e),
+            Err(e) => panic!("Unexpected error: {}", e),
         }
     }
 
@@ -158,7 +158,7 @@ mod test {
             Soldier,
             ];
         match Deck::from_slice(cards) {
-            Ok(Deck(cards)) => fail!("Should not have been OK: {}", cards.as_slice()),
+            Ok(Deck(cards)) => panic!("Should not have been OK: {}", cards.as_slice()),
             Err(error) => assert_eq!(error, super::WrongCards),
         }
     }
@@ -167,7 +167,7 @@ mod test {
     fn test_deck_variable_good() {
         match Deck::from_slice(DECK.as_slice()) {
             Ok(Deck(cards)) => assert_eq!(cards.as_slice(), DECK.as_slice()),
-            Err(e) => fail!("Unexpected error: {}", e),
+            Err(e) => panic!("Unexpected error: {}", e),
         }
     }
 
@@ -175,7 +175,7 @@ mod test {
     fn test_deck_variable_too_few() {
         let cards = [Soldier];
         match Deck::from_slice(cards.as_slice()) {
-            Ok(Deck(cards)) => fail!("Should not have been OK: {}", cards.as_slice()),
+            Ok(Deck(cards)) => panic!("Should not have been OK: {}", cards.as_slice()),
             Err(error) => assert_eq!(error, super::WrongNumber(cards.len())),
         }
     }
@@ -203,7 +203,7 @@ mod test {
             Princess,
             ];
         match Deck::from_slice(cards.as_slice()) {
-            Ok(Deck(cards)) => fail!("Should not have been OK: {}", cards.as_slice()),
+            Ok(Deck(cards)) => panic!("Should not have been OK: {}", cards.as_slice()),
             Err(error) => assert_eq!(error, super::WrongNumber(cards.len())),
         }
     }
