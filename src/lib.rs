@@ -166,10 +166,7 @@ impl Game {
         let mut new_game = self.clone();
         match self.get_hand(player) {
             Err(e) => { return Err(e); },
-            Ok(..) => {
-                let player = new_game._hands.get_mut(player);
-                *player = None;
-            }
+            Ok(..) => { new_game._hands[player] = None; }
         };
         Ok(new_game)
     }
@@ -187,10 +184,7 @@ impl Game {
 
     fn protect(&self, p: uint) -> Result<Game, PlayError> {
         let mut new_game = self.clone();
-        {
-            let protected = new_game._protected.get_mut(p);
-            *protected = true;
-        }
+        new_game._protected[p] = true;
         Ok(new_game)
     }
 
@@ -250,10 +244,7 @@ impl Game {
                         let hand = new_game._hands[new_player];
                         // Protection from the priestess expires when your
                         // turn begins.
-                        {
-                            let protected = new_game._protected.get_mut(new_player);
-                            *protected = false;
-                        }
+                        new_game._protected[new_player] = false;
                         (new_game, Some(Turn {
                             player: new_player,
                             draw: c,
@@ -375,8 +366,7 @@ impl Game {
 
             // Set the player's hand to the card they didn't play.
             if card == turn.hand {
-                let card = new_game._hands.get_mut(turn.player);
-                *card = Some(turn.draw);
+                new_game._hands[turn.player] = Some(turn.draw);
             }
             action
         };
