@@ -126,7 +126,7 @@ fn test_swap_cards() {
         [Soldier, Minister, Princess, Soldier, Wizard], None).unwrap();
     let new_game = g.swap_hands(0, 1).unwrap();
     assert_eq!(
-        [Some(Clown), Some(General), None, Some(Priestess)].as_slice(),
+        vec![Some(Clown), Some(General), None, Some(Priestess)],
         new_game.hands());
 }
 

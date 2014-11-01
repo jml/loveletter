@@ -76,8 +76,7 @@ fn test_from_deck() {
         cards.slice(1, num_players + 1)
             .iter()
             .map(|&x| Some(x))
-            .collect::<Vec<Option<Card>>>()
-            .as_slice(),
+            .collect::<Vec<Option<Card>>>(),
         g.hands());
     assert_eq!(cards.slice_from(num_players + 1), g.deck());
     assert_eq!(num_players, g.num_players());
@@ -85,10 +84,10 @@ fn test_from_deck() {
 
 #[test]
 fn test_manual_game() {
-    let hands = [Some(Soldier), Some(Clown), Some(Soldier)];
+    let hands = vec![Some(Soldier), Some(Clown), Some(Soldier)];
     let stack = [Soldier, Soldier, Minister];
-    let game = Game::from_manual(hands, stack, None).unwrap();
-    assert_eq!(hands.as_slice(), game.hands());
+    let game = Game::from_manual(hands.as_slice(), stack, None).unwrap();
+    assert_eq!(hands, game.hands());
     assert_eq!(stack.as_slice(), game.deck().as_slice());
     assert_eq!(hands.len(), game.num_players());
 }

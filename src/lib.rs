@@ -46,13 +46,52 @@ enum GameState {
 
 
 #[deriving(Show, PartialEq, Eq, Clone)]
+struct Player {
+    _hand: Option<deck::Card>,
+    _protected: bool,
+}
+
+
+impl Player {
+    fn new(hand: Option<deck::Card>) -> Player {
+        Player { _hand: hand, _protected: false }
+    }
+
+    fn protected(&self) -> bool {
+        self._protected
+    }
+
+    fn protect(&self, protected: bool) -> Player {
+        Player { _hand: self._hand, _protected: protected }
+    }
+
+    fn eliminate(&self) -> Player {
+        // Maybe check if protected?
+        Player { _hand: None, _protected: self._protected }
+    }
+
+    fn active(&self) -> bool {
+        self._hand.is_some()
+    }
+
+    fn swap_hands(&self, other: Player) -> (Player, Player) {
+        (self.replace(other._hand), other.replace(self._hand))
+    }
+
+    fn replace(&self, card: Option<deck::Card>) -> Player {
+        Player { _hand: card, _protected: self._protected }
+    }
+
+    fn get_hand(&self) -> Option<deck::Card> {
+        self._hand
+    }
+}
+
+
+#[deriving(Show, PartialEq, Eq, Clone)]
 pub struct Game {
-    _hands: Vec<Option<deck::Card>>,
-    // Whether a player is currently protected by the Priestess.
-    // XXX: Create a Player abstraction and merge this into that.
-    _protected: Vec<bool>,
     _stack: Vec<deck::Card>,
-    _num_players: uint,
+    _players: Vec<Player>,
     // Not sure I like this. The current Game class only accepts a callback,
     // so a player is dealt a card and must respond in the same method. It is
     // always some player's turn unless it's the beginning or end. A different
@@ -82,7 +121,7 @@ impl Game {
     }
 
     pub fn num_players(&self) -> uint {
-        self._num_players
+        self._players.len()
     }
 
     fn current_player(&self) -> Option<uint> {
@@ -102,12 +141,11 @@ impl Game {
         }
         let cards = deck.as_slice();
         let hand_end = num_players + 1;
+        let hands: Vec<Option<deck::Card>> = cards.slice(1, hand_end).iter().map(|&x| Some(x)).collect();
         Some(Game {
-            _hands: cards.slice(1, hand_end).iter().map(|&x| Some(x)).collect(),
             _stack: cards.slice_from(hand_end).iter().map(|&x| x).collect(),
-            _num_players: num_players,
             _current_player: NotStarted,
-            _protected: Vec::from_elem(num_players, false),
+            _players: hands.iter().map(|&x| Player::new(x)).collect(),
         })
     }
 
@@ -128,11 +166,9 @@ impl Game {
                 Some(i) => PlayerReady(i),
             };
             Ok(Game {
-                _hands: hands.iter().map(|&x| x).collect(),
                 _stack: stack,
-                _num_players: hands.len(),
                 _current_player: state,
-                _protected: Vec::from_elem(num_players, false),
+                _players: hands.iter().map(|&x| Player::new(x)).collect(),
             })
         } else {
             Err(BadDeck)
@@ -140,8 +176,8 @@ impl Game {
     }
 
     #[cfg(test)]
-    fn hands(&self) -> &[Option<deck::Card>] {
-        self._hands.as_slice()
+    fn hands(&self) -> Vec<Option<deck::Card>> {
+        self._players.iter().map(|&x| x._hand).collect()
     }
 
     #[cfg(test)]
@@ -153,7 +189,7 @@ impl Game {
         // XXX: Maybe a good idea to return an error if the player is
         // protected by the priestess
         if player < self.num_players() {
-            match self._hands[player] {
+            match self._players[player]._hand {
                 Some(card) => Ok(card),
                 None => Err(InactivePlayer(player)),
             }
@@ -166,7 +202,9 @@ impl Game {
         let mut new_game = self.clone();
         match self.get_hand(player) {
             Err(e) => { return Err(e); },
-            Ok(..) => { new_game._hands[player] = None; }
+            Ok(..) => {
+                new_game._players[player] = new_game._players[player].eliminate();
+            }
         };
         Ok(new_game)
     }
@@ -176,7 +214,9 @@ impl Game {
         match self.get_hand(p2).and(self.get_hand(p1)) {
             Err(e) => { return Err(e); },
             Ok(..) => {
-                new_game._hands.as_mut_slice().swap(p1, p2);
+                let (new_p1, new_p2) = self._players[p1].swap_hands(self._players[p2]);
+                new_game._players[p1] = new_p1;
+                new_game._players[p2] = new_p2;
             }
         };
         Ok(new_game)
@@ -184,7 +224,8 @@ impl Game {
 
     fn protect(&self, p: uint) -> Result<Game, PlayError> {
         let mut new_game = self.clone();
-        new_game._protected[p] = true;
+        let new_player = self._players[p].protect(true);
+        new_game._players[p] = new_player;
         Ok(new_game)
     }
 
@@ -196,7 +237,7 @@ impl Game {
         match self.get_hand(player) {
             Err(e) => return Err(e),
             Ok(..) => {
-                game._hands.as_mut_slice()[player] = new_card;
+                game._players[player] = game._players[player].replace(new_card);
             }
         }
         Ok(game)
@@ -208,7 +249,7 @@ impl Game {
     }
 
     fn num_players_remaining(&self) -> uint {
-        self._hands.iter().filter(|&h| h.is_some()).count()
+        self._players.iter().filter(|p| p.active()).count()
     }
 
     fn _draw(&mut self) -> Option<deck::Card> {
@@ -226,7 +267,7 @@ impl Game {
             let num_players = self.num_players();
             range(1, num_players)
                 .map(|i| (current_num + i) % num_players)
-                .find(|i| self._hands[*i].is_some())
+                .find(|i| self._players[*i].active())
         }
     }
 
@@ -241,10 +282,10 @@ impl Game {
                     None => (self.clone(), None),
                     Some(new_player) => {
                         new_game._current_player = PlayerReady(new_player);
-                        let hand = new_game._hands[new_player];
+                        let hand = new_game._players[new_player]._hand;
                         // Protection from the priestess expires when your
                         // turn begins.
-                        new_game._protected[new_player] = false;
+                        new_game._players[new_player] = new_game._players[new_player].protect(false);
                         (new_game, Some(Turn {
                             player: new_player,
                             draw: c,
@@ -262,11 +303,11 @@ impl Game {
         // next_player essentially functions as a 'is game over' predicate.
         match self.next_player() {
             (_, Some(..)) => vec![],
-            (_, None) => self._hands
+            (_, None) => self._players
                 .iter()
                 .enumerate()
                 .filter_map(
-                    |(i, &x)| match x {
+                    |(i, &p)| match p.get_hand() {
                         Some(y) => Some((i, y)),
                         None => None,
                     })
@@ -300,13 +341,13 @@ impl Game {
     fn apply_action(&self, action: Action) -> Result<Game, PlayError> {
         match action {
             EliminateWeaker(i, j) | SwapHands(i, j, _) =>
-                if self._protected[i] || self._protected[j] {
+                if self._players[i].protected() || self._players[j].protected() {
                     return Ok(self.clone());
                 } else {
                     ()
                 },
             EliminateOnGuess(i, _) | ForceDiscard(i) =>
-                if self._protected[i] {
+                if self._players[i].protected() {
                     return Ok(self.clone());
                 } else {
                     ()
@@ -366,7 +407,7 @@ impl Game {
 
             // Set the player's hand to the card they didn't play.
             if card == turn.hand {
-                new_game._hands[turn.player] = Some(turn.draw);
+                new_game._players[turn.player] = new_game._players[turn.player].replace(Some(turn.draw));
             }
             action
         };
