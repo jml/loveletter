@@ -248,6 +248,12 @@ impl Game {
                     Some(new_player) => {
                         new_game._current_player = PlayerReady(new_player);
                         let hand = new_game._hands[new_player];
+                        // Protection from the priestess expires when your
+                        // turn begins.
+                        {
+                            let protected = new_game._protected.get_mut(new_player);
+                            *protected = false;
+                        }
                         (new_game, Some(Turn {
                             player: new_player,
                             draw: c,
@@ -302,7 +308,13 @@ impl Game {
 
     fn apply_action(&self, action: Action) -> Result<Game, PlayError> {
         match action {
-            EliminateOnGuess(i, _) =>
+            EliminateWeaker(i, j) | SwapHands(i, j, _) =>
+                if self._protected[i] || self._protected[j] {
+                    return Ok(self.clone());
+                } else {
+                    ()
+                },
+            EliminateOnGuess(i, _) | ForceDiscard(i) =>
                 if self._protected[i] {
                     return Ok(self.clone());
                 } else {
@@ -351,12 +363,15 @@ impl Game {
             Some(turn) => turn,
         };
 
+        println!("Game state: {}", new_game);
+        println!("Turn: {}", turn);
+
         let action = if minister_bust(turn.draw, turn.hand) {
             EliminatePlayer(turn.player)
         } else {
-            // TODO: It is at this point which,
-            // - priestess expires
             let (card, play) = f(&new_game, &turn);
+
+            println!("Chosen play: {}, {}", card, play);
 
             let action = match judge(&new_game, turn.player, turn.draw, (card, play)) {
                 Ok(a) => a,
@@ -370,6 +385,8 @@ impl Game {
             }
             action
         };
+
+        println!("Resulting action: {}", action);
 
         // XXX: Probably should return the action so that an external client can
         // infer what happened?

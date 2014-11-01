@@ -38,7 +38,7 @@ fn test_minister_eliminates_player_2() {
 
 
 #[test]
-fn test_priestess_immune() {
+fn test_priestess_immune_to_soldier_guess() {
     let g = loveletter::Game::from_manual(
         [Some(loveletter::Priestess), Some(loveletter::Soldier)],
         [loveletter::Clown, loveletter::Wizard], None).unwrap();
@@ -50,6 +50,72 @@ fn test_priestess_immune() {
     assert_eq!(vec![(0, loveletter::Wizard)], new_g.winners());
 }
 
-// TODO: Priestess immunity expires.
-// TODO: Priestess immunity for other actions
+#[test]
+fn test_priestess_immune_to_clown() {
+    let g = loveletter::Game::from_manual(
+        [Some(loveletter::Priestess), Some(loveletter::Clown)],
+        [loveletter::Clown, loveletter::Wizard], None).unwrap();
+    let new_g = next_turn(&g, loveletter::Priestess, loveletter::NoEffect);
+    let new_g = next_turn(&new_g, loveletter::Clown, loveletter::Attack(0));
+    // If player 0 is not protected by the priestess, then at this point,
+    // player 1 will have won. If 0 *is* protected, then they win, because
+    // they have the Wizard, which is higher than the Clown.
+    assert_eq!(vec![(0, loveletter::Wizard)], new_g.winners());
+}
+
+#[test]
+fn test_priestess_immune_to_knight() {
+    let g = loveletter::Game::from_manual(
+        [Some(loveletter::Priestess), Some(loveletter::Knight)],
+        [loveletter::Soldier, loveletter::Wizard, loveletter::Minister, loveletter::Wizard], None).unwrap();
+    let new_g = next_turn(&g, loveletter::Priestess, loveletter::NoEffect);
+    let new_g = next_turn(&new_g, loveletter::Knight, loveletter::Attack(0));
+    let new_g = next_turn(&new_g, loveletter::Wizard, loveletter::Attack(1));
+    // If player 0 is not protected by the priestess, then at this point,
+    // player 1 will have won. If 0 *is* protected, then they win, because
+    // they have the Wizard, which is higher than the Clown.
+    assert_eq!(vec![(0, loveletter::Wizard)], new_g.winners());
+}
+
+#[test]
+fn test_priestess_immune_to_wizard() {
+    let g = loveletter::Game::from_manual(
+        [Some(loveletter::Priestess), Some(loveletter::Wizard)],
+        [loveletter::Clown, loveletter::Wizard], None).unwrap();
+    let new_g = next_turn(&g, loveletter::Priestess, loveletter::NoEffect);
+    let new_g = next_turn(&new_g, loveletter::Wizard, loveletter::Attack(0));
+    // If player 0 is not protected by the priestess, then at this point,
+    // player 1 will have won. If 0 *is* protected, then they win, because
+    // they have the Wizard, which is higher than the Clown.
+    assert_eq!(vec![(0, loveletter::Wizard)], new_g.winners());
+}
+
+#[test]
+fn test_priestess_immune_to_general() {
+    let g = loveletter::Game::from_manual(
+        [Some(loveletter::Priestess), Some(loveletter::General)],
+        [loveletter::Soldier, loveletter::Princess], None).unwrap();
+    let new_g = next_turn(&g, loveletter::Priestess, loveletter::NoEffect);
+    let new_g = next_turn(&new_g, loveletter::General, loveletter::Attack(0));
+    // If player 0 is not protected by the priestess, then at this point,
+    // player 1 will have won. If 0 *is* protected, then they win, because
+    // they have the Wizard, which is higher than the Clown.
+    assert_eq!(vec![(0, loveletter::Princess)], new_g.winners());
+}
+
+#[test]
+fn test_priestess_immunity_expires() {
+    let g = loveletter::Game::from_manual(
+        [Some(loveletter::Priestess), Some(loveletter::Soldier)],
+        [loveletter::Soldier, loveletter::Wizard, loveletter::Clown, loveletter::Clown], None).unwrap();
+    let new_g = next_turn(&g, loveletter::Priestess, loveletter::NoEffect);
+    let new_g = next_turn(&new_g, loveletter::Soldier, loveletter::Guess(0, loveletter::Wizard));
+    let new_g = next_turn(&new_g, loveletter::Clown, loveletter::Attack(1));
+    let new_g = next_turn(&new_g, loveletter::Soldier, loveletter::Guess(0, loveletter::Wizard));
+    // If player 0 is not protected by the priestess, then at this point,
+    // player 1 will have won. If 0 *is* protected, then they win, because
+    // they have the Wizard, which is higher than the Clown.
+    assert_eq!(vec![(1, loveletter::Clown)], new_g.winners());
+}
+
 // TODO: Error checking for bad guess.
