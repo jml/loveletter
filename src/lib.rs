@@ -94,6 +94,12 @@ impl Game {
         }
     }
 
+    fn update_player(&self, player_id: uint, player: Player) -> Game {
+        let mut new_game = self.clone();
+        new_game._players[player_id] = player;
+        new_game
+    }
+
     fn valid_player_count(num_players: uint) -> bool {
         2 <= num_players && num_players <= 4
     }
@@ -173,9 +179,7 @@ impl Game {
                 if !changed {
                     Ok(self.clone())
                 } else {
-                    let mut new_game = self.clone();
-                    new_game._players[player] = new_p;
-                    Ok(new_game)
+                    Ok(self.update_player(player, new_p))
                 }
             }
         }
@@ -199,10 +203,7 @@ impl Game {
     }
 
     fn protect(&self, p: uint) -> Result<Game, PlayError> {
-        let mut new_game = self.clone();
-        let new_player = self._players[p].protect(true);
-        new_game._players[p] = new_player;
-        Ok(new_game)
+        self.get_player(p).map(|player| self.update_player(p, player.protect(true)))
     }
 
     fn discard_and_draw(&self, player: uint) -> Result<Game, PlayError> {
