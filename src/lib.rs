@@ -363,15 +363,10 @@ impl Game {
             Some(turn) => turn,
         };
 
-        println!("Game state: {}", new_game);
-        println!("Turn: {}", turn);
-
         let action = if minister_bust(turn.draw, turn.hand) {
             EliminatePlayer(turn.player)
         } else {
             let (card, play) = f(&new_game, &turn);
-
-            println!("Chosen play: {}, {}", card, play);
 
             let action = match judge(&new_game, turn.player, turn.draw, (card, play)) {
                 Ok(a) => a,
@@ -385,8 +380,6 @@ impl Game {
             }
             action
         };
-
-        println!("Resulting action: {}", action);
 
         // XXX: Probably should return the action so that an external client can
         // infer what happened?
