@@ -325,13 +325,7 @@ impl Game {
 
     fn apply_action(&self, action: Action) -> Result<Game, PlayError> {
         match action {
-            EliminateWeaker(i, j) | SwapHands(i, j, _) =>
-                if self._players[i].protected() || self._players[j].protected() {
-                    return Ok(self.clone());
-                } else {
-                    ()
-                },
-            ForceDiscard(i) =>
+            EliminateWeaker(_, i) | SwapHands(_, i, _) | ForceDiscard(i) =>
                 if self._players[i].protected() {
                     return Ok(self.clone());
                 } else {
