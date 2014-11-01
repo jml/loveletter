@@ -28,13 +28,21 @@ impl Player {
         Player { _hand: self._hand, _protected: protected }
     }
 
-    pub fn eliminate(&self) -> Player {
+    pub fn eliminate(&self) -> (Player, bool) {
         // Maybe check if protected?
-        Player { _hand: None, _protected: self._protected }
+        if self._protected {
+            (*self, false)
+        } else {
+            (Player { _hand: None, _protected: false }, true)
+        }
     }
 
-    pub fn swap_hands(&self, other: Player) -> (Player, Player) {
-        (self.replace(other._hand), other.replace(self._hand))
+    pub fn swap_hands(&self, other: Player) -> ((Player, Player), bool) {
+        if self._protected {
+            ((*self, other), false)
+        } else {
+            ((self.replace(other._hand), other.replace(self._hand)), true)
+        }
     }
 
     pub fn replace(&self, card: Option<deck::Card>) -> Player {

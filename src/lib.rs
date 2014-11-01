@@ -148,41 +148,54 @@ impl Game {
         self._stack.as_slice()
     }
 
-    fn get_hand(&self, player: uint) -> Result<deck::Card, PlayError> {
-        // XXX: Maybe a good idea to return an error if the player is
-        // protected by the priestess
+    fn get_player(&self, player: uint) -> Result<Player, PlayError> {
         if player < self.num_players() {
-            match self._players[player].get_hand() {
-                Some(card) => Ok(card),
-                None => Err(InactivePlayer(player)),
+            let p = self._players[player];
+            if p.active() {
+                Ok(p)
+            } else {
+                Err(InactivePlayer(player))
             }
         } else {
             Err(InvalidPlayer(player))
         }
     }
 
+    fn get_hand(&self, player: uint) -> Result<deck::Card, PlayError> {
+        self.get_player(player).map(|p| p.get_hand().unwrap())
+    }
+
     fn eliminate(&self, player: uint) -> Result<Game, PlayError> {
-        let mut new_game = self.clone();
-        match self.get_hand(player) {
-            Err(e) => { return Err(e); },
-            Ok(..) => {
-                new_game._players[player] = new_game._players[player].eliminate();
+        match self.get_player(player) {
+            Err(e) => { Err(e) },
+            Ok(p) => {
+                let (new_p, changed) = p.eliminate();
+                if !changed {
+                    Ok(self.clone())
+                } else {
+                    let mut new_game = self.clone();
+                    new_game._players[player] = new_p;
+                    Ok(new_game)
+                }
             }
-        };
-        Ok(new_game)
+        }
     }
 
     fn swap_hands(&self, p1: uint, p2: uint) -> Result<Game, PlayError> {
-        let mut new_game = self.clone();
-        match self.get_hand(p2).and(self.get_hand(p1)) {
-            Err(e) => { return Err(e); },
+        match self.get_player(p2).and(self.get_player(p1)) {
+            Err(e) => { Err(e) },
             Ok(..) => {
-                let (new_p1, new_p2) = self._players[p1].swap_hands(self._players[p2]);
-                new_game._players[p1] = new_p1;
-                new_game._players[p2] = new_p2;
+                let ((new_p1, new_p2), changed) = self._players[p1].swap_hands(self._players[p2]);
+                if !changed {
+                    Ok(self.clone())
+                } else {
+                    let mut new_game = self.clone();
+                    new_game._players[p1] = new_p1;
+                    new_game._players[p2] = new_p2;
+                    Ok(new_game)
+                }
             }
-        };
-        Ok(new_game)
+        }
     }
 
     fn protect(&self, p: uint) -> Result<Game, PlayError> {
