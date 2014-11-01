@@ -206,6 +206,19 @@ impl Game {
         Ok(game)
     }
 
+    fn eliminate_weaker(&self, p1: uint, p2: uint) -> Result<Action, PlayError> {
+        match (self.get_hand(p1), self.get_hand(p2)) {
+            (Ok(p1_card), Ok(p2_card)) =>
+                match p1_card.cmp(&p2_card) {
+                    Less    => Ok(EliminatePlayer(p1)),
+                    Greater => Ok(EliminatePlayer(p2)),
+                    Equal   => Ok(NoChange),
+                },
+            (Err(e), _) => Err(e),
+            (_, Err(e)) => Err(e),
+        }
+    }
+
     #[cfg(test)]
     fn num_cards_remaining(&self) -> uint {
         self._stack.len()
@@ -286,19 +299,6 @@ impl Game {
             ws.push((i, c))
         }
         ws
-    }
-
-    fn eliminate_weaker(&self, p1: uint, p2: uint) -> Result<Action, PlayError> {
-        match (self.get_hand(p1), self.get_hand(p2)) {
-            (Ok(p1_card), Ok(p2_card)) =>
-                match p1_card.cmp(&p2_card) {
-                    Less    => Ok(EliminatePlayer(p1)),
-                    Greater => Ok(EliminatePlayer(p2)),
-                    Equal   => Ok(NoChange),
-                },
-            (Err(e), _) => Err(e),
-            (_, Err(e)) => Err(e),
-        }
     }
 
     fn apply_action(&self, action: Action) -> Result<Game, PlayError> {
