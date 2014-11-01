@@ -67,7 +67,9 @@ impl Player {
     }
 
     pub fn swap_hands(&self, other: Player) -> Result<(Player, Player), Error> {
-        if self._protected || other._protected {
+        if !self.active() {
+            Err(Inactive)
+        } else if self._protected {
             Ok((*self, other))
         } else {
             Ok((self.replace(other._hand), other.replace(self._hand)))

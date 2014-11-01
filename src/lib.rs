@@ -183,18 +183,18 @@ impl Game {
         }
     }
 
-    fn swap_hands(&self, p1: uint, p2: uint) -> Result<Game, PlayError> {
-        match self.get_player(p2).and(self.get_player(p1)) {
+    fn swap_hands(&self, src: uint, tgt: uint) -> Result<Game, PlayError> {
+        match self.get_player(src).and(self.get_player(tgt)) {
             Err(e) => { Err(e) },
             Ok(..) => {
-                match self._players[p1].swap_hands(self._players[p2]) {
-                    Ok((new_p1, new_p2)) => {
+                match self._players[tgt].swap_hands(self._players[src]) {
+                    Ok((new_tgt, new_src)) => {
                         let mut new_game = self.clone();
-                        new_game._players[p1] = new_p1;
-                        new_game._players[p2] = new_p2;
+                        new_game._players[src] = new_src;
+                        new_game._players[tgt] = new_tgt;
                         Ok(new_game)
                     },
-                    Err(player::Inactive) => Err(InactivePlayer(p1)),
+                    Err(player::Inactive) => Err(InactivePlayer(tgt)),
                     Err(e) => panic!(e),
                 }
             }
@@ -325,7 +325,7 @@ impl Game {
 
     fn apply_action(&self, action: Action) -> Result<Game, PlayError> {
         match action {
-            EliminateWeaker(_, i) | SwapHands(_, i, _) | ForceDiscard(i) =>
+            EliminateWeaker(_, i) | ForceDiscard(i) =>
                 if self._players[i].protected() {
                     return Ok(self.clone());
                 } else {
