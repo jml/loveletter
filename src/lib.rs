@@ -50,7 +50,6 @@ enum GameState {
 
 
 
-
 #[deriving(Show, PartialEq, Eq, Clone)]
 pub struct Game {
     _stack: Vec<deck::Card>,
@@ -175,11 +174,10 @@ impl Game {
         match self.get_player(player_id) {
             Err(e) => { Err(e) },
             Ok(p) => {
-                let (new_p, changed) = p.eliminate();
-                if !changed {
-                    Ok(self.clone())
-                } else {
-                    Ok(self.update_player(player_id, new_p))
+                match p.eliminate() {
+                    Ok(new_p) => Ok(self.update_player(player_id, new_p)),
+                    Err(player::Inactive) => Err(InactivePlayer(player_id)),
+                    Err(e) => panic!(e),
                 }
             }
         }
@@ -189,21 +187,28 @@ impl Game {
         match self.get_player(p2).and(self.get_player(p1)) {
             Err(e) => { Err(e) },
             Ok(..) => {
-                let ((new_p1, new_p2), changed) = self._players[p1].swap_hands(self._players[p2]);
-                if !changed {
-                    Ok(self.clone())
-                } else {
-                    let mut new_game = self.clone();
-                    new_game._players[p1] = new_p1;
-                    new_game._players[p2] = new_p2;
-                    Ok(new_game)
+                match self._players[p1].swap_hands(self._players[p2]) {
+                    Ok((new_p1, new_p2)) => {
+                        let mut new_game = self.clone();
+                        new_game._players[p1] = new_p1;
+                        new_game._players[p2] = new_p2;
+                        Ok(new_game)
+                    },
+                    Err(player::Inactive) => Err(InactivePlayer(p1)),
+                    Err(e) => panic!(e),
                 }
             }
         }
     }
 
     fn protect(&self, p: uint) -> Result<Game, PlayError> {
-        self.get_player(p).map(|player| self.update_player(p, player.protect(true)))
+        self.get_player(p)
+            .map(|player| player.protect(true))
+            .and_then(|result| match result {
+                Ok(player) => Ok(self.update_player(p, player)),
+                Err(player::Inactive) => Err(InactivePlayer(p)),
+                Err(e) => panic!(e),
+            })
     }
 
     fn discard_and_draw(&self, player_id: uint) -> Result<Game, PlayError> {
@@ -270,16 +275,19 @@ impl Game {
                 let next_player = new_game._next_player();
                 match next_player {
                     None => (self.clone(), None),
-                    Some(new_player) => {
-                        new_game._current = PlayerReady(new_player);
-                        let hand = new_game._players[new_player].get_hand();
+                    Some(new_player_id) => {
+                        new_game._current = PlayerReady(new_player_id);
                         // Protection from the priestess expires when your
                         // turn begins.
-                        new_game._players[new_player] = new_game._players[new_player].protect(false);
+                        let new_player = new_game._players[new_player_id]
+                            .protect(false)
+                            .ok().expect("Activated disabled player");
+                        let hand = new_player.get_hand().expect("Activated disabled player");
+                        new_game._players[new_player_id] = new_player;
                         (new_game, Some(Turn {
-                            player: new_player,
+                            player: new_player_id,
                             draw: c,
-                            hand: hand.expect("Activated disabled player"),
+                            hand: hand,
                         }))
                     }
                 }
@@ -323,7 +331,7 @@ impl Game {
                 } else {
                     ()
                 },
-            EliminateOnGuess(i, _) | ForceDiscard(i) =>
+            ForceDiscard(i) =>
                 if self._players[i].protected() {
                     return Ok(self.clone());
                 } else {
@@ -346,20 +354,14 @@ impl Game {
                     Err(e) => Err(e),
                 },
             EliminateOnGuess(p1, card) =>
-                // XXX: Factor some of this out into eliminate_on_guess method.
-                if card == Soldier {
-                    Err(BadGuess)
-                } else {
-                    self.get_player(p1).map(
-                        |p| {
-                            let (new_p, changed) = p.eliminate_if_guessed(card);
-                            if changed {
-                                self.update_player(p1, new_p)
-                            } else {
-                                self.clone()
-                            }
-                        })
-                },
+                self.get_player(p1).and_then(
+                    |p| {
+                        match p.eliminate_if_guessed(card) {
+                            Ok(new_p) => Ok(self.update_player(p1, new_p)),
+                            Err(player::Inactive) => Err(InactivePlayer(p1)),
+                            Err(player::BadGuess) => Err(BadGuess),
+                        }
+                    })
         }
     }
 

@@ -7,6 +7,13 @@ pub struct Player {
 }
 
 
+#[deriving(Show, PartialEq, Eq)]
+pub enum Error {
+    Inactive,
+    BadGuess,
+}
+
+
 impl Player {
     pub fn new(hand: Option<deck::Card>) -> Player {
         Player { _hand: hand, _protected: false }
@@ -24,32 +31,46 @@ impl Player {
         self._protected
     }
 
-    pub fn protect(&self, protected: bool) -> Player {
-        Player { _hand: self._hand, _protected: protected }
+    pub fn protect(&self, protected: bool) -> Result<Player, Error> {
+        if self.active() {
+            Ok(Player { _hand: self._hand, _protected: protected })
+        } else {
+            Err(Inactive)
+        }
     }
 
-    pub fn eliminate(&self) -> (Player, bool) {
+    pub fn eliminate(&self) -> Result<Player, Error> {
         // Maybe check if protected?
-        if self._protected {
-            (*self, false)
-        } else {
-            (Player { _hand: None, _protected: false }, true)
+        if !self.active() {
+            Err(Inactive)
+        } else if self._protected {
+            Ok(*self)
+        }
+        else {
+            Ok(Player { _hand: None, _protected: false })
         }
     }
 
-    pub fn eliminate_if_guessed(&self, guess: deck::Card) -> (Player, bool) {
-        if self._hand == Some(guess) {
-            self.eliminate()
-        } else {
-            (*self, true)
+    pub fn eliminate_if_guessed(&self, guess: deck::Card) -> Result<Player, Error> {
+        if guess == deck::Soldier {
+            return Err(BadGuess)
+        }
+        match self._hand {
+            None => Err(Inactive),
+            Some(card) =>
+                if card == guess {
+                    self.eliminate()
+                } else {
+                    Ok(*self)
+                },
         }
     }
 
-    pub fn swap_hands(&self, other: Player) -> ((Player, Player), bool) {
-        if self._protected {
-            ((*self, other), false)
+    pub fn swap_hands(&self, other: Player) -> Result<(Player, Player), Error> {
+        if self._protected || other._protected {
+            Ok((*self, other))
         } else {
-            ((self.replace(other._hand), other.replace(self._hand)), true)
+            Ok((self.replace(other._hand), other.replace(self._hand)))
         }
     }
 
