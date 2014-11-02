@@ -82,39 +82,6 @@ impl Game {
         Game::from_deck(num_players, deck::Deck::new())
     }
 
-    pub fn num_players(&self) -> uint {
-        self._players.len()
-    }
-
-    fn current_player(&self) -> Option<uint> {
-        match self._current {
-            NotStarted => None,
-            PlayerReady(i, _) => Some(i)
-        }
-    }
-
-    fn update_player(&self, player_id: uint, player: Player) -> Game {
-        let mut new_game = self.clone();
-        new_game._players[player_id] = player;
-        new_game
-    }
-
-    fn update_player_by(&self, player_id: uint, updater: |Player| -> Result<Player, player::Error>) -> Result<Game, PlayError> {
-        self.get_player(player_id)
-            .map(updater)
-            .and_then(
-                |result| match result {
-                    Ok(new_player) => Ok(self.update_player(player_id, new_player)),
-                    Err(player::Inactive) => Err(InactivePlayer(player_id)),
-                    Err(player::BadGuess) => Err(BadGuess),
-                    Err(player::NoSuchCard(c, d)) => Err(CardNotFound(c, d)),
-                })
-    }
-
-    fn valid_player_count(num_players: uint) -> bool {
-        2 <= num_players && num_players <= 4
-    }
-
     pub fn from_deck(num_players: uint, deck: deck::Deck) -> Option<Game> {
         if !Game::valid_player_count(num_players) {
             return None
@@ -160,14 +127,56 @@ impl Game {
         }
     }
 
-    #[cfg(test)]
-    fn hands(&self) -> Vec<Option<deck::Card>> {
-        self._players.iter().map(|&x| x.get_hand()).collect()
+    fn valid_player_count(num_players: uint) -> bool {
+        2 <= num_players && num_players <= 4
+    }
+
+    pub fn num_players(&self) -> uint {
+        self._players.len()
     }
 
     #[cfg(test)]
-    fn deck(&self) -> &[deck::Card] {
-        self._stack.as_slice()
+    fn num_cards_remaining(&self) -> uint {
+        self._stack.len()
+    }
+
+    fn num_players_remaining(&self) -> uint {
+        self._players.iter().filter(|p| p.active()).count()
+    }
+
+    fn current_player(&self) -> Option<uint> {
+        match self._current {
+            NotStarted => None,
+            PlayerReady(i, _) => Some(i)
+        }
+    }
+
+    /// At the end of the game, return players and their hands.
+    fn survivors(&self) -> Vec<(uint, deck::Card)> {
+        // TODO: Write tests
+        // next_player essentially functions as a 'is game over' predicate.
+        match self.next_player() {
+            (_, Some(..)) => vec![],
+            (_, None) => self._players
+                .iter()
+                .enumerate()
+                .filter_map(
+                    |(i, &p)| match p.get_hand() {
+                        Some(y) => Some((i, y)),
+                        None => None,
+                    })
+                .collect()
+        }
+    }
+
+    pub fn winners(&self) -> Vec<(uint, deck::Card)> {
+        let survivors = self.survivors();
+        let mut ws = vec![];
+        for x in util::maxima_by(&survivors, |&(_, card)| card).iter() {
+            let &&(i, c) = x;
+            ws.push((i, c))
+        }
+        ws
     }
 
     fn get_player(&self, player_id: uint) -> Result<Player, PlayError> {
@@ -187,68 +196,37 @@ impl Game {
         self.get_player(player_id).map(|p| p.get_hand().unwrap())
     }
 
-    fn eliminate(&self, player_id: uint) -> Result<Game, PlayError> {
-        self.update_player_by(player_id, |p| p.eliminate())
+    fn update_player(&self, player_id: uint, player: Player) -> Game {
+        let mut new_game = self.clone();
+        new_game._players[player_id] = player;
+        new_game
     }
 
-    fn swap_hands(&self, src: uint, tgt: uint) -> Result<Game, PlayError> {
-        match self.get_player(src).and(self.get_player(tgt)) {
-            Err(e) => { Err(e) },
-            Ok(..) => {
-                match self._players[tgt].swap_hands(self._players[src]) {
-                    Ok((new_tgt, new_src)) => {
-                        let mut new_game = self.clone();
-                        new_game._players[src] = new_src;
-                        new_game._players[tgt] = new_tgt;
-                        Ok(new_game)
-                    },
-                    Err(player::Inactive) => Err(InactivePlayer(tgt)),
-                    Err(e) => panic!(e),
-                }
-            }
-        }
-    }
-
-    fn protect(&self, p: uint) -> Result<Game, PlayError> {
-        self.update_player_by(p, |player| player.protect(true))
-    }
-
-    fn discard_and_draw(&self, player_id: uint) -> Result<Game, PlayError> {
-        // TODO: Check that they are not playing Princess. If they are,
-        // eliminate them.
-        let (game, new_card) = self.draw();
-        game.update_player_by(player_id, |p| p.discard_and_draw(new_card))
-    }
-
-    fn eliminate_weaker(&self, p1: uint, p2: uint) -> Result<Action, PlayError> {
-        match (self.get_hand(p1), self.get_hand(p2)) {
-            (Ok(p1_card), Ok(p2_card)) =>
-                match p1_card.cmp(&p2_card) {
-                    Less    => Ok(EliminatePlayer(p1)),
-                    Greater => Ok(EliminatePlayer(p2)),
-                    Equal   => Ok(NoChange),
-                },
-            (Err(e), _) => Err(e),
-            (_, Err(e)) => Err(e),
-        }
+    fn update_player_by(&self, player_id: uint, updater: |Player| -> Result<Player, player::Error>) -> Result<Game, PlayError> {
+        self.get_player(player_id)
+            .map(updater)
+            .and_then(
+                |result| match result {
+                    Ok(new_player) => Ok(self.update_player(player_id, new_player)),
+                    Err(player::Inactive) => Err(InactivePlayer(player_id)),
+                    Err(player::BadGuess) => Err(BadGuess),
+                    Err(player::NoSuchCard(c, d)) => Err(CardNotFound(c, d)),
+                })
     }
 
     #[cfg(test)]
-    fn num_cards_remaining(&self) -> uint {
-        self._stack.len()
+    fn hands(&self) -> Vec<Option<deck::Card>> {
+        self._players.iter().map(|&x| x.get_hand()).collect()
     }
 
-    fn num_players_remaining(&self) -> uint {
-        self._players.iter().filter(|p| p.active()).count()
-    }
-
-    fn _draw(&mut self) -> Option<deck::Card> {
-        self._stack.pop()
+    #[cfg(test)]
+    fn deck(&self) -> &[deck::Card] {
+        self._stack.as_slice()
     }
 
     fn draw(&self) -> (Game, Option<deck::Card>) {
         let mut g = self.clone();
-        let c = g._draw();
+        let c = g._stack.pop();
         (g, c)
     }
 
@@ -288,34 +266,6 @@ impl Game {
         }
     }
 
-    /// At the end of the game, return players and their hands.
-    fn survivors(&self) -> Vec<(uint, deck::Card)> {
-        // TODO: Write tests
-        // next_player essentially functions as a 'is game over' predicate.
-        match self.next_player() {
-            (_, Some(..)) => vec![],
-            (_, None) => self._players
-                .iter()
-                .enumerate()
-                .filter_map(
-                    |(i, &p)| match p.get_hand() {
-                        Some(y) => Some((i, y)),
-                        None => None,
-                    })
-                .collect()
-        }
-    }
-
-    pub fn winners(&self) -> Vec<(uint, deck::Card)> {
-        let survivors = self.survivors();
-        let mut ws = vec![];
-        for x in util::maxima_by(&survivors, |&(_, card)| card).iter() {
-            let &&(i, c) = x;
-            ws.push((i, c))
-        }
-        ws
-    }
-
     fn apply_action(&self, action: Action) -> Result<Game, PlayError> {
         match action {
             EliminateWeaker(_, i) =>
@@ -328,10 +278,15 @@ impl Game {
         }
         match action {
             NoChange => Ok(self.clone()),
-            Protect(i) => self.protect(i),
-            EliminatePlayer(i) => self.eliminate(i),
+            Protect(i) => self.update_player_by(i, |player| player.protect(true)),
+            EliminatePlayer(i) => self.update_player_by(i, |p| p.eliminate()),
             SwapHands(p1, p2, _) => self.swap_hands(p1, p2),
-            ForceDiscard(i) => self.discard_and_draw(i),
+            ForceDiscard(i) => {
+                // TODO: Check that they are not playing Princess. If they are,
+                // eliminate them.
+                let (game, new_card) = self.draw();
+                game.update_player_by(i, |p| p.discard_and_draw(new_card))
+            },
             // XXX: The fact that this is indistinguishable from NoChange
             // means we've implemented it wrong.
             ForceReveal(..) => Ok(self.clone()),
@@ -342,6 +297,37 @@ impl Game {
                 },
             EliminateOnGuess(p1, card) =>
                 self.update_player_by(p1, |p| p.eliminate_if_guessed(card))
+        }
+    }
+
+    fn swap_hands(&self, src: uint, tgt: uint) -> Result<Game, PlayError> {
+        match self.get_player(src).and(self.get_player(tgt)) {
+            Err(e) => { Err(e) },
+            Ok(..) => {
+                match self._players[tgt].swap_hands(self._players[src]) {
+                    Ok((new_tgt, new_src)) => {
+                        let mut new_game = self.clone();
+                        new_game._players[src] = new_src;
+                        new_game._players[tgt] = new_tgt;
+                        Ok(new_game)
+                    },
+                    Err(player::Inactive) => Err(InactivePlayer(tgt)),
+                    Err(e) => panic!(e),
+                }
+            }
+        }
+    }
+
+    fn eliminate_weaker(&self, p1: uint, p2: uint) -> Result<Action, PlayError> {
+        match (self.get_hand(p1), self.get_hand(p2)) {
+            (Ok(p1_card), Ok(p2_card)) =>
+                match p1_card.cmp(&p2_card) {
+                    Less    => Ok(EliminatePlayer(p1)),
+                    Greater => Ok(EliminatePlayer(p2)),
+                    Equal   => Ok(NoChange),
+                },
+            (Err(e), _) => Err(e),
+            (_, Err(e)) => Err(e),
         }
     }
 

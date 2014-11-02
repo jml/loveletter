@@ -2,8 +2,7 @@ use super::Game;
 
 use deck::{Soldier, Clown, Knight, Priestess, Wizard, General, Minister, Princess};
 
-use super::{NoChange, SwapHands, EliminatePlayer};
-use super::{InvalidPlayer, InactivePlayer};
+use super::{PlayError, NoChange, SwapHands, EliminatePlayer, InvalidPlayer, InactivePlayer};
 
 mod adjudication;
 mod game;
@@ -11,6 +10,10 @@ mod game;
 
 fn make_arbitrary_game() -> Game {
     Game::new(4).unwrap()
+}
+
+fn eliminate(g: &Game, player_id: uint) -> Result<Game, PlayError> {
+    g.update_player_by(player_id, |p| p.eliminate())
 }
 
 #[test]
@@ -25,7 +28,7 @@ fn test_next_player_gets_draw() {
     let g = make_arbitrary_game();
     let (_, turn) = g.next_player();
     let super::Turn { player: p, draw: d, hand: _ } = turn.unwrap();
-    let expected = g.clone()._draw();
+    let (_, expected) = g.draw();
     assert_eq!((p, d), (0, expected.unwrap()));
 }
 
@@ -71,11 +74,11 @@ fn test_get_card_inactive_player() {
 }
 
 #[test]
-fn test_eliminate_nonexistent_player() {
+fn test_update_nonexistent_player() {
     let g = Game::from_manual(
         [Some(General), Some(Clown), None, Some(Priestess)],
         [Soldier, Minister, Princess, Soldier, Wizard], None).unwrap();
-    let error = g.eliminate(5).unwrap_err();
+    let error = g.update_player_by(5, |p| Ok(p)).unwrap_err();
     assert_eq!(InvalidPlayer(5), error);
 }
 
@@ -84,7 +87,7 @@ fn test_eliminate_gone_player() {
     let g = Game::from_manual(
         [Some(General), Some(Clown), None, Some(Priestess)],
         [Soldier, Minister, Princess, Soldier, Wizard], None).unwrap();
-    let error = g.eliminate(2).unwrap_err();
+    let error = eliminate(&g, 2).unwrap_err();
     assert_eq!(InactivePlayer(2), error);
 }
 
@@ -92,7 +95,7 @@ fn test_eliminate_gone_player() {
 fn test_skip_eliminated_player() {
     let g = Game::new(3).unwrap();
     let (g, _) = g.next_player();
-    let g = g.eliminate(1).unwrap();
+    let g = eliminate(&g, 1).unwrap();
     let (g, t) = g.next_player();
     assert_eq!(g.current_player(), Some(2));
     assert_eq!(t.unwrap().player, 2);
@@ -102,7 +105,7 @@ fn test_skip_eliminated_player() {
 fn test_last_player() {
     let g = Game::new(2).unwrap();
     let (g, _) = g.next_player();
-    let g = g.eliminate(1).unwrap();
+    let g = eliminate(&g, 1).unwrap();
     let (new_game, turn) = g.next_player();
     assert_eq!(None, turn);
     assert_eq!(new_game, g);
@@ -112,7 +115,7 @@ fn test_last_player() {
 fn test_eliminate_self_last_player() {
     let g = Game::new(2).unwrap();
     let (g, _) = g.next_player();
-    let g = g.eliminate(0).unwrap();
+    let g = eliminate(&g, 0).unwrap();
     let (new_game, turn) = g.next_player();
     assert_eq!(None, turn);
     assert_eq!(new_game, g);
@@ -191,7 +194,7 @@ fn test_eliminate_on_guess_correct() {
     let g = Game::from_manual(
         [Some(Soldier), Some(Clown)], [Wizard, Wizard], Some(0)).unwrap();
     let result = g.apply_action(super::EliminateOnGuess(1, Clown));
-    assert_eq!(g.eliminate(1), result);
+    assert_eq!(eliminate(&g, 1), result);
 }
 
 #[test]

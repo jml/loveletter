@@ -105,3 +105,16 @@ impl Player {
         Player { _hand: card, _protected: self._protected }
     }
 }
+
+
+#[cfg(test)]
+mod test {
+    use super::{Inactive, Player};
+
+    #[test]
+    fn test_eliminate_gone_player() {
+        let p = Player::new(None);
+        let error = p.eliminate().unwrap_err();
+        assert_eq!(Inactive, error);
+    }
+}
