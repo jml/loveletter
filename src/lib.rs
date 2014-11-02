@@ -107,6 +107,7 @@ impl Game {
                     Ok(new_player) => Ok(self.update_player(player_id, new_player)),
                     Err(player::Inactive) => Err(InactivePlayer(player_id)),
                     Err(player::BadGuess) => Err(BadGuess),
+                    Err(player::NoSuchCard(c, d)) => Err(CardNotFound(c, d)),
                 })
     }
 
@@ -351,14 +352,13 @@ impl Game {
     pub fn handle_turn(&self, f: |&Game, &Turn| -> (deck::Card, Play)) -> Result<Option<Game>, PlayError> {
         // TODO: UNTESTED:
         let (new_game, turn) = self.next_player();
-        let mut new_game = new_game;
         let turn = match turn {
             None => return Ok(None),
             Some(turn) => turn,
         };
 
-        let action = if minister_bust(turn.draw, turn.hand) {
-            EliminatePlayer(turn.player)
+        let (new_game, action) = if minister_bust(turn.draw, turn.hand) {
+            (new_game, EliminatePlayer(turn.player))
         } else {
             let (card, play) = f(&new_game, &turn);
 
@@ -367,11 +367,14 @@ impl Game {
                 Err(e) => return Err(e),
             };
 
-            // Set the player's hand to the card they didn't play.
-            if card == turn.hand {
-                new_game._players[turn.player] = new_game._players[turn.player].replace(Some(turn.draw));
-            }
-            action
+            // XXX: For reasons which elude me (bad ones!) we have to update
+            // the player hand *after* we judge.
+            let new_game = match new_game.update_player_by(turn.player, |p| p.play_card(turn.draw, card)) {
+                Err(e) => { return Err(e); }
+                Ok(player) => { player }
+            };
+
+            (new_game, action)
         };
 
         // XXX: Probably should return the action so that an external client can

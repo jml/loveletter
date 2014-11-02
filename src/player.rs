@@ -11,6 +11,7 @@ pub struct Player {
 pub enum Error {
     Inactive,
     BadGuess,
+    NoSuchCard(deck::Card, (deck::Card, deck::Card)),
 }
 
 
@@ -73,6 +74,20 @@ impl Player {
             Ok((*self, other))
         } else {
             Ok((self.replace(other._hand), other.replace(self._hand)))
+        }
+    }
+
+    pub fn play_card(&self, dealt: deck::Card, chosen: deck::Card) -> Result<Player, Error> {
+        match self._hand {
+            None => Err(Inactive),
+            Some(hand) =>
+                if chosen == hand {
+                    Ok(self.replace(Some(dealt)))
+                } else if chosen == dealt {
+                    Ok(*self)
+                } else {
+                    Err(NoSuchCard(chosen, (hand, dealt)))
+                },
         }
     }
 
