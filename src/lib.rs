@@ -216,15 +216,8 @@ impl Game {
     fn discard_and_draw(&self, player_id: uint) -> Result<Game, PlayError> {
         // TODO: Check that they are not playing Princess. If they are,
         // eliminate them.
-        let mut game = self.clone();
-        let new_card = game._draw();
-        match self.get_player(player_id) {
-            Err(e) => return Err(e),
-            Ok(..) => {
-                game._players[player_id] = game._players[player_id].replace(new_card);
-            }
-        }
-        Ok(game)
+        let (game, new_card) = self.draw();
+        game.update_player_by(player_id, |p| Ok(p.replace(new_card)))
     }
 
     fn eliminate_weaker(&self, p1: uint, p2: uint) -> Result<Action, PlayError> {
