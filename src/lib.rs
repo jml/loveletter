@@ -287,8 +287,6 @@ impl Game {
             SwapHands(src, tgt) => self.update_two_players_by(
                 tgt, src, |tgt_player, src_player| tgt_player.swap_hands(src_player)),
             ForceDiscard(i) => {
-                // TODO: Check that they are not playing Princess. If they are,
-                // eliminate them.
                 let (game, new_card) = self.draw();
                 game.update_player_by(i, |p| p.discard_and_draw(new_card))
             },

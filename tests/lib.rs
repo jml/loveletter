@@ -61,6 +61,33 @@ fn test_bad_guess() {
 }
 
 #[test]
+fn test_princess_discard_loses() {
+    let g = loveletter::Game::from_manual(
+        [Some(loveletter::Princess), Some(loveletter::Clown), None],
+        [loveletter::Soldier, loveletter::Minister, loveletter::Soldier, loveletter::Soldier], None).unwrap();
+    let new_g = next_turn(&g, loveletter::Princess, loveletter::NoEffect);
+    assert_eq!(vec![(1, loveletter::Clown)], new_g.winners());
+}
+
+#[test]
+fn test_princess_forced_discard_loses() {
+    let g = loveletter::Game::from_manual(
+        [Some(loveletter::Wizard), Some(loveletter::Princess), None],
+        [loveletter::Soldier, loveletter::Minister, loveletter::Soldier, loveletter::Soldier], None).unwrap();
+    let new_g = next_turn(&g, loveletter::Wizard, loveletter::Attack(1));
+    assert_eq!(vec![(0, loveletter::Soldier)], new_g.winners());
+}
+
+#[test]
+fn test_princess_self_forced_discard_loses() {
+    let g = loveletter::Game::from_manual(
+        [Some(loveletter::Wizard), Some(loveletter::Soldier), None],
+        [loveletter::Soldier, loveletter::Minister, loveletter::Soldier, loveletter::Princess], None).unwrap();
+    let new_g = next_turn(&g, loveletter::Wizard, loveletter::Attack(0));
+    assert_eq!(vec![(1, loveletter::Soldier)], new_g.winners());
+}
+
+#[test]
 fn test_minister_eliminates_player() {
     let g = loveletter::Game::from_manual(
         [Some(loveletter::General), Some(loveletter::Soldier)],

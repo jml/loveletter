@@ -110,7 +110,10 @@ impl Player {
         } else if self._protected {
             Ok(*self)
         } else {
-            Ok(self.replace(new_card))
+            match self._hand {
+                Some(deck::Princess) => self.eliminate(),
+                _ => Ok(self.replace(new_card)),
+            }
         }
     }
 
