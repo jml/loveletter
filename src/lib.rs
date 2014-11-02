@@ -248,6 +248,12 @@ impl Game {
         self._stack.pop()
     }
 
+    fn draw(&self) -> (Game, Option<deck::Card>) {
+        let mut g = self.clone();
+        let c = g._draw();
+        (g, c)
+    }
+
     fn _next_player(&self) -> Option<uint> {
         if self.num_players_remaining() <= 1 {
             None
@@ -264,31 +270,23 @@ impl Game {
     }
 
     fn next_player(&self) -> (Game, Option<Turn>) {
-        let mut new_game = self.clone();
-        let card = new_game._draw();
-        match card {
-            None => (new_game, None),
-            Some(c) => {
-                let next_player = new_game._next_player();
-                match next_player {
-                    None => (self.clone(), None),
-                    Some(new_player_id) => {
-                        new_game._current = PlayerReady(new_player_id);
-                        // Protection from the priestess expires when your
-                        // turn begins.
-                        let new_player = new_game._players[new_player_id]
-                            .protect(false)
-                            .ok().expect("Activated disabled player");
-                        let hand = new_player.get_hand().expect("Activated disabled player");
-                        new_game._players[new_player_id] = new_player;
-                        (new_game, Some(Turn {
-                            player: new_player_id,
-                            draw: c,
-                            hand: hand,
-                        }))
-                    }
-                }
-            }
+        match (self._next_player(), self.draw()) {
+            (Some(new_player_id), (game, Some(c))) => {
+                let mut new_game = game;
+                new_game._current = PlayerReady(new_player_id);
+                // Protection from the priestess expires when your
+                // turn begins.
+                new_game = new_game
+                    .update_player_by(new_player_id, |p| p.protect(false))
+                    .ok().expect("Activated disabled player");
+                let hand = new_game.get_hand(new_player_id).ok().expect("Activated disabled player");
+                (new_game, Some(Turn {
+                    player: new_player_id,
+                    draw: c,
+                    hand: hand,
+                }))
+            },
+            _ => (self.clone(), None),
         }
     }
 
