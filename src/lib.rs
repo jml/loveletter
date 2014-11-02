@@ -149,7 +149,6 @@ impl Game {
 
     /// At the end of the game, return players and their hands.
     fn survivors(&self) -> Vec<(uint, deck::Card)> {
-        // TODO: Write tests
         // next_player essentially functions as a 'is game over' predicate.
         match self.next_player() {
             (_, Some(..)) => vec![],
@@ -304,7 +303,6 @@ impl Game {
     }
 
     pub fn handle_turn(&self, f: |&Game, &Turn| -> (deck::Card, Play)) -> Result<Option<Game>, PlayError> {
-        // TODO: UNTESTED:
         let (new_game, turn) = self.next_player();
         let turn = match turn {
             None => return Ok(None),

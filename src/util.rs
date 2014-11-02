@@ -22,7 +22,6 @@ pub fn other<T: Eq>((a, b): (T, T), x: T) -> Option<T> {
 
 
 // TODO: Write tests.
-// TODO: Use this to determine winners.
 // TODO: Figure out if this can be written in terms of slices rather than
 // vectors.
 pub fn maxima_by<'a, A, B: Ord>(xs: &'a Vec<A>, f: |&A| -> B) -> Vec<&'a A> {
