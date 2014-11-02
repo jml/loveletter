@@ -398,15 +398,6 @@ pub enum Action {
 // keep it separate for now.
 fn judge(game: &Game, current_player: uint, current_card: deck::Card, dealt_card: deck::Card,
          play: (deck::Card, Play)) -> Result<Action, PlayError> {
-    // Make sure we're targeting a valid, active player.
-    match play {
-        (_, Attack(target)) | (_, Guess(target, _))  => match game.get_hand(target) {
-            Err(e) => return Err(e),
-            _ => (),
-        },
-        _ => (),
-    }
-
     let (played_card, play_data) = play;
 
     // Sort out which card we're playing, and which we're keeping.

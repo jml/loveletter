@@ -1,8 +1,53 @@
 extern crate loveletter;
 
 
+fn next_turn_err(g: &loveletter::Game, c: loveletter::Card, p: loveletter::Play) -> loveletter::PlayError {
+    g.handle_turn(|_, _| (c, p)).unwrap_err()
+}
+
 fn next_turn(g: &loveletter::Game, c: loveletter::Card, p: loveletter::Play) -> loveletter::Game {
     g.handle_turn(|_, _| (c, p)).unwrap().unwrap()
+}
+
+
+#[test]
+fn test_invalid_target_attack() {
+    let g = loveletter::Game::from_manual(
+        [Some(loveletter::General), Some(loveletter::Clown)],
+        [loveletter::Soldier, loveletter::Minister, loveletter::Princess, loveletter::Soldier], None).unwrap();
+    assert_eq!(
+        loveletter::InvalidPlayer(4),
+        next_turn_err(&g, loveletter::General, loveletter::Attack(4)));
+}
+
+#[test]
+fn test_invalid_target_guess() {
+    let g = loveletter::Game::from_manual(
+        [Some(loveletter::General), Some(loveletter::Clown)],
+        [loveletter::Soldier, loveletter::Minister, loveletter::Princess, loveletter::Soldier], None).unwrap();
+    assert_eq!(
+        loveletter::InvalidPlayer(4),
+        next_turn_err(&g, loveletter::Soldier, loveletter::Guess(4, loveletter::Wizard)));
+}
+
+#[test]
+fn test_inactive_player_attack() {
+    let g = loveletter::Game::from_manual(
+        [Some(loveletter::General), Some(loveletter::Clown), None],
+        [loveletter::Soldier, loveletter::Minister, loveletter::Princess, loveletter::Soldier], None).unwrap();
+    assert_eq!(
+        loveletter::InactivePlayer(2),
+        next_turn_err(&g, loveletter::General, loveletter::Attack(2)));
+}
+
+#[test]
+fn test_inactive_player_guess() {
+    let g = loveletter::Game::from_manual(
+        [Some(loveletter::General), Some(loveletter::Clown), None],
+        [loveletter::Soldier, loveletter::Minister, loveletter::Princess, loveletter::Soldier], None).unwrap();
+    assert_eq!(
+        loveletter::InactivePlayer(2),
+        next_turn_err(&g, loveletter::Soldier, loveletter::Guess(2, loveletter::Wizard)));
 }
 
 #[test]
