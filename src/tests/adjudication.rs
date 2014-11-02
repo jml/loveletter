@@ -1,7 +1,5 @@
-use deck::{
-    Soldier, Clown, Knight, Priestess, Wizard, General, Minister, Princess};
+use deck::{Soldier, Clown, Knight, Wizard, General};
 
-use super::super::Game;
 use super::super::{judge, play_to_action};
 use super::super::{SwapHands, ForceDiscard, ForceReveal, EliminateWeaker,
                    EliminateOnGuess};
@@ -11,12 +9,9 @@ use super::super::{CardNotFound, SelfTarget, BadActionForCard, BadGuess};
 
 #[test]
 fn test_judge_play_without_card() {
-    let g = Game::from_manual(
-        [Some(Soldier), Some(Clown), Some(Knight), Some(Priestess)],
-        [Soldier, Minister, Princess, Soldier], None).unwrap();
     // Player 0 has a Wizard and a Soldier, but is trying to play a
     // General.
-    let result = judge(&g, 0, Soldier, Wizard, (General, Attack(2)));
+    let result = judge(0, Soldier, Wizard, (General, Attack(2)));
     assert_eq!(
         CardNotFound(General, (Soldier, Wizard)), result.unwrap_err());
 }
