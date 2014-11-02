@@ -1,3 +1,5 @@
+/// loveletter: implementation of [Love Letter](http://boardgamegeek.com/boardgame/129622/love-letter)
+
 pub use deck::{Card, Soldier, Clown, Knight, Priestess, Wizard, General, Minister, Princess};
 
 use player::Player;
@@ -7,14 +9,6 @@ pub mod prompt;
 
 mod player;
 mod util;
-
-// Game state:
-// - discarded ('burnt') card
-// - the remaining deck
-// - each player's card
-// - whether they are protected by priestess
-// - each player's discard
-//   - publicly available
 
 // TODO: Data structure for all of the publicly visible actions in a game.
 // Must be enough to reconstruct the whole game.
@@ -27,18 +21,24 @@ pub struct Turn {
     pub draw: deck::Card,
 }
 
-impl Turn {
-    pub fn new(player: uint, hand: deck::Card, draw: deck::Card) -> Turn {
-        Turn {
-            player: player,
-            hand: hand,
-            draw: draw,
-        }
-    }
-}
-
 
 #[deriving(Show, PartialEq, Eq, Clone)]
+/// Possible states of a round of Love Letter.
+///
+/// ### Notes
+///
+/// XXX: Not sure I (jml) like this. The current Game class only accepts a
+/// callback, so a player is dealt a card and must respond in the same method.
+/// It is always some player's turn unless it's the beginning or end. A
+/// different concept would be to have a very high level game state enum which
+/// had different kinds of values depending on whether the game was over or
+/// not.
+///
+/// e.g. Before the game, you have a Deck, a number of players and nothing
+/// else. During the game, there are methods to draw a card, to play it,
+/// and (probably) to inspect public state. After the game, the only thing
+/// that can happen is you look at who the survivors are, what their cards
+/// were, who the winner is, and what the burn card was.
 enum GameState {
     NotStarted,
     PlayerReady(uint, deck::Card),
@@ -47,37 +47,46 @@ enum GameState {
 
 
 #[deriving(Show, PartialEq, Eq, Clone)]
+/// Represents a single round of Love Letter.
 pub struct Game {
+    /// The remaining cards in the deck.
     _stack: Vec<deck::Card>,
+    /// All of the players of the game. The size does not change once the game is constructed.
     _players: Vec<Player>,
-    // Not sure I like this. The current Game class only accepts a callback,
-    // so a player is dealt a card and must respond in the same method. It is
-    // always some player's turn unless it's the beginning or end. A different
-    // concept would be to have a very high level game state enum which had
-    // different kinds of values depending on whether the game was over or
-    // not.
-    //
-    // e.g. Before the game, you have a Deck, a number of players and nothing
-    // else. During the game, there are methods to draw a card, to play it,
-    // and (probably) to inspect public state. After the game, the only thing
-    // that can happen is you look at who the survivors are, what their cards
-    // were, who the winner is, and what the burn card was.
+    /// The current state of the game.
     _current: GameState,
 }
 
 
 #[deriving(Show, PartialEq, Eq)]
+/// Errors that can occur while constructing a Game.
 pub enum GameError {
+    /// Specified an invalid number of players.
     InvalidPlayers(uint),
+    /// The given cards do not form a valid deck.
     BadDeck,
 }
 
 
 impl Game {
+    // TODO: Provide some way of getting the burnt card when play is over.
+
+    // TODO: Create a state validator, that guarantees that no cards have been
+    // created or destroyed.
+
+    // TODO: Create a nice formatter that shows what's visible to a particular
+    // player.
+
+    /// Create a new game with a randomly shuffled deck.
+    ///
+    /// Will return None if given an invalid number of players.
     pub fn new(num_players: uint) -> Option<Game> {
         Game::from_deck(num_players, deck::Deck::new())
     }
 
+    /// Create a new game given an already-shuffled deck.
+    ///
+    /// Will return None if given an invalid number of players.
     pub fn from_deck(num_players: uint, deck: deck::Deck) -> Option<Game> {
         if !Game::valid_player_count(num_players) {
             return None
@@ -92,6 +101,19 @@ impl Game {
         })
     }
 
+    /// Create a new, in-progress game.
+    ///
+    /// `hands` is a slice of player hands. If the card is None, then that
+    /// player is assumed to have been eliminated already. Otherwise, that's
+    /// what's in their hand.
+    ///
+    /// `deck` is a stack of remaining cards in the deck. When players draw
+    /// cards, they'll draw from the end.
+    ///
+    /// If `current_player` is `None`, then assume the game hasn't started.
+    /// Otherwise (and this is a bit broken), the next player to play is the
+    /// one **after** the one given here. e.g. `Some(0)` means it's player 1's
+    /// turn next.
     pub fn from_manual(hands: &[Option<deck::Card>], deck: &[deck::Card],
                        current_player: Option<uint>) -> Result<Game, GameError> {
         let num_players = hands.len();
@@ -127,6 +149,7 @@ impl Game {
         2 <= num_players && num_players <= 4
     }
 
+    /// Number of players in this game.
     pub fn num_players(&self) -> uint {
         self._players.len()
     }
@@ -136,6 +159,7 @@ impl Game {
         self._stack.len()
     }
 
+    /// Number of active players still playing.
     fn num_players_remaining(&self) -> uint {
         self._players.iter().filter(|p| p.active()).count()
     }
@@ -164,6 +188,7 @@ impl Game {
         }
     }
 
+    /// At the end of the game, return all winners and their hands.
     pub fn winners(&self) -> Vec<(uint, deck::Card)> {
         let survivors = self.survivors();
         let mut ws = vec![];
@@ -300,6 +325,16 @@ impl Game {
         }
     }
 
+    /// Crank the handle of a loveletter game.
+    ///
+    /// Takes a function which is given the game, the current player, the card
+    /// they were dealt and the card in their hand. That function must return
+    /// a card to play and the `Play` associated with it.
+    ///
+    /// `handle_turn` makes sure everything is valid and returns the new `Game`.
+    ///
+    /// If the game is now over, will return `Ok(None)`. If not, will return
+    /// `Ok(Some(new_game))`.
     pub fn handle_turn(&self, f: |&Game, &Turn| -> (deck::Card, Play)) -> Result<Option<Game>, PlayError> {
         let (new_game, turn) = self.next_player();
         let turn = match turn {
@@ -347,26 +382,31 @@ fn minister_bust(a: deck::Card, b: deck::Card) -> bool {
 
 
 #[deriving(PartialEq, Eq, Show)]
+/// The play that accompanies a card.
 pub enum Play {
+    /// This card has no effect.
     NoEffect,
+    /// Use this card to attack the specified player.
     Attack(uint),
+    /// Use this card to guess that the specified player has a certain card.
     Guess(uint, Card),
 }
 
 
 #[deriving(PartialEq, Eq, Show)]
+/// Represents an invalid action in a game, taken by a player.
 pub enum PlayError {
-    // Targeted a player who has never existed.
+    /// Targeted a player who has never existed.
     InvalidPlayer(uint),
-    // Tried to play a card that's not in the hand.
+    /// Tried to play a card that's not in the hand.
     CardNotFound(deck::Card, (deck::Card, deck::Card)),
-    // Targeted a player who is no longer in the game.
+    /// Targeted a player who is no longer in the game.
     InactivePlayer(uint),
-    // Tried to play a card against yourself.
+    /// Tried to play a card against yourself.
     SelfTarget(uint, deck::Card),
-    // Tried to play an action for a card that doesn't support it.
+    /// Tried to play an action for a card that doesn't support it.
     BadActionForCard(Play, deck::Card),
-    // Bad guess. You can't guess soldier.
+    /// Bad guess. You can't guess soldier.
     BadGuess,
 }
 
@@ -374,18 +414,21 @@ pub enum PlayError {
 /// The result of a play.
 #[deriving(PartialEq, Eq, Show)]
 pub enum Action {
+    /// Nothing happens.
     NoChange,
+    /// Mark player as protected.
     Protect(uint),
-    // source, target, source card
-    // source card is there in case we're swapping the card we just picked up.
+    /// source wants to swap hands with target
     SwapHands(uint, uint),
-    // You have lost
+    /// You have lost
     EliminatePlayer(uint),
-    // Discard your current card and draw a new one
+    /// Discard your current card and draw a new one
     ForceDiscard(uint),
-    // 2nd player shows their card to 1st.
+    /// 2nd player shows their card to 1st.
     ForceReveal(uint, uint),
+    /// Eliminate the player with the weaker hand.
     EliminateWeaker(uint, uint),
+    /// Eliminate the player if they have the given card.
     EliminateOnGuess(uint, deck::Card),
 }
 
@@ -395,7 +438,7 @@ pub enum Action {
 /// Translates a decision by a player to play a particular card in a
 /// particular way into an Action that can be applied to the game.
 ///
-/// Returns an error if that particular card, play combination is not valid.
+/// Returns an error if that particular `(card, play)` combination is not valid.
 fn play_to_action(
     current_player: uint, played_card: deck::Card, play: Play) -> Result<Action, PlayError> {
 
@@ -406,6 +449,8 @@ fn play_to_action(
         NoEffect => match played_card {
             deck::Priestess => Ok(Protect(current_player)),
             deck::Minister => Ok(NoChange),
+            // XXX: Another way to do this is to return NoChange here and have
+            // `Player` be responsible for eliminating self on Princess discard.
             deck::Princess => Ok(EliminatePlayer(current_player)),
             _ => Err(BadActionForCard(play, played_card)),
         },

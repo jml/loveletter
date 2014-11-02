@@ -1,6 +1,7 @@
 use deck;
 
 #[deriving(Show, PartialEq, Eq, Clone)]
+/// A player of Love Letter.
 pub struct Player {
     _hand: Option<deck::Card>,
     _protected: bool,
@@ -17,22 +18,31 @@ pub enum Error {
 
 
 impl Player {
+    /// Create a new player with the given hand.
     pub fn new(hand: Option<deck::Card>) -> Player {
         Player { _hand: hand, _protected: false, _discard: vec![] }
     }
 
+    /// Is this player still playing?
     pub fn active(&self) -> bool {
         self._hand.is_some()
     }
 
+    /// What has this player discarded?
+    ///
+    /// Last item is most-recently discarded.
     pub fn discards(&self) -> &[deck::Card] {
         self._discard.as_slice()
     }
 
+    /// Get the player's hand. Returns `None` if player is no longer playing.
     pub fn get_hand(&self) -> Option<deck::Card> {
         self._hand
     }
 
+    /// Set the protection status of the player.
+    ///
+    /// While they are 'protected', they are immune to all attacks.
     pub fn protect(&self, protected: bool) -> Result<Player, Error> {
         if self.active() {
             Ok(Player {
@@ -45,6 +55,10 @@ impl Player {
         }
     }
 
+    /// Eliminate this player, making them no longer active and incapable of
+    /// winning the game.
+    ///
+    /// Any card they had in their hand is immediately discarded.
     pub fn eliminate(&self) -> Result<Player, Error> {
         match self._hand {
             None => Err(Inactive),
@@ -57,6 +71,7 @@ impl Player {
         }
     }
 
+    /// Eliminate this player if they've got the guessed card in their hand.
     pub fn eliminate_if_guessed(&self, guess: deck::Card) -> Result<Player, Error> {
         if guess == deck::Soldier {
             return Err(BadGuess)
@@ -72,6 +87,12 @@ impl Player {
         }
     }
 
+    /// Eliminate this player if their card is weaker than the other player's.
+    /// Otherwise, eliminate the other player. If it's a draw, leave them both
+    /// as they are.
+    ///
+    /// Returns a tuple of `(self, other)` where `self` and `other` are the
+    /// updated versions. Only one will have changed.
     pub fn eliminate_if_weaker(&self, other: &Player) -> Result<(Player, Player), Error> {
         match (self._hand, other._hand) {
             (Some(my_card), Some(their_card)) => {
@@ -89,6 +110,7 @@ impl Player {
         }
     }
 
+    /// Swap hands with the other player.
     pub fn swap_hands(&self, other: &Player) -> Result<(Player, Player), Error> {
         if !self.active() {
             Err(Inactive)
@@ -99,6 +121,8 @@ impl Player {
         }
     }
 
+    /// Given that we were dealt `dealt` and chose to play `chosen`, discard
+    /// `chosen` and put whatever card we didn't play in our hand.
     pub fn play_card(&self, dealt: deck::Card, chosen: deck::Card) -> Result<Player, Error> {
         match self._hand {
             None => Err(Inactive),
@@ -113,19 +137,25 @@ impl Player {
         }
     }
 
+    /// Discard current card and replace it with `new_card`.
+    ///
+    /// Different from `play_card` in that there might not be a new card
+    /// available for us, in which case we're out of the game. Also, we never
+    /// have to do this if we're protected.
     pub fn discard_and_draw(&self, new_card: Option<deck::Card>) -> Result<Player, Error> {
-        if !self.active() {
-            Err(Inactive)
-        } else if self._protected {
-            Ok(self.clone())
-        } else {
-            match self._hand {
-                // XXX: Also need to make sure that when we eliminate in this
-                // case, that we return the new_card to the stack.
-                Some(deck::Princess) => self.eliminate(),
-                Some(hand) => Ok(self.discard(hand).replace(new_card)),
-                _ => panic!("{} not be active", self)
-            }
+        match self._hand {
+            None => Err(Inactive),
+            Some(hand) =>
+                if self._protected {
+                    Ok(self.clone())
+                } else {
+                    match hand {
+                        // XXX: Also need to make sure that when we eliminate in this
+                        // case, that we return the new_card to the stack.
+                        deck::Princess => self.eliminate(),
+                        _ => Ok(self.discard(hand).replace(new_card)),
+                    }
+                },
         }
     }
 
