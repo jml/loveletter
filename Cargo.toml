@@ -3,3 +3,13 @@
 name = "loveletter"
 version = "0.0.1"
 authors = ["Jonathan Lange <jml@mumak.net>"]
+
+[[bin]]
+
+name = "affectioncube"
+doc = false
+
+[lib]
+
+name = "loveletter"
+doc = true
