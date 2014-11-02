@@ -28,10 +28,6 @@ impl Player {
         self._hand
     }
 
-    pub fn protected(&self) -> bool {
-        self._protected
-    }
-
     pub fn protect(&self, protected: bool) -> Result<Player, Error> {
         if self.active() {
             Ok(Player { _hand: self._hand, _protected: protected })
@@ -64,6 +60,23 @@ impl Player {
                 } else {
                     Ok(*self)
                 },
+        }
+    }
+
+    pub fn eliminate_if_weaker(&self, other: Player) -> Result<(Player, Player), Error> {
+        match (self._hand, other._hand) {
+            (Some(my_card), Some(their_card)) => {
+                if self._protected {
+                    Ok((*self, other))
+                } else {
+                    Ok(match my_card.cmp(&their_card) {
+                        Less => (self.replace(None), other),
+                        Greater => (*self, other.replace(None)),
+                        Equal => (*self, other)
+                    })
+                }
+            }
+            _ => Err(Inactive),
         }
     }
 

@@ -127,7 +127,7 @@ fn test_swap_cards() {
     let g = Game::from_manual(
         [Some(General), Some(Clown), None, Some(Priestess)],
         [Soldier, Minister, Princess, Soldier, Wizard], None).unwrap();
-    let new_game = g.swap_hands(0, 1).unwrap();
+    let new_game = g.apply_action(SwapHands(0, 1, General)).unwrap();
     assert_eq!(
         vec![Some(Clown), Some(General), None, Some(Priestess)],
         new_game.hands());
@@ -138,9 +138,9 @@ fn test_swap_cards_nonexistent() {
     let g = Game::from_manual(
         [Some(General), Some(Clown), None, Some(Priestess)],
         [Soldier, Minister, Princess, Soldier, Wizard], None).unwrap();
-    let error = g.swap_hands(0, 5).unwrap_err();
+    let error = g.apply_action(SwapHands(0, 5, General)).unwrap_err();
     assert_eq!(InvalidPlayer(5), error);
-    let error = g.swap_hands(5, 0).unwrap_err();
+    let error = g.apply_action(SwapHands(5, 0, General)).unwrap_err();
     assert_eq!(InvalidPlayer(5), error);
 }
 

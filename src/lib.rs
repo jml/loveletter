@@ -16,10 +16,6 @@ mod util;
 // - each player's discard
 //   - publicly available
 
-// XXX: Should we wrap up 'Player'? Especially interesting if we have the Game
-// store separate discarded card logs. Also useful for keeping 'Priestess'
-// protection data.
-
 // TODO: Data structure for all of the publicly visible actions in a game.
 // Must be enough to reconstruct the whole game.
 
@@ -214,6 +210,24 @@ impl Game {
                 })
     }
 
+    fn update_two_players_by(&self, p1_id: uint, p2_id: uint, updater: |Player, Player| -> Result<(Player, Player), player::Error>) -> Result<Game, PlayError> {
+        match (self.get_player(p1_id), self.get_player(p2_id)) {
+            (Ok(player1), Ok(player2)) => {
+                match updater(player1, player2) {
+                    Ok((new_player1, new_player2)) => {
+                        let mut new_game = self.clone();
+                        new_game._players[p1_id] = new_player1;
+                        new_game._players[p2_id] = new_player2;
+                        Ok(new_game)
+                    },
+                    Err(player::Inactive) => Err(InactivePlayer(p2_id)),
+                    Err(e) => panic!(e),
+                }
+            },
+            (_, Err(e)) | (Err(e), _) => Err(e),
+        }
+    }
+
     #[cfg(test)]
     fn hands(&self) -> Vec<Option<deck::Card>> {
         self._players.iter().map(|&x| x.get_hand()).collect()
@@ -268,19 +282,11 @@ impl Game {
 
     fn apply_action(&self, action: Action) -> Result<Game, PlayError> {
         match action {
-            EliminateWeaker(_, i) =>
-                if self._players[i].protected() {
-                    return Ok(self.clone());
-                } else {
-                    ()
-                },
-            _ => (),
-        }
-        match action {
             NoChange => Ok(self.clone()),
             Protect(i) => self.update_player_by(i, |player| player.protect(true)),
             EliminatePlayer(i) => self.update_player_by(i, |p| p.eliminate()),
-            SwapHands(p1, p2, _) => self.swap_hands(p1, p2),
+            SwapHands(src, tgt, _) => self.update_two_players_by(
+                tgt, src, |tgt_player, src_player| tgt_player.swap_hands(src_player)),
             ForceDiscard(i) => {
                 // TODO: Check that they are not playing Princess. If they are,
                 // eliminate them.
@@ -290,44 +296,10 @@ impl Game {
             // XXX: The fact that this is indistinguishable from NoChange
             // means we've implemented it wrong.
             ForceReveal(..) => Ok(self.clone()),
-            EliminateWeaker(p1, p2) =>
-                match self.eliminate_weaker(p1, p2) {
-                    Ok(action) => self.apply_action(action),
-                    Err(e) => Err(e),
-                },
+            EliminateWeaker(src, tgt) => self.update_two_players_by(
+                tgt, src, |tgt_player, src_player| tgt_player.eliminate_if_weaker(src_player)),
             EliminateOnGuess(p1, card) =>
                 self.update_player_by(p1, |p| p.eliminate_if_guessed(card))
-        }
-    }
-
-    fn swap_hands(&self, src: uint, tgt: uint) -> Result<Game, PlayError> {
-        match self.get_player(src).and(self.get_player(tgt)) {
-            Err(e) => { Err(e) },
-            Ok(..) => {
-                match self._players[tgt].swap_hands(self._players[src]) {
-                    Ok((new_tgt, new_src)) => {
-                        let mut new_game = self.clone();
-                        new_game._players[src] = new_src;
-                        new_game._players[tgt] = new_tgt;
-                        Ok(new_game)
-                    },
-                    Err(player::Inactive) => Err(InactivePlayer(tgt)),
-                    Err(e) => panic!(e),
-                }
-            }
-        }
-    }
-
-    fn eliminate_weaker(&self, p1: uint, p2: uint) -> Result<Action, PlayError> {
-        match (self.get_hand(p1), self.get_hand(p2)) {
-            (Ok(p1_card), Ok(p2_card)) =>
-                match p1_card.cmp(&p2_card) {
-                    Less    => Ok(EliminatePlayer(p1)),
-                    Greater => Ok(EliminatePlayer(p2)),
-                    Equal   => Ok(NoChange),
-                },
-            (Err(e), _) => Err(e),
-            (_, Err(e)) => Err(e),
         }
     }
 
