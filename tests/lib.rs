@@ -51,6 +51,16 @@ fn test_inactive_player_guess() {
 }
 
 #[test]
+fn test_bad_guess() {
+    let g = loveletter::Game::from_manual(
+        [Some(loveletter::General), Some(loveletter::Clown), None],
+        [loveletter::Soldier, loveletter::Minister, loveletter::Princess, loveletter::Soldier], None).unwrap();
+    assert_eq!(
+        loveletter::BadGuess,
+        next_turn_err(&g, loveletter::Soldier, loveletter::Guess(1, loveletter::Soldier)));
+}
+
+#[test]
 fn test_minister_eliminates_player() {
     let g = loveletter::Game::from_manual(
         [Some(loveletter::General), Some(loveletter::Soldier)],
@@ -149,5 +159,3 @@ fn test_priestess_immunity_expires() {
     // they have the Wizard, which is higher than the Clown.
     assert_eq!(vec![(1, loveletter::Clown)], new_g.winners());
 }
-
-// TODO: Error checking for bad guess.
