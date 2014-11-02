@@ -1,12 +1,14 @@
 /// loveletter: implementation of [Love Letter](http://boardgamegeek.com/boardgame/129622/love-letter)
 
 pub use deck::{Card, Soldier, Clown, Knight, Priestess, Wizard, General, Minister, Princess};
+pub use action::{Play, PlayError, NoEffect, Attack, Guess, InvalidPlayer, InactivePlayer, BadGuess};
 
 use player::Player;
 
 pub mod deck;
 pub mod prompt;
 
+mod action;
 mod player;
 mod util;
 
@@ -199,20 +201,20 @@ impl Game {
         ws
     }
 
-    fn get_player(&self, player_id: uint) -> Result<&Player, PlayError> {
+    fn get_player(&self, player_id: uint) -> Result<&Player, action::PlayError> {
         if player_id < self.num_players() {
             let ref p = self._players[player_id];
             if p.active() {
                 Ok(p)
             } else {
-                Err(InactivePlayer(player_id))
+                Err(action::InactivePlayer(player_id))
             }
         } else {
-            Err(InvalidPlayer(player_id))
+            Err(action::InvalidPlayer(player_id))
         }
     }
 
-    fn get_hand(&self, player_id: uint) -> Result<deck::Card, PlayError> {
+    fn get_hand(&self, player_id: uint) -> Result<deck::Card, action::PlayError> {
         self.get_player(player_id).map(|p| p.get_hand().unwrap())
     }
 
@@ -222,19 +224,19 @@ impl Game {
         new_game
     }
 
-    fn update_player_by(&self, player_id: uint, updater: |&Player| -> Result<Player, player::Error>) -> Result<Game, PlayError> {
+    fn update_player_by(&self, player_id: uint, updater: |&Player| -> Result<Player, player::Error>) -> Result<Game, action::PlayError> {
         self.get_player(player_id)
             .map(updater)
             .and_then(
                 |result| match result {
                     Ok(new_player) => Ok(self.update_player(player_id, new_player)),
-                    Err(player::Inactive) => Err(InactivePlayer(player_id)),
-                    Err(player::BadGuess) => Err(BadGuess),
-                    Err(player::NoSuchCard(c, d)) => Err(CardNotFound(c, d)),
+                    Err(player::Inactive) => Err(action::InactivePlayer(player_id)),
+                    Err(player::BadGuess) => Err(action::BadGuess),
+                    Err(player::NoSuchCard(c, d)) => Err(action::CardNotFound(c, d)),
                 })
     }
 
-    fn update_two_players_by(&self, p1_id: uint, p2_id: uint, updater: |&Player, &Player| -> Result<(Player, Player), player::Error>) -> Result<Game, PlayError> {
+    fn update_two_players_by(&self, p1_id: uint, p2_id: uint, updater: |&Player, &Player| -> Result<(Player, Player), player::Error>) -> Result<Game, action::PlayError> {
         match (self.get_player(p1_id), self.get_player(p2_id)) {
             (Ok(player1), Ok(player2)) => {
                 match updater(player1, player2) {
@@ -244,7 +246,7 @@ impl Game {
                         new_game._players[p2_id] = new_player2;
                         Ok(new_game)
                     },
-                    Err(player::Inactive) => Err(InactivePlayer(p2_id)),
+                    Err(player::Inactive) => Err(action::InactivePlayer(p2_id)),
                     Err(e) => panic!(e),
                 }
             },
@@ -304,23 +306,23 @@ impl Game {
         }
     }
 
-    fn apply_action(&self, action: Action) -> Result<Game, PlayError> {
+    fn apply_action(&self, action: action::Action) -> Result<Game, action::PlayError> {
         match action {
-            NoChange => Ok(self.clone()),
-            Protect(i) => self.update_player_by(i, |player| player.protect(true)),
-            EliminatePlayer(i) => self.update_player_by(i, |p| p.eliminate()),
-            SwapHands(src, tgt) => self.update_two_players_by(
+            action::NoChange => Ok(self.clone()),
+            action::Protect(i) => self.update_player_by(i, |player| player.protect(true)),
+            action::EliminatePlayer(i) => self.update_player_by(i, |p| p.eliminate()),
+            action::SwapHands(src, tgt) => self.update_two_players_by(
                 tgt, src, |tgt_player, src_player| tgt_player.swap_hands(src_player)),
-            ForceDiscard(i) => {
+            action::ForceDiscard(i) => {
                 let (game, new_card) = self.draw();
                 game.update_player_by(i, |p| p.discard_and_draw(new_card))
             },
             // XXX: The fact that this is indistinguishable from NoChange
             // means we've implemented it wrong.
-            ForceReveal(..) => Ok(self.clone()),
-            EliminateWeaker(src, tgt) => self.update_two_players_by(
+            action::ForceReveal(..) => Ok(self.clone()),
+            action::EliminateWeaker(src, tgt) => self.update_two_players_by(
                 tgt, src, |tgt_player, src_player| tgt_player.eliminate_if_weaker(src_player)),
-            EliminateOnGuess(p1, card) =>
+            action::EliminateOnGuess(p1, card) =>
                 self.update_player_by(p1, |p| p.eliminate_if_guessed(card))
         }
     }
@@ -335,7 +337,7 @@ impl Game {
     ///
     /// If the game is now over, will return `Ok(None)`. If not, will return
     /// `Ok(Some(new_game))`.
-    pub fn handle_turn(&self, f: |&Game, &Turn| -> (deck::Card, Play)) -> Result<Option<Game>, PlayError> {
+    pub fn handle_turn(&self, f: |&Game, &Turn| -> (deck::Card, action::Play)) -> Result<Option<Game>, action::PlayError> {
         let (new_game, turn) = self.next_player();
         let turn = match turn {
             None => return Ok(None),
@@ -343,7 +345,7 @@ impl Game {
         };
 
         let (new_game, action) = if minister_bust(turn.draw, turn.hand) {
-            (new_game, EliminatePlayer(turn.player))
+            (new_game, action::EliminatePlayer(turn.player))
         } else {
             // Find out what they'd like to play.
             let (card, play) = f(&new_game, &turn);
@@ -354,7 +356,7 @@ impl Game {
                 Ok(player) => { player }
             };
 
-            let action = match play_to_action(turn.player, card, play) {
+            let action = match action::play_to_action(turn.player, card, play) {
                 Ok(a) => a,
                 Err(e) => return Err(e),
             };
@@ -381,117 +383,6 @@ fn minister_bust(a: deck::Card, b: deck::Card) -> bool {
 }
 
 
-#[deriving(PartialEq, Eq, Show)]
-/// The play that accompanies a card.
-pub enum Play {
-    /// This card has no effect.
-    NoEffect,
-    /// Use this card to attack the specified player.
-    Attack(uint),
-    /// Use this card to guess that the specified player has a certain card.
-    Guess(uint, Card),
-}
-
-
-#[deriving(PartialEq, Eq, Show)]
-/// Represents an invalid action in a game, taken by a player.
-pub enum PlayError {
-    /// Targeted a player who has never existed.
-    InvalidPlayer(uint),
-    /// Tried to play a card that's not in the hand.
-    CardNotFound(deck::Card, (deck::Card, deck::Card)),
-    /// Targeted a player who is no longer in the game.
-    InactivePlayer(uint),
-    /// Tried to play a card against yourself.
-    SelfTarget(uint, deck::Card),
-    /// Tried to play an action for a card that doesn't support it.
-    BadActionForCard(Play, deck::Card),
-    /// Bad guess. You can't guess soldier.
-    BadGuess,
-}
-
-
-/// The result of a play.
-#[deriving(PartialEq, Eq, Show)]
-pub enum Action {
-    /// Nothing happens.
-    NoChange,
-    /// Mark player as protected.
-    Protect(uint),
-    /// source wants to swap hands with target
-    SwapHands(uint, uint),
-    /// You have lost
-    EliminatePlayer(uint),
-    /// Discard your current card and draw a new one
-    ForceDiscard(uint),
-    /// 2nd player shows their card to 1st.
-    ForceReveal(uint, uint),
-    /// Eliminate the player with the weaker hand.
-    EliminateWeaker(uint, uint),
-    /// Eliminate the player if they have the given card.
-    EliminateOnGuess(uint, deck::Card),
-}
-
-
-/// Turn a play into an Action.
-///
-/// Translates a decision by a player to play a particular card in a
-/// particular way into an Action that can be applied to the game.
-///
-/// Returns an error if that particular `(card, play)` combination is not valid.
-fn play_to_action(
-    current_player: uint, played_card: deck::Card, play: Play) -> Result<Action, PlayError> {
-
-    // XXX: Ideally, I'd express this with a data structure that mapped card,
-    // play combinations to valid actions.
-
-    match play {
-        NoEffect => match played_card {
-            deck::Priestess => Ok(Protect(current_player)),
-            deck::Minister => Ok(NoChange),
-            // XXX: Another way to do this is to return NoChange here and have
-            // `Player` be responsible for eliminating self on Princess discard.
-            deck::Princess => Ok(EliminatePlayer(current_player)),
-            _ => Err(BadActionForCard(play, played_card)),
-        },
-        Attack(target) => {
-            if target == current_player && played_card != deck::Wizard {
-                return Err(SelfTarget(target, played_card));
-            }
-
-            match played_card {
-                deck::Clown => {
-                    Ok(ForceReveal(current_player, target))
-                },
-                deck::Knight => {
-                    Ok(EliminateWeaker(current_player, target))
-                },
-                deck::Wizard => {
-                    Ok(ForceDiscard(target))
-                },
-                deck::General => {
-                    Ok(SwapHands(current_player, target))
-                },
-                _ => Err(BadActionForCard(play, played_card)),
-            }
-        }
-        Guess(target, guessed_card) => {
-            if target == current_player {
-                return Err(SelfTarget(target, played_card));
-            }
-
-            match played_card {
-                deck::Soldier =>
-                    if guessed_card == deck::Soldier {
-                        Err(BadGuess)
-                    } else {
-                        Ok(EliminateOnGuess(target, guessed_card))
-                    },
-                _ => Err(BadActionForCard(play, played_card)),
-            }
-        }
-    }
-}
 
 
 #[cfg(test)]

@@ -2,7 +2,9 @@ use super::Game;
 
 use deck::{Soldier, Clown, Knight, Priestess, Wizard, General, Minister, Princess};
 
-use super::{PlayError, NoChange, SwapHands, EliminatePlayer, InvalidPlayer, InactivePlayer};
+use action::{
+    PlayError, NoChange, SwapHands, EliminatePlayer, InvalidPlayer, InactivePlayer,
+    EliminateOnGuess, BadGuess};
 
 mod adjudication;
 mod game;
@@ -185,7 +187,7 @@ fn test_eliminate_on_guess_incorrect() {
     // Error: BadGuess
     let g = Game::from_manual(
         [Some(Soldier), Some(Soldier)], [Wizard, Wizard], Some(0)).unwrap();
-    let result = g.apply_action(super::EliminateOnGuess(1, Clown));
+    let result = g.apply_action(EliminateOnGuess(1, Clown));
     assert_eq!(Ok(g), result);
 }
 
@@ -193,7 +195,7 @@ fn test_eliminate_on_guess_incorrect() {
 fn test_eliminate_on_guess_correct() {
     let g = Game::from_manual(
         [Some(Soldier), Some(Clown)], [Wizard, Wizard], Some(0)).unwrap();
-    let result = g.apply_action(super::EliminateOnGuess(1, Clown));
+    let result = g.apply_action(EliminateOnGuess(1, Clown));
     assert_eq!(eliminate(&g, 1), result);
 }
 
@@ -201,6 +203,6 @@ fn test_eliminate_on_guess_correct() {
 fn test_eliminate_on_guess_soldier() {
     let g = Game::from_manual(
         [Some(Soldier), Some(Soldier)], [Wizard, Wizard], Some(0)).unwrap();
-    let result = g.apply_action(super::EliminateOnGuess(1, Soldier));
-    assert_eq!(Err(super::BadGuess), result);
+    let result = g.apply_action(EliminateOnGuess(1, Soldier));
+    assert_eq!(Err(BadGuess), result);
 }

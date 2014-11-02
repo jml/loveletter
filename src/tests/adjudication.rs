@@ -1,10 +1,10 @@
 use deck::{Soldier, Clown, Knight, Wizard, General};
 
-use super::super::play_to_action;
-use super::super::{SwapHands, ForceDiscard, ForceReveal, EliminateWeaker,
-                   EliminateOnGuess};
-use super::super::{Attack, Guess};
-use super::super::{SelfTarget, BadActionForCard, BadGuess};
+use action::{
+    Attack, Guess, play_to_action, SwapHands, ForceDiscard, ForceReveal,
+    EliminateWeaker, EliminateOnGuess, SelfTarget, BadActionForCard,
+    BadGuess,
+};
 
 
 #[test]
