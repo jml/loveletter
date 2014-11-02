@@ -91,7 +91,17 @@ impl Player {
         }
     }
 
-    pub fn replace(&self, card: Option<deck::Card>) -> Player {
+    pub fn discard_and_draw(&self, new_card: Option<deck::Card>) -> Result<Player, Error> {
+        if !self.active() {
+            Err(Inactive)
+        } else if self._protected {
+            Ok(*self)
+        } else {
+            Ok(self.replace(new_card))
+        }
+    }
+
+    fn replace(&self, card: Option<deck::Card>) -> Player {
         Player { _hand: card, _protected: self._protected }
     }
 }

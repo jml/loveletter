@@ -217,7 +217,7 @@ impl Game {
         // TODO: Check that they are not playing Princess. If they are,
         // eliminate them.
         let (game, new_card) = self.draw();
-        game.update_player_by(player_id, |p| Ok(p.replace(new_card)))
+        game.update_player_by(player_id, |p| p.discard_and_draw(new_card))
     }
 
     fn eliminate_weaker(&self, p1: uint, p2: uint) -> Result<Action, PlayError> {
@@ -318,7 +318,7 @@ impl Game {
 
     fn apply_action(&self, action: Action) -> Result<Game, PlayError> {
         match action {
-            EliminateWeaker(_, i) | ForceDiscard(i) =>
+            EliminateWeaker(_, i) =>
                 if self._players[i].protected() {
                     return Ok(self.clone());
                 } else {
