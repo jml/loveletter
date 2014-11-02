@@ -156,7 +156,7 @@ impl Game {
                 .iter()
                 .enumerate()
                 .filter_map(
-                    |(i, &p)| match p.get_hand() {
+                    |(i, ref p)| match p.get_hand() {
                         Some(y) => Some((i, y)),
                         None => None,
                     })
@@ -174,9 +174,9 @@ impl Game {
         ws
     }
 
-    fn get_player(&self, player_id: uint) -> Result<Player, PlayError> {
+    fn get_player(&self, player_id: uint) -> Result<&Player, PlayError> {
         if player_id < self.num_players() {
-            let p = self._players[player_id];
+            let ref p = self._players[player_id];
             if p.active() {
                 Ok(p)
             } else {
@@ -197,7 +197,7 @@ impl Game {
         new_game
     }
 
-    fn update_player_by(&self, player_id: uint, updater: |Player| -> Result<Player, player::Error>) -> Result<Game, PlayError> {
+    fn update_player_by(&self, player_id: uint, updater: |&Player| -> Result<Player, player::Error>) -> Result<Game, PlayError> {
         self.get_player(player_id)
             .map(updater)
             .and_then(
@@ -209,7 +209,7 @@ impl Game {
                 })
     }
 
-    fn update_two_players_by(&self, p1_id: uint, p2_id: uint, updater: |Player, Player| -> Result<(Player, Player), player::Error>) -> Result<Game, PlayError> {
+    fn update_two_players_by(&self, p1_id: uint, p2_id: uint, updater: |&Player, &Player| -> Result<(Player, Player), player::Error>) -> Result<Game, PlayError> {
         match (self.get_player(p1_id), self.get_player(p2_id)) {
             (Ok(player1), Ok(player2)) => {
                 match updater(player1, player2) {
@@ -229,7 +229,7 @@ impl Game {
 
     #[cfg(test)]
     fn hands(&self) -> Vec<Option<deck::Card>> {
-        self._players.iter().map(|&x| x.get_hand()).collect()
+        self._players.iter().map(|ref x| x.get_hand()).collect()
     }
 
     #[cfg(test)]

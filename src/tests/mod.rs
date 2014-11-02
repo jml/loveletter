@@ -78,7 +78,7 @@ fn test_update_nonexistent_player() {
     let g = Game::from_manual(
         [Some(General), Some(Clown), None, Some(Priestess)],
         [Soldier, Minister, Princess, Soldier, Wizard], None).unwrap();
-    let error = g.update_player_by(5, |p| Ok(p)).unwrap_err();
+    let error = g.update_player_by(5, |p| Ok(p.clone())).unwrap_err();
     assert_eq!(InvalidPlayer(5), error);
 }
 
