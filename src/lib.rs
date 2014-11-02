@@ -285,7 +285,7 @@ impl Game {
             NoChange => Ok(self.clone()),
             Protect(i) => self.update_player_by(i, |player| player.protect(true)),
             EliminatePlayer(i) => self.update_player_by(i, |p| p.eliminate()),
-            SwapHands(src, tgt, _) => self.update_two_players_by(
+            SwapHands(src, tgt) => self.update_two_players_by(
                 tgt, src, |tgt_player, src_player| tgt_player.swap_hands(src_player)),
             ForceDiscard(i) => {
                 // TODO: Check that they are not playing Princess. If they are,
@@ -314,18 +314,18 @@ impl Game {
         let (new_game, action) = if minister_bust(turn.draw, turn.hand) {
             (new_game, EliminatePlayer(turn.player))
         } else {
+            // Find out what they'd like to play.
             let (card, play) = f(&new_game, &turn);
 
-            let action = match judge(turn.player, turn.hand, turn.draw, (card, play)) {
-                Ok(a) => a,
-                Err(e) => return Err(e),
-            };
-
-            // XXX: For reasons which elude me (bad ones!) we have to update
-            // the player hand *after* we judge.
+            // Update their hand and the played card.
             let new_game = match new_game.update_player_by(turn.player, |p| p.play_card(turn.draw, card)) {
                 Err(e) => { return Err(e); }
                 Ok(player) => { player }
+            };
+
+            let action = match play_to_action(turn.player, card, play) {
+                Ok(a) => a,
+                Err(e) => return Err(e),
             };
 
             (new_game, action)
@@ -382,7 +382,7 @@ pub enum Action {
     Protect(uint),
     // source, target, source card
     // source card is there in case we're swapping the card we just picked up.
-    SwapHands(uint, uint, deck::Card),
+    SwapHands(uint, uint),
     // You have lost
     EliminatePlayer(uint),
     // Discard your current card and draw a new one
@@ -394,23 +394,6 @@ pub enum Action {
 }
 
 
-// XXX: Will probably make sense to move it into the Game object, but let's
-// keep it separate for now.
-fn judge(current_player: uint, current_card: deck::Card, dealt_card: deck::Card,
-         play: (deck::Card, Play)) -> Result<Action, PlayError> {
-    let (played_card, play_data) = play;
-
-    // Sort out which card we're playing, and which we're keeping.
-    let unplayed_card = match util::other((current_card, dealt_card), played_card) {
-        Some(card) => card,
-        None => return Err(CardNotFound(played_card, (current_card, dealt_card))),
-    };
-
-    // Only need `unplayed_card` for General.
-    play_to_action(current_player, played_card, unplayed_card, play_data)
-}
-
-
 /// Turn a play into an Action.
 ///
 /// Translates a decision by a player to play a particular card in a
@@ -418,8 +401,7 @@ fn judge(current_player: uint, current_card: deck::Card, dealt_card: deck::Card,
 ///
 /// Returns an error if that particular card, play combination is not valid.
 fn play_to_action(
-    current_player: uint, played_card: deck::Card, unplayed_card: deck::Card,
-    play: Play) -> Result<Action, PlayError> {
+    current_player: uint, played_card: deck::Card, play: Play) -> Result<Action, PlayError> {
 
     // XXX: Ideally, I'd express this with a data structure that mapped card,
     // play combinations to valid actions.
@@ -447,7 +429,7 @@ fn play_to_action(
                     Ok(ForceDiscard(target))
                 },
                 deck::General => {
-                    Ok(SwapHands(current_player, target, unplayed_card))
+                    Ok(SwapHands(current_player, target))
                 },
                 _ => Err(BadActionForCard(play, played_card)),
             }
