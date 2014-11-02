@@ -316,7 +316,7 @@ impl Game {
         } else {
             let (card, play) = f(&new_game, &turn);
 
-            let action = match judge(&new_game, turn.player, turn.draw, (card, play)) {
+            let action = match judge(&new_game, turn.player, turn.hand, turn.draw, (card, play)) {
                 Ok(a) => a,
                 Err(e) => return Err(e),
             };
@@ -396,13 +396,8 @@ pub enum Action {
 
 // XXX: Will probably make sense to move it into the Game object, but let's
 // keep it separate for now.
-fn judge(game: &Game, current_player: uint, dealt_card: deck::Card,
+fn judge(game: &Game, current_player: uint, current_card: deck::Card, dealt_card: deck::Card,
          play: (deck::Card, Play)) -> Result<Action, PlayError> {
-    let current_card = match game.get_hand(current_player) {
-        Ok(card) => card,
-        Err(e) => return Err(e),
-    };
-
     // Make sure we're targeting a valid, active player.
     match play {
         (_, Attack(target)) | (_, Guess(target, _))  => match game.get_hand(target) {

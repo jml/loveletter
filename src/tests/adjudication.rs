@@ -5,18 +5,11 @@ use super::super::Game;
 use super::super::{judge, play_to_action};
 use super::super::{SwapHands, ForceDiscard, ForceReveal, EliminateWeaker,
                    EliminateOnGuess};
-use super::super::{Attack, Guess, NoEffect};
+use super::super::{Attack, Guess};
 use super::super::{InvalidPlayer, CardNotFound, InactivePlayer, SelfTarget,
                    BadActionForCard, BadGuess};
 
-use super::make_arbitrary_game;
 
-#[test]
-fn test_judge_invalid_player() {
-    let g = make_arbitrary_game();
-    let err = judge(&g, 5, Soldier, (Priestess, NoEffect)).unwrap_err();
-    assert_eq!(InvalidPlayer(5), err);
-}
 
 #[test]
 fn test_judge_invalid_target_attack() {
@@ -24,7 +17,7 @@ fn test_judge_invalid_target_attack() {
         [Some(General), Some(Clown), Some(Knight), Some(Priestess)],
         [Soldier, Minister, Princess, Soldier], None).unwrap();
     let arbitrary_card = Wizard;
-    let result = judge(&g, 0, arbitrary_card, (General, Attack(4)));
+    let result = judge(&g, 0, General, arbitrary_card, (General, Attack(4)));
     assert_eq!(InvalidPlayer(4), result.unwrap_err());
 }
 
@@ -34,7 +27,7 @@ fn test_judge_invalid_target_guess() {
         [Some(Soldier), Some(Clown), Some(Knight), Some(Priestess)],
         [Soldier, Minister, Princess, Soldier], None).unwrap();
     let arbitrary_card = Wizard;
-    let result = judge(&g, 0, arbitrary_card, (Soldier, Guess(4, Minister)));
+    let result = judge(&g, 0, Soldier, arbitrary_card, (Soldier, Guess(4, Minister)));
     assert_eq!(InvalidPlayer(4), result.unwrap_err());
 }
 
@@ -44,7 +37,7 @@ fn test_judge_inactive_player_attack() {
         [Some(General), Some(Clown), None, Some(Priestess)],
         [Soldier, Minister, Princess, Soldier], None).unwrap();
     let arbitrary_card = Wizard;
-    let result = judge(&g, 0, arbitrary_card, (General, Attack(2)));
+    let result = judge(&g, 0, General, arbitrary_card, (General, Attack(2)));
     assert_eq!(InactivePlayer(2), result.unwrap_err());
 }
 
@@ -54,7 +47,7 @@ fn test_judge_inactive_player_guess() {
         [Some(General), Some(Clown), None, Some(Priestess)],
         [Soldier, Minister, Princess, Soldier], None).unwrap();
     let arbitrary_card = Wizard;
-    let result = judge(&g, 0, arbitrary_card, (General, Guess(2, Minister)));
+    let result = judge(&g, 0, General, arbitrary_card, (General, Guess(2, Minister)));
     assert_eq!(InactivePlayer(2), result.unwrap_err());
 }
 
@@ -65,7 +58,7 @@ fn test_judge_play_without_card() {
         [Soldier, Minister, Princess, Soldier], None).unwrap();
     // Player 0 has a Wizard and a Soldier, but is trying to play a
     // General.
-    let result = judge(&g, 0, Wizard, (General, Attack(2)));
+    let result = judge(&g, 0, Soldier, Wizard, (General, Attack(2)));
     assert_eq!(
         CardNotFound(General, (Soldier, Wizard)), result.unwrap_err());
 }
