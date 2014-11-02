@@ -45,7 +45,7 @@ impl Turn {
 #[deriving(Show, PartialEq, Eq, Clone)]
 enum GameState {
     NotStarted,
-    PlayerReady(uint),
+    PlayerReady(uint, deck::Card),
 }
 
 
@@ -89,7 +89,7 @@ impl Game {
     fn current_player(&self) -> Option<uint> {
         match self._current {
             NotStarted => None,
-            PlayerReady(i) => Some(i)
+            PlayerReady(i, _) => Some(i)
         }
     }
 
@@ -135,7 +135,7 @@ impl Game {
         if !Game::valid_player_count(num_players) {
             return Err(InvalidPlayers(num_players));
         }
-        let stack: Vec<deck::Card> = deck.iter().map(|&x| x).collect();
+        let mut stack: Vec<deck::Card> = deck.iter().map(|&x| x).collect();
         let mut all_cards = stack.clone();
         for x in hands.as_slice().iter().filter_map(|&x| x) {
             all_cards.push(x);
@@ -143,7 +143,12 @@ impl Game {
         if deck::is_valid_subdeck(all_cards.as_slice()) {
             let state = match current_player {
                 None => NotStarted,
-                Some(i) => PlayerReady(i),
+                Some(i) => {
+                    match stack.pop() {
+                        Some(card) => PlayerReady(i, card),
+                        None => { return Err(BadDeck); }
+                    }
+                }
             };
             Ok(Game {
                 _stack: stack,
@@ -273,7 +278,7 @@ impl Game {
         match (self._next_player(), self.draw()) {
             (Some(new_player_id), (game, Some(c))) => {
                 let mut new_game = game;
-                new_game._current = PlayerReady(new_player_id);
+                new_game._current = PlayerReady(new_player_id, c);
                 // Protection from the priestess expires when your
                 // turn begins.
                 new_game = new_game

@@ -110,12 +110,12 @@ fn test_manual_game_bad_players() {
 
 #[test]
 fn test_survivors_at_game_end() {
-    let g = Game::from_manual([Some(Knight), Some(Princess)], [], Some(0)).unwrap();
+    let g = Game::from_manual([Some(Knight), Some(Princess)], [Soldier], Some(0)).unwrap();
     assert_eq!(vec![(0, Knight), (1, Princess)], g.survivors());
 }
 
 #[test]
 fn test_winner_from_multiple_survivors() {
-    let g = Game::from_manual([Some(Knight), Some(Princess)], [], Some(0)).unwrap();
+    let g = Game::from_manual([Some(Knight), Some(Princess)], [Soldier], Some(0)).unwrap();
     assert_eq!(vec![(1, Princess)], g.winners());
 }
