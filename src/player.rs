@@ -1,11 +1,11 @@
-use deck;
+use deck::Card;
 
 #[deriving(Show, PartialEq, Eq, Clone)]
 /// A player of Love Letter.
 pub struct Player {
-    _hand: Option<deck::Card>,
+    _hand: Option<Card>,
     _protected: bool,
-    _discard: Vec<deck::Card>,
+    _discard: Vec<Card>,
 }
 
 
@@ -13,13 +13,13 @@ pub struct Player {
 pub enum Error {
     Inactive,
     BadGuess,
-    NoSuchCard(deck::Card, (deck::Card, deck::Card)),
+    NoSuchCard(Card, (Card, Card)),
 }
 
 
 impl Player {
     /// Create a new player with the given hand.
-    pub fn new(hand: Option<deck::Card>) -> Player {
+    pub fn new(hand: Option<Card>) -> Player {
         Player { _hand: hand, _protected: false, _discard: vec![] }
     }
 
@@ -31,12 +31,12 @@ impl Player {
     /// What has this player discarded?
     ///
     /// Last item is most-recently discarded.
-    pub fn discards(&self) -> &[deck::Card] {
+    pub fn discards(&self) -> &[Card] {
         self._discard.as_slice()
     }
 
     /// Get the player's hand. Returns `None` if player is no longer playing.
-    pub fn get_hand(&self) -> Option<deck::Card> {
+    pub fn get_hand(&self) -> Option<Card> {
         self._hand
     }
 
@@ -51,7 +51,7 @@ impl Player {
                 _discard: self._discard.clone(),
             })
         } else {
-            Err(Inactive)
+            Err(Error::Inactive)
         }
     }
 
@@ -61,7 +61,7 @@ impl Player {
     /// Any card they had in their hand is immediately discarded.
     pub fn eliminate(&self) -> Result<Player, Error> {
         match self._hand {
-            None => Err(Inactive),
+            None => Err(Error::Inactive),
             Some(hand) =>
                 Ok(if self._protected {
                     self.clone()
@@ -72,12 +72,12 @@ impl Player {
     }
 
     /// Eliminate this player if they've got the guessed card in their hand.
-    pub fn eliminate_if_guessed(&self, guess: deck::Card) -> Result<Player, Error> {
-        if guess == deck::Soldier {
-            return Err(BadGuess)
+    pub fn eliminate_if_guessed(&self, guess: Card) -> Result<Player, Error> {
+        if guess == Card::Soldier {
+            return Err(Error::BadGuess)
         }
         match self._hand {
-            None => Err(Inactive),
+            None => Err(Error::Inactive),
             Some(card) =>
                 if card == guess {
                     self.eliminate()
@@ -106,14 +106,14 @@ impl Player {
                     })
                 }
             }
-            _ => Err(Inactive),
+            _ => Err(Error::Inactive),
         }
     }
 
     /// Swap hands with the other player.
     pub fn swap_hands(&self, other: &Player) -> Result<(Player, Player), Error> {
         if !self.active() {
-            Err(Inactive)
+            Err(Error::Inactive)
         } else if self._protected {
             Ok((self.clone(), other.clone()))
         } else {
@@ -123,16 +123,16 @@ impl Player {
 
     /// Given that we were dealt `dealt` and chose to play `chosen`, discard
     /// `chosen` and put whatever card we didn't play in our hand.
-    pub fn play_card(&self, dealt: deck::Card, chosen: deck::Card) -> Result<Player, Error> {
+    pub fn play_card(&self, dealt: Card, chosen: Card) -> Result<Player, Error> {
         match self._hand {
-            None => Err(Inactive),
+            None => Err(Error::Inactive),
             Some(hand) =>
                 if chosen == hand {
                     Ok(self.discard(chosen).replace(Some(dealt)))
                 } else if chosen == dealt {
                     Ok(self.discard(chosen))
                 } else {
-                    Err(NoSuchCard(chosen, (hand, dealt)))
+                    Err(Error::NoSuchCard(chosen, (hand, dealt)))
                 },
         }
     }
@@ -142,9 +142,9 @@ impl Player {
     /// Different from `play_card` in that there might not be a new card
     /// available for us, in which case we're out of the game. Also, we never
     /// have to do this if we're protected.
-    pub fn discard_and_draw(&self, new_card: Option<deck::Card>) -> Result<Player, Error> {
+    pub fn discard_and_draw(&self, new_card: Option<Card>) -> Result<Player, Error> {
         match self._hand {
-            None => Err(Inactive),
+            None => Err(Error::Inactive),
             Some(hand) =>
                 if self._protected {
                     Ok(self.clone())
@@ -152,14 +152,14 @@ impl Player {
                     match hand {
                         // XXX: Also need to make sure that when we eliminate in this
                         // case, that we return the new_card to the stack.
-                        deck::Princess => self.eliminate(),
+                        Card::Princess => self.eliminate(),
                         _ => Ok(self.discard(hand).replace(new_card)),
                     }
                 },
         }
     }
 
-    fn discard(&self, card: deck::Card) -> Player {
+    fn discard(&self, card: Card) -> Player {
         let mut new_discard = self._discard.clone();
         new_discard.push(card);
         Player {
@@ -169,7 +169,7 @@ impl Player {
         }
     }
 
-    fn replace(&self, card: Option<deck::Card>) -> Player {
+    fn replace(&self, card: Option<Card>) -> Player {
         Player {
             _hand: card,
             _protected: self._protected,
@@ -182,73 +182,73 @@ impl Player {
 #[cfg(test)]
 mod test {
     use deck;
-    use super::{Inactive, Player};
+    use super::Player;
 
     #[test]
     fn test_eliminate_gone_player() {
         let p = Player::new(None);
         let error = p.eliminate().unwrap_err();
-        assert_eq!(Inactive, error);
+        assert_eq!(Error::Inactive, error);
     }
 
     #[test]
     fn test_discards_empty() {
-        let p = Player::new(Some(deck::Wizard));
-        let expected: &[deck::Card] = [];
+        let p = Player::new(Some(Card::Wizard));
+        let expected: &[Card] = [];
         assert_eq!(expected, p.discards());
     }
 
     #[test]
     fn test_play_hand_updates_hand() {
-        let p = Player::new(Some(deck::Wizard));
-        let new_p = p.play_card(deck::Priestess, deck::Wizard).unwrap();
-        assert_eq!(Some(deck::Priestess), new_p.get_hand());
+        let p = Player::new(Some(Card::Wizard));
+        let new_p = p.play_card(Card::Priestess, Card::Wizard).unwrap();
+        assert_eq!(Some(Card::Priestess), new_p.get_hand());
     }
 
     #[test]
     fn test_play_hand_discards() {
-        let p = Player::new(Some(deck::Wizard));
-        let new_p = p.play_card(deck::Priestess, deck::Wizard).unwrap();
-        let expected: &[deck::Card] = [deck::Wizard];
+        let p = Player::new(Some(Card::Wizard));
+        let new_p = p.play_card(Card::Priestess, Card::Wizard).unwrap();
+        let expected: &[Card] = [Card::Wizard];
         assert_eq!(expected, new_p.discards());
     }
 
     #[test]
     fn test_play_dealt_leaves_hand() {
-        let p = Player::new(Some(deck::Wizard));
-        let new_p = p.play_card(deck::Priestess, deck::Priestess).unwrap();
-        assert_eq!(Some(deck::Wizard), new_p.get_hand());
+        let p = Player::new(Some(Card::Wizard));
+        let new_p = p.play_card(Card::Priestess, Card::Priestess).unwrap();
+        assert_eq!(Some(Card::Wizard), new_p.get_hand());
     }
 
     #[test]
     fn test_play_dealt_discards() {
-        let p = Player::new(Some(deck::Wizard));
-        let new_p = p.play_card(deck::Priestess, deck::Priestess).unwrap();
-        let expected: &[deck::Card] = [deck::Priestess];
+        let p = Player::new(Some(Card::Wizard));
+        let new_p = p.play_card(Card::Priestess, Card::Priestess).unwrap();
+        let expected: &[Card] = [Card::Priestess];
         assert_eq!(expected, new_p.discards());
     }
 
     #[test]
     fn test_force_discard_updates_discard() {
-        let p = Player::new(Some(deck::Knight));
-        let new_p = p.discard_and_draw(Some(deck::Clown)).unwrap();
-        let expected: &[deck::Card] = [deck::Knight];
+        let p = Player::new(Some(Card::Knight));
+        let new_p = p.discard_and_draw(Some(Card::Clown)).unwrap();
+        let expected: &[Card] = [Card::Knight];
         assert_eq!(expected, new_p.discards());
     }
 
     #[test]
     fn test_force_discard_princess_updates_discard() {
-        let p = Player::new(Some(deck::Princess));
-        let new_p = p.discard_and_draw(Some(deck::Clown)).unwrap();
-        let expected: &[deck::Card] = [deck::Princess];
+        let p = Player::new(Some(Card::Princess));
+        let new_p = p.discard_and_draw(Some(Card::Clown)).unwrap();
+        let expected: &[Card] = [Card::Princess];
         assert_eq!(expected, new_p.discards());
     }
 
     #[test]
     fn test_eliminate_discards() {
-        let p = Player::new(Some(deck::Princess));
+        let p = Player::new(Some(Card::Princess));
         let new_p = p.eliminate().unwrap();
-        let expected: &[deck::Card] = [deck::Princess];
+        let expected: &[Card] = [Card::Princess];
         assert_eq!(expected, new_p.discards());
     }
 

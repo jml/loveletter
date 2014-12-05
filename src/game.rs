@@ -88,7 +88,7 @@ impl Game {
         let hands: Vec<Option<deck::Card>> = cards.slice(1, hand_end).iter().map(|&x| Some(x)).collect();
         Some(Game {
             _stack: cards.slice_from(hand_end).iter().map(|&x| x).collect(),
-            _current: NotStarted,
+            _current: GameState::NotStarted,
             _players: hands.iter().map(|&x| player::Player::new(x)).collect(),
         })
     }
@@ -110,7 +110,7 @@ impl Game {
                        current_player: Option<uint>) -> Result<Game, GameError> {
         let num_players = hands.len();
         if !Game::valid_player_count(num_players) {
-            return Err(InvalidPlayers(num_players));
+            return Err(GameError::InvalidPlayers(num_players));
         }
         let mut stack: Vec<deck::Card> = deck.iter().map(|&x| x).collect();
         let mut all_cards = stack.clone();
@@ -119,11 +119,11 @@ impl Game {
         }
         if deck::is_valid_subdeck(all_cards.as_slice()) {
             let state = match current_player {
-                None => NotStarted,
+                None => GameState::NotStarted,
                 Some(i) => {
                     match stack.pop() {
-                        Some(card) => PlayerReady(i, card),
-                        None => { return Err(BadDeck); }
+                        Some(card) => GameState::PlayerReady(i, card),
+                        None => { return Err(GameError::BadDeck); }
                     }
                 }
             };
@@ -133,7 +133,7 @@ impl Game {
                 _players: hands.iter().map(|&x| player::Player::new(x)).collect(),
             })
         } else {
-            Err(BadDeck)
+            Err(GameError::BadDeck)
         }
     }
 
@@ -158,8 +158,8 @@ impl Game {
 
     fn current_player(&self) -> Option<uint> {
         match self._current {
-            NotStarted => None,
-            PlayerReady(i, _) => Some(i)
+            GameState::NotStarted => None,
+            GameState::PlayerReady(i, _) => Some(i)
         }
     }
 
@@ -197,10 +197,10 @@ impl Game {
             if p.active() {
                 Ok(p)
             } else {
-                Err(action::InactivePlayer(player_id))
+                Err(action::PlayError::InactivePlayer(player_id))
             }
         } else {
-            Err(action::InvalidPlayer(player_id))
+            Err(action::PlayError::InvalidPlayer(player_id))
         }
     }
 
@@ -220,9 +220,9 @@ impl Game {
             .and_then(
                 |result| match result {
                     Ok(new_player) => Ok(self.update_player(player_id, new_player)),
-                    Err(player::Inactive) => Err(action::InactivePlayer(player_id)),
-                    Err(player::BadGuess) => Err(action::BadGuess),
-                    Err(player::NoSuchCard(c, d)) => Err(action::CardNotFound(c, d)),
+                    Err(player::Error::Inactive) => Err(action::PlayError::InactivePlayer(player_id)),
+                    Err(player::Error::BadGuess) => Err(action::PlayError::BadGuess),
+                    Err(player::Error::NoSuchCard(c, d)) => Err(action::PlayError::CardNotFound(c, d)),
                 })
     }
 
@@ -236,7 +236,7 @@ impl Game {
                         new_game._players[p2_id] = new_player2;
                         Ok(new_game)
                     },
-                    Err(player::Inactive) => Err(action::InactivePlayer(p2_id)),
+                    Err(player::Error::Inactive) => Err(action::PlayError::InactivePlayer(p2_id)),
                     Err(e) => panic!(e),
                 }
             },
@@ -279,7 +279,7 @@ impl Game {
         match (self._next_player(), self.draw()) {
             (Some(new_player_id), (game, Some(c))) => {
                 let mut new_game = game;
-                new_game._current = PlayerReady(new_player_id, c);
+                new_game._current = GameState::PlayerReady(new_player_id, c);
                 // Protection from the priestess expires when your
                 // turn begins.
                 new_game = new_game
@@ -298,21 +298,21 @@ impl Game {
 
     fn apply_action(&self, action: action::Action) -> Result<Game, action::PlayError> {
         match action {
-            action::NoChange => Ok(self.clone()),
-            action::Protect(i) => self.update_player_by(i, |player| player.protect(true)),
-            action::EliminatePlayer(i) => self.update_player_by(i, |p| p.eliminate()),
-            action::SwapHands(src, tgt) => self.update_two_players_by(
+            action::Action::NoChange => Ok(self.clone()),
+            action::Action::Protect(i) => self.update_player_by(i, |player| player.protect(true)),
+            action::Action::EliminatePlayer(i) => self.update_player_by(i, |p| p.eliminate()),
+            action::Action::SwapHands(src, tgt) => self.update_two_players_by(
                 tgt, src, |tgt_player, src_player| tgt_player.swap_hands(src_player)),
-            action::ForceDiscard(i) => {
+            action::Action::ForceDiscard(i) => {
                 let (game, new_card) = self.draw();
                 game.update_player_by(i, |p| p.discard_and_draw(new_card))
             },
             // XXX: The fact that this is indistinguishable from NoChange
             // means we've implemented it wrong.
-            action::ForceReveal(..) => Ok(self.clone()),
-            action::EliminateWeaker(src, tgt) => self.update_two_players_by(
+            action::Action::ForceReveal(..) => Ok(self.clone()),
+            action::Action::EliminateWeaker(src, tgt) => self.update_two_players_by(
                 tgt, src, |tgt_player, src_player| tgt_player.eliminate_if_weaker(src_player)),
-            action::EliminateOnGuess(p1, card) =>
+            action::Action::EliminateOnGuess(p1, card) =>
                 self.update_player_by(p1, |p| p.eliminate_if_guessed(card))
         }
     }
@@ -335,7 +335,7 @@ impl Game {
         };
 
         let (new_game, action) = if minister_bust(turn.draw, turn.hand) {
-            (new_game, action::EliminatePlayer(turn.player))
+            (new_game, action::Action::EliminatePlayer(turn.player))
         } else {
             // Find out what they'd like to play.
             let (card, play) = f(&new_game, &turn);
@@ -365,9 +365,9 @@ impl Game {
 
 
 fn minister_bust(a: deck::Card, b: deck::Card) -> bool {
-    match util::other((a, b), deck::Minister) {
-        Some(deck::Wizard) | Some(deck::General) | Some(deck::Princess) => true,
-        Some(deck::Minister) => panic!("Called with 2 ministers!"),
+    match util::other((a, b), deck::Card::Minister) {
+        Some(deck::Card::Wizard) | Some(deck::Card::General) | Some(deck::Card::Princess) => true,
+        Some(deck::Card::Minister) => panic!("Called with 2 ministers!"),
         _ => false,
     }
 }
@@ -377,7 +377,7 @@ fn minister_bust(a: deck::Card, b: deck::Card) -> bool {
 mod test {
     use action;
     use deck;
-    use deck::{Card, Soldier, Clown, Knight, Priestess, Wizard, General, Minister, Princess};
+    use deck::Card;
     use super::{Game, Turn};
 
     fn make_arbitrary_game() -> Game {
@@ -435,22 +435,22 @@ mod test {
     #[test]
     fn test_from_deck() {
         let cards = [
-            Soldier,
-            Clown,
-            Knight,
-            Priestess,
-            Wizard,
-            General,
-            Minister,
-            Princess,
-            Soldier,
-            Clown,
-            Soldier,
-            Knight,
-            Soldier,
-            Priestess,
-            Soldier,
-            Wizard,
+            deck::Card::Soldier,
+            deck::Card::Clown,
+            deck::Card::Knight,
+            deck::Card::Priestess,
+            deck::Card::Wizard,
+            deck::Card::General,
+            deck::Card::Minister,
+            deck::Card::Princess,
+            deck::Card::Soldier,
+            deck::Card::Clown,
+            deck::Card::Soldier,
+            deck::Card::Knight,
+            deck::Card::Soldier,
+            deck::Card::Priestess,
+            deck::Card::Soldier,
+            deck::Card::Wizard,
             ];
         let deck = deck::Deck::from_slice(cards).unwrap();
         let num_players = 3u;

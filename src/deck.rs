@@ -20,22 +20,22 @@ pub enum Card {
 static CARDS_IN_DECK: uint = 16;
 
 static DECK: [Card, ..16] = [
-    Soldier,
-    Soldier,
-    Soldier,
-    Soldier,
-    Soldier,
-    Clown,
-    Clown,
-    Knight,
-    Knight,
-    Priestess,
-    Priestess,
-    Wizard,
-    Wizard,
-    General,
-    Minister,
-    Princess,
+    Card::Soldier,
+    Card::Soldier,
+    Card::Soldier,
+    Card::Soldier,
+    Card::Soldier,
+    Card::Clown,
+    Card::Clown,
+    Card::Knight,
+    Card::Knight,
+    Card::Priestess,
+    Card::Priestess,
+    Card::Wizard,
+    Card::Wizard,
+    Card::General,
+    Card::Minister,
+    Card::Princess,
     ];
 
 #[deriving(Show)]
@@ -58,11 +58,11 @@ impl Deck {
 
     pub fn from_slice(cards: &[Card]) -> Result<Deck, DeckError> {
         if cards.len() != CARDS_IN_DECK {
-            return Err(WrongNumber(cards.len()));
+            return Err(DeckError::WrongNumber(cards.len()));
         } else if is_valid_deck(cards) {
             Ok(Deck(cards.iter().map(|x| *x).collect()))
         } else {
-            Err(WrongCards)
+            Err(DeckError::WrongCards)
         }
     }
 
@@ -100,7 +100,7 @@ pub fn is_valid_subdeck(cards: &[Card]) -> bool {
 #[cfg(test)]
 mod test {
     use super::{DECK, Deck};
-    use super::{Card, Soldier, Clown, Knight, Priestess, Wizard, General, Minister, Princess};
+    use super::Card;
 
     #[test]
     fn test_deck_new() {
@@ -140,22 +140,22 @@ mod test {
     #[test]
     fn test_deck_fixed_too_many_soldiers() {
         let cards = [
-            Soldier,
-            Soldier,
-            Soldier,
-            Soldier,
-            Soldier,
-            Soldier,
-            Soldier,
-            Soldier,
-            Soldier,
-            Soldier,
-            Soldier,
-            Soldier,
-            Soldier,
-            Soldier,
-            Soldier,
-            Soldier,
+            Card::Soldier,
+            Card::Soldier,
+            Card::Soldier,
+            Card::Soldier,
+            Card::Soldier,
+            Card::Soldier,
+            Card::Soldier,
+            Card::Soldier,
+            Card::Soldier,
+            Card::Soldier,
+            Card::Soldier,
+            Card::Soldier,
+            Card::Soldier,
+            Card::Soldier,
+            Card::Soldier,
+            Card::Soldier,
             ];
         match Deck::from_slice(cards) {
             Ok(Deck(cards)) => panic!("Should not have been OK: {}", cards.as_slice()),
@@ -184,23 +184,23 @@ mod test {
     fn test_deck_variable_too_many() {
         // One soldier too many
         let cards = [
-            Soldier,
-            Soldier,
-            Soldier,
-            Soldier,
-            Soldier,
-            Soldier,
-            Clown,
-            Clown,
-            Knight,
-            Knight,
-            Priestess,
-            Priestess,
-            Wizard,
-            Wizard,
-            General,
-            Minister,
-            Princess,
+            Card::Soldier,
+            Card::Soldier,
+            Card::Soldier,
+            Card::Soldier,
+            Card::Soldier,
+            Card::Soldier,
+            Card::Clown,
+            Card::Clown,
+            Card::Knight,
+            Card::Knight,
+            Card::Priestess,
+            Card::Priestess,
+            Card::Wizard,
+            Card::Wizard,
+            Card::General,
+            Card::Minister,
+            Card::Princess,
             ];
         match Deck::from_slice(cards.as_slice()) {
             Ok(Deck(cards)) => panic!("Should not have been OK: {}", cards.as_slice()),
@@ -219,8 +219,8 @@ mod test {
 
     #[test]
     fn test_card_ordering() {
-        assert!(Soldier <= Soldier);
-        assert!(Soldier < Clown);
-        assert!(Soldier < Princess);
+        assert!(Card::Soldier <= Card::Soldier);
+        assert!(Card::Soldier < Card::Clown);
+        assert!(Card::Soldier < Card::Princess);
     }
 }

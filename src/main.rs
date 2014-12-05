@@ -1,10 +1,11 @@
 extern crate loveletter;
 
+use loveletter::Card;
 
 #[cfg(not(test))]
 fn choose_card(turn: &loveletter::Turn) -> loveletter::Card {
     let list = [turn.hand, turn.draw];
-    let choice = loveletter::prompt::choose_from_list("Pick a card", list);
+    let choice = loveletter::prompt::choose_from_list("Pick a card", &list);
     *choice
 }
 
@@ -21,35 +22,35 @@ fn choose_target(game: &loveletter::Game) -> uint {
 
 
 #[cfg(not(test))]
-fn choose_guess() -> loveletter::Card {
+fn choose_guess() -> Card {
     *loveletter::prompt::choose_from_list(
         "Which card do you guess?",
-        [loveletter::Clown,
-         loveletter::Knight,
-         loveletter::Priestess,
-         loveletter::Wizard,
-         loveletter::General,
-         loveletter::Minister,
-         loveletter::Princess])
+        &[Card::Clown,
+          Card::Knight,
+          Card::Priestess,
+          Card::Wizard,
+          Card::General,
+          Card::Minister,
+          Card::Princess])
 }
 
 
 /// Allow the player to choose a card to play.
 #[cfg(not(test))]
-fn choose(_game: &loveletter::Game, turn: &loveletter::Turn) -> (loveletter::Card, loveletter::Play) {
+fn choose(_game: &loveletter::Game, turn: &loveletter::Turn) -> (Card, loveletter::Play) {
     println!("Player {}", turn.player + 1);
     println!("---------");
     let chosen = choose_card(turn);
     let action = match chosen {
-        loveletter::Priestess | loveletter::Minister | loveletter::Princess => loveletter::NoEffect,
+        Card::Priestess | Card::Minister | Card::Princess => loveletter::Play::NoEffect,
         _ => {
             let other = choose_target(_game);
             match chosen {
-                loveletter::Soldier => {
+                Card::Soldier => {
                     let guess = choose_guess();
-                    loveletter::Guess(other, guess)
+                    loveletter::Play::Guess(other, guess)
                 },
-                _ => loveletter::Attack(other),
+                _ => loveletter::Play::Attack(other),
             }
         },
     };
@@ -59,7 +60,7 @@ fn choose(_game: &loveletter::Game, turn: &loveletter::Turn) -> (loveletter::Car
 
 
 #[cfg(not(test))]
-fn announce_winner(winners: Vec<(uint, loveletter::Card)>) {
+fn announce_winner(winners: Vec<(uint, Card)>) {
     // TODO: Probably want to report on all survivors.
     // TODO: Probably want to say *why* the game is over: no more players or
     // no more cards.
