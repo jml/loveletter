@@ -17,9 +17,9 @@ pub enum Card {
 }
 
 
-static CARDS_IN_DECK: uint = 16;
+const CARDS_IN_DECK: uint = 16;
 
-static DECK: [Card, ..16] = [
+const DECK: [Card, ..CARDS_IN_DECK] = [
     Card::Soldier,
     Card::Soldier,
     Card::Soldier,
@@ -86,8 +86,10 @@ impl Deck {
 }
 
 fn is_valid_deck(deck: &[Card]) -> bool {
-    let mut full_deck: Vec<&Card> = DECK.iter().collect();
-    let mut sorted_deck: Vec<&Card> = deck.iter().collect();
+    let mut full_deck: Vec<Card> = Vec::new();
+    full_deck.push_all(&DECK);
+    let mut sorted_deck: Vec<Card> = Vec::new();
+    sorted_deck.push_all(deck);
     full_deck.sort();
     sorted_deck.sort();
     full_deck == sorted_deck
