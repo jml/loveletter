@@ -182,7 +182,8 @@ impl Player {
 #[cfg(test)]
 mod test {
     use deck;
-    use super::Player;
+    use deck::Card;
+    use super::{Player, Error};
 
     #[test]
     fn test_eliminate_gone_player() {
@@ -194,7 +195,7 @@ mod test {
     #[test]
     fn test_discards_empty() {
         let p = Player::new(Some(Card::Wizard));
-        let expected: &[Card] = [];
+        let expected: &[Card] = &[];
         assert_eq!(expected, p.discards());
     }
 
@@ -209,7 +210,7 @@ mod test {
     fn test_play_hand_discards() {
         let p = Player::new(Some(Card::Wizard));
         let new_p = p.play_card(Card::Priestess, Card::Wizard).unwrap();
-        let expected: &[Card] = [Card::Wizard];
+        let expected: &[Card] = &[Card::Wizard];
         assert_eq!(expected, new_p.discards());
     }
 
@@ -224,7 +225,7 @@ mod test {
     fn test_play_dealt_discards() {
         let p = Player::new(Some(Card::Wizard));
         let new_p = p.play_card(Card::Priestess, Card::Priestess).unwrap();
-        let expected: &[Card] = [Card::Priestess];
+        let expected: &[Card] = &[Card::Priestess];
         assert_eq!(expected, new_p.discards());
     }
 
@@ -232,7 +233,7 @@ mod test {
     fn test_force_discard_updates_discard() {
         let p = Player::new(Some(Card::Knight));
         let new_p = p.discard_and_draw(Some(Card::Clown)).unwrap();
-        let expected: &[Card] = [Card::Knight];
+        let expected: &[Card] = &[Card::Knight];
         assert_eq!(expected, new_p.discards());
     }
 
@@ -240,7 +241,7 @@ mod test {
     fn test_force_discard_princess_updates_discard() {
         let p = Player::new(Some(Card::Princess));
         let new_p = p.discard_and_draw(Some(Card::Clown)).unwrap();
-        let expected: &[Card] = [Card::Princess];
+        let expected: &[Card] = &[Card::Princess];
         assert_eq!(expected, new_p.discards());
     }
 
@@ -248,7 +249,7 @@ mod test {
     fn test_eliminate_discards() {
         let p = Player::new(Some(Card::Princess));
         let new_p = p.eliminate().unwrap();
-        let expected: &[Card] = [Card::Princess];
+        let expected: &[Card] = &[Card::Princess];
         assert_eq!(expected, new_p.discards());
     }
 

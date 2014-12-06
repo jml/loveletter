@@ -376,6 +376,7 @@ fn minister_bust(a: deck::Card, b: deck::Card) -> bool {
 #[cfg(test)]
 mod test {
     use action;
+    use action::{Action, PlayError};
     use deck;
     use deck::Card;
     use super::{Game, Turn};
@@ -435,24 +436,24 @@ mod test {
     #[test]
     fn test_from_deck() {
         let cards = [
-            deck::Card::Soldier,
-            deck::Card::Clown,
-            deck::Card::Knight,
-            deck::Card::Priestess,
-            deck::Card::Wizard,
-            deck::Card::General,
-            deck::Card::Minister,
-            deck::Card::Princess,
-            deck::Card::Soldier,
-            deck::Card::Clown,
-            deck::Card::Soldier,
-            deck::Card::Knight,
-            deck::Card::Soldier,
-            deck::Card::Priestess,
-            deck::Card::Soldier,
-            deck::Card::Wizard,
+            Card::Soldier,
+            Card::Clown,
+            Card::Knight,
+            Card::Priestess,
+            Card::Wizard,
+            Card::General,
+            Card::Minister,
+            Card::Princess,
+            Card::Soldier,
+            Card::Clown,
+            Card::Soldier,
+            Card::Knight,
+            Card::Soldier,
+            Card::Priestess,
+            Card::Soldier,
+            Card::Wizard,
             ];
-        let deck = deck::Deck::from_slice(cards).unwrap();
+        let deck = deck::Deck::from_slice(&cards).unwrap();
         let num_players = 3u;
         let g = Game::from_deck(num_players, deck).unwrap();
         assert_eq!(
@@ -467,9 +468,9 @@ mod test {
 
     #[test]
     fn test_manual_game() {
-        let hands = vec![Some(Soldier), Some(Clown), Some(Soldier)];
-        let stack = [Soldier, Soldier, Minister];
-        let game = Game::from_manual(hands.as_slice(), stack, None).unwrap();
+        let hands = vec![Some(Card::Soldier), Some(Card::Clown), Some(Card::Soldier)];
+        let stack = [Card::Soldier, Card::Soldier, Card::Minister];
+        let game = Game::from_manual(hands.as_slice(), &stack, None).unwrap();
         assert_eq!(hands, game.hands());
         assert_eq!(stack.as_slice(), game.deck().as_slice());
         assert_eq!(hands.len(), game.num_players());
@@ -477,14 +478,16 @@ mod test {
 
     #[test]
     fn test_survivors_at_game_end() {
-        let g = Game::from_manual([Some(Knight), Some(Princess)], [Soldier], Some(0)).unwrap();
-        assert_eq!(vec![(0, Knight), (1, Princess)], g.survivors());
+        let g = Game::from_manual(
+            &[Some(Card::Knight), Some(Card::Princess)], &[Card::Soldier], Some(0)).unwrap();
+        assert_eq!(vec![(0, Card::Knight), (1, Card::Princess)], g.survivors());
     }
 
     #[test]
     fn test_winner_from_multiple_survivors() {
-        let g = Game::from_manual([Some(Knight), Some(Princess)], [Soldier], Some(0)).unwrap();
-        assert_eq!(vec![(1, Princess)], g.winners());
+        let g = Game::from_manual(
+            &[Some(Card::Knight), Some(Card::Princess)], &[Card::Soldier], Some(0)).unwrap();
+        assert_eq!(vec![(1, Card::Princess)], g.winners());
     }
 
     #[test]
@@ -523,43 +526,43 @@ mod test {
     #[test]
     fn test_get_card_active_player() {
         let g = Game::from_manual(
-            [Some(General), Some(Clown), Some(Knight), Some(Priestess)],
-            [Soldier, Minister, Princess, Soldier, Wizard], None).unwrap();
-        assert_eq!(g.get_hand(0), Ok(General));
+            &[Some(Card::General), Some(Card::Clown), Some(Card::Knight), Some(Card::Priestess)],
+            &[Card::Soldier, Card::Minister, Card::Princess, Card::Soldier, Card::Wizard], None).unwrap();
+        assert_eq!(g.get_hand(0), Ok(Card::General));
     }
 
     #[test]
     fn test_get_card_nonexistent_player() {
         let g = Game::from_manual(
-            [Some(General), Some(Clown), Some(Knight), Some(Priestess)],
-            [Soldier, Minister, Princess, Soldier, Wizard], None).unwrap();
-        assert_eq!(g.get_hand(5), Err(action::InvalidPlayer(5)));
+            &[Some(Card::General), Some(Card::Clown), Some(Card::Knight), Some(Card::Priestess)],
+            &[Card::Soldier, Card::Minister, Card::Princess, Card::Soldier, Card::Wizard], None).unwrap();
+        assert_eq!(g.get_hand(5), Err(PlayError::InvalidPlayer(5)));
     }
 
     #[test]
     fn test_get_card_inactive_player() {
         let g = Game::from_manual(
-            [Some(General), Some(Clown), None, Some(Priestess)],
-            [Soldier, Minister, Princess, Soldier, Wizard], None).unwrap();
-        assert_eq!(g.get_hand(2), Err(action::InactivePlayer(2)));
+            &[Some(Card::General), Some(Card::Clown), None, Some(Card::Priestess)],
+            &[Card::Soldier, Card::Minister, Card::Princess, Card::Soldier, Card::Wizard], None).unwrap();
+        assert_eq!(g.get_hand(2), Err(PlayError::InactivePlayer(2)));
     }
 
     #[test]
     fn test_update_nonexistent_player() {
         let g = Game::from_manual(
-            [Some(General), Some(Clown), None, Some(Priestess)],
-            [Soldier, Minister, Princess, Soldier, Wizard], None).unwrap();
+            &[Some(Card::General), Some(Card::Clown), None, Some(Card::Priestess)],
+            &[Card::Soldier, Card::Minister, Card::Princess, Card::Soldier, Card::Wizard], None).unwrap();
         let error = g.update_player_by(5, |p| Ok(p.clone())).unwrap_err();
-        assert_eq!(action::InvalidPlayer(5), error);
+        assert_eq!(PlayError::InvalidPlayer(5), error);
     }
 
     #[test]
     fn test_eliminate_gone_player() {
         let g = Game::from_manual(
-            [Some(General), Some(Clown), None, Some(Priestess)],
-            [Soldier, Minister, Princess, Soldier, Wizard], None).unwrap();
+            &[Some(Card::General), Some(Card::Clown), None, Some(Card::Priestess)],
+            &[Card::Soldier, Card::Minister, Card::Princess, Card::Soldier, Card::Wizard], None).unwrap();
         let error = eliminate(&g, 2).unwrap_err();
-        assert_eq!(action::InactivePlayer(2), error);
+        assert_eq!(PlayError::InactivePlayer(2), error);
     }
 
     #[test]
@@ -596,29 +599,29 @@ mod test {
     #[test]
     fn test_swap_cards() {
         let g = Game::from_manual(
-            [Some(General), Some(Clown), None, Some(Priestess)],
-            [Soldier, Minister, Princess, Soldier, Wizard], None).unwrap();
-        let new_game = g.apply_action(action::SwapHands(0, 1)).unwrap();
+            &[Some(Card::General), Some(Card::Clown), None, Some(Card::Priestess)],
+            &[Card::Soldier, Card::Minister, Card::Princess, Card::Soldier, Card::Wizard], None).unwrap();
+        let new_game = g.apply_action(Action::SwapHands(0, 1)).unwrap();
         assert_eq!(
-            vec![Some(Clown), Some(General), None, Some(Priestess)],
+            vec![Some(Card::Clown), Some(Card::General), None, Some(Card::Priestess)],
             new_game.hands());
     }
 
     #[test]
     fn test_swap_cards_nonexistent() {
         let g = Game::from_manual(
-            [Some(General), Some(Clown), None, Some(Priestess)],
-            [Soldier, Minister, Princess, Soldier, Wizard], None).unwrap();
-        let error = g.apply_action(action::SwapHands(0, 5)).unwrap_err();
-        assert_eq!(action::InvalidPlayer(5), error);
-        let error = g.apply_action(action::SwapHands(5, 0)).unwrap_err();
-        assert_eq!(action::InvalidPlayer(5), error);
+            &[Some(Card::General), Some(Card::Clown), None, Some(Card::Priestess)],
+            &[Card::Soldier, Card::Minister, Card::Princess, Card::Soldier, Card::Wizard], None).unwrap();
+        let error = g.apply_action(Action::SwapHands(0, 5)).unwrap_err();
+        assert_eq!(PlayError::InvalidPlayer(5), error);
+        let error = g.apply_action(Action::SwapHands(5, 0)).unwrap_err();
+        assert_eq!(PlayError::InvalidPlayer(5), error);
     }
 
     #[test]
     fn test_no_change() {
         let g = make_arbitrary_game();
-        let new_g = g.apply_action(action::NoChange).unwrap();
+        let new_g = g.apply_action(Action::NoChange).unwrap();
         assert_eq!(g, new_g);
     }
 
@@ -626,7 +629,7 @@ mod test {
     fn test_eliminate_action() {
         let g = Game::new(3).unwrap();
         let (g, _) = g.next_player();
-        let new_g = g.apply_action(action::EliminatePlayer(1)).unwrap();
+        let new_g = g.apply_action(Action::EliminatePlayer(1)).unwrap();
         let (_, t) = new_g.next_player();
         assert_eq!(2, t.unwrap().player);
     }
@@ -634,13 +637,13 @@ mod test {
     #[test]
     fn test_force_swap() {
         let g = Game::from_manual(
-            [Some(Soldier), Some(Clown), Some(Knight)],
-            [Soldier, Minister, Princess, Soldier, General], None).unwrap();
+            &[Some(Card::Soldier), Some(Card::Clown), Some(Card::Knight)],
+            &[Card::Soldier, Card::Minister, Card::Princess, Card::Soldier, Card::General], None).unwrap();
         let (g, t) = g.next_player();
         let t = t.unwrap();
         let ours = t.hand;
         let theirs = g.get_hand(1).unwrap();
-        let new_g = g.apply_action(action::SwapHands(0, 1)).unwrap();
+        let new_g = g.apply_action(Action::SwapHands(0, 1)).unwrap();
         assert_eq!(theirs, new_g.get_hand(0).unwrap());
         assert_eq!(ours, new_g.get_hand(1).unwrap());
     }
@@ -655,24 +658,24 @@ mod test {
         // Player 2 => Soldier: Guess(0, Wizard)
         // Error: BadGuess
         let g = Game::from_manual(
-            [Some(Soldier), Some(Soldier)], [Wizard, Wizard], Some(0)).unwrap();
-        let result = g.apply_action(action::EliminateOnGuess(1, Clown));
+            &[Some(Card::Soldier), Some(Card::Soldier)], &[Card::Wizard, Card::Wizard], Some(0)).unwrap();
+        let result = g.apply_action(Action::EliminateOnGuess(1, Card::Clown));
         assert_eq!(Ok(g), result);
     }
 
     #[test]
     fn test_eliminate_on_guess_correct() {
         let g = Game::from_manual(
-            [Some(Soldier), Some(Clown)], [Wizard, Wizard], Some(0)).unwrap();
-        let result = g.apply_action(action::EliminateOnGuess(1, Clown));
+            &[Some(Card::Soldier), Some(Card::Clown)], &[Card::Wizard, Card::Wizard], Some(0)).unwrap();
+        let result = g.apply_action(Action::EliminateOnGuess(1, Card::Clown));
         assert_eq!(eliminate(&g, 1), result);
     }
 
     #[test]
     fn test_eliminate_on_guess_soldier() {
         let g = Game::from_manual(
-            [Some(Soldier), Some(Soldier)], [Wizard, Wizard], Some(0)).unwrap();
-        let result = g.apply_action(action::EliminateOnGuess(1, Soldier));
-        assert_eq!(Err(action::BadGuess), result);
+            &[Some(Card::Soldier), Some(Card::Soldier)], &[Card::Wizard, Card::Wizard], Some(0)).unwrap();
+        let result = g.apply_action(Action::EliminateOnGuess(1, Card::Soldier));
+        assert_eq!(Err(PlayError::BadGuess), result);
     }
 }

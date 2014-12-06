@@ -101,8 +101,7 @@ pub fn is_valid_subdeck(cards: &[Card]) -> bool {
 
 #[cfg(test)]
 mod test {
-    use super::{DECK, Deck};
-    use super::Card;
+    use super::{Card, DECK, Deck, DeckError};
 
     #[test]
     fn test_deck_new() {
@@ -159,9 +158,9 @@ mod test {
             Card::Soldier,
             Card::Soldier,
             ];
-        match Deck::from_slice(cards) {
+        match Deck::from_slice(&cards) {
             Ok(Deck(cards)) => panic!("Should not have been OK: {}", cards.as_slice()),
-            Err(error) => assert_eq!(error, super::WrongCards),
+            Err(error) => assert_eq!(error, DeckError::WrongCards),
         }
     }
 
@@ -175,10 +174,10 @@ mod test {
 
     #[test]
     fn test_deck_variable_too_few() {
-        let cards = [Soldier];
+        let cards = [Card::Soldier];
         match Deck::from_slice(cards.as_slice()) {
             Ok(Deck(cards)) => panic!("Should not have been OK: {}", cards.as_slice()),
-            Err(error) => assert_eq!(error, super::WrongNumber(cards.len())),
+            Err(error) => assert_eq!(error, DeckError::WrongNumber(cards.len())),
         }
     }
 
@@ -206,7 +205,7 @@ mod test {
             ];
         match Deck::from_slice(cards.as_slice()) {
             Ok(Deck(cards)) => panic!("Should not have been OK: {}", cards.as_slice()),
-            Err(error) => assert_eq!(error, super::WrongNumber(cards.len())),
+            Err(error) => assert_eq!(error, DeckError::WrongNumber(cards.len())),
         }
     }
 

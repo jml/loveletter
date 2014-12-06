@@ -1,10 +1,10 @@
-use deck::{Soldier, Clown, Knight, Wizard, General};
+use deck::Card::{Soldier, Clown, Knight, Wizard, General};
 
-use action::{
-    Attack, Guess, play_to_action, SwapHands, ForceDiscard, ForceReveal,
-    EliminateWeaker, EliminateOnGuess, SelfTarget, BadActionForCard,
-    BadGuess,
-};
+use action::Play::{Attack, Guess};
+use action::PlayError::{BadActionForCard, BadGuess, SelfTarget};
+use action::Action::{
+    SwapHands, ForceDiscard, ForceReveal, EliminateWeaker, EliminateOnGuess};
+use action::play_to_action;
 
 
 #[test]

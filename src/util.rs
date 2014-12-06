@@ -51,42 +51,42 @@ mod test {
     fn test_vector_diff_trivial() {
         let xs: Vec<int> = vec![];
         let ys = [];
-        assert_eq!(Some(vec![]), subtract_vector(xs, ys))
+        assert_eq!(Some(vec![]), subtract_vector(xs, &ys))
     }
 
     #[test]
     fn test_vector_diff_identity() {
         let xs: Vec<int> = vec![1, 2, 3];
         let ys = [];
-        assert_eq!(Some(vec![1, 2, 3]), subtract_vector(xs, ys))
+        assert_eq!(Some(vec![1, 2, 3]), subtract_vector(xs, &ys))
     }
 
     #[test]
     fn test_vector_diff_removes() {
         let xs: Vec<int> = vec![1, 2, 3];
         let ys = [2];
-        assert_eq!(Some(vec![1, 3]), subtract_vector(xs, ys))
+        assert_eq!(Some(vec![1, 3]), subtract_vector(xs, &ys))
     }
 
     #[test]
     fn test_vector_diff_only_removes_one() {
         let xs: Vec<int> = vec![1, 2, 3, 2];
         let ys = [2];
-        assert_eq!(Some(vec![1, 3, 2]), subtract_vector(xs, ys))
+        assert_eq!(Some(vec![1, 3, 2]), subtract_vector(xs, &ys))
     }
 
     #[test]
     fn test_vector_diff_contains_excess_elements() {
         let xs: Vec<int> = vec![1, 2, 3, 2];
         let ys = [2, 2, 2];
-        assert_eq!(None, subtract_vector(xs, ys))
+        assert_eq!(None, subtract_vector(xs, &ys))
     }
 
     #[test]
     fn test_vector_diff_contains_novel_elements() {
         let xs: Vec<int> = vec![1, 2, 3, 2];
         let ys = [4];
-        assert_eq!(None, subtract_vector(xs, ys))
+        assert_eq!(None, subtract_vector(xs, &ys))
     }
 
     #[test]

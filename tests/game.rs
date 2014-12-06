@@ -1,5 +1,8 @@
 extern crate loveletter;
 
+use loveletter::Card;
+use loveletter::GameError;
+
 
 #[test]
 fn test_too_few_players() {
@@ -21,21 +24,21 @@ fn test_new_game() {
 #[test]
 fn test_invalid_manual_game() {
     let hands = [
-        Some(loveletter::Soldier),
-        Some(loveletter::Clown),
-        Some(loveletter::Soldier),
-        Some(loveletter::Princess),
+        Some(Card::Soldier),
+        Some(Card::Clown),
+        Some(Card::Soldier),
+        Some(Card::Princess),
         ];
     let stack = [
-        loveletter::Soldier,
-        loveletter::Princess,
-        loveletter::Minister,
+        Card::Soldier,
+        Card::Princess,
+        Card::Minister,
         ];
-    let result = loveletter::Game::from_manual(hands, stack, None).unwrap_err();
-    assert_eq!(result, loveletter::BadDeck);
+    let result = loveletter::Game::from_manual(&hands, &stack, None).unwrap_err();
+    assert_eq!(result, GameError::BadDeck);
 }
 
 #[test]
 fn test_manual_game_bad_players() {
-    assert_eq!(Err(loveletter::InvalidPlayers(0)), loveletter::Game::from_manual([], [], None));
+    assert_eq!(Err(GameError::InvalidPlayers(0)), loveletter::Game::from_manual(&[], &[], None));
 }
