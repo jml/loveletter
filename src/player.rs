@@ -40,19 +40,20 @@ impl Player {
         self._hand
     }
 
+    fn _get_card(&self) -> Result<Card, Error> {
+        self._hand.ok_or(Error::Inactive)
+    }
+
     /// Set the protection status of the player.
     ///
     /// While they are 'protected', they are immune to all attacks.
     pub fn protect(&self, protected: bool) -> Result<Player, Error> {
-        if self.active() {
-            Ok(Player {
+        self._get_card().map(
+            |_| Player {
                 _hand: self._hand,
                 _protected: protected,
                 _discard: self._discard.clone(),
             })
-        } else {
-            Err(Error::Inactive)
-        }
     }
 
     /// Eliminate this player, making them no longer active and incapable of
@@ -60,15 +61,12 @@ impl Player {
     ///
     /// Any card they had in their hand is immediately discarded.
     pub fn eliminate(&self) -> Result<Player, Error> {
-        match self._hand {
-            None => Err(Error::Inactive),
-            Some(hand) =>
-                Ok(if self._protected {
-                    self.clone()
-                } else {
-                    self.replace(None).discard(hand)
-                }),
-        }
+        let card = try!(self._get_card());
+        Ok(if self._protected {
+            self.clone()
+        } else {
+            self.replace(None).discard(card)
+        })
     }
 
     /// Eliminate this player if they've got the guessed card in their hand.
@@ -76,14 +74,11 @@ impl Player {
         if guess == Card::Soldier {
             return Err(Error::BadGuess)
         }
-        match self._hand {
-            None => Err(Error::Inactive),
-            Some(card) =>
-                if card == guess {
-                    self.eliminate()
-                } else {
-                    Ok(self.clone())
-                },
+        let card = try!(self._get_card());
+        if card == guess {
+            self.eliminate()
+        } else {
+            Ok(self.clone())
         }
     }
 
@@ -94,20 +89,17 @@ impl Player {
     /// Returns a tuple of `(self, other)` where `self` and `other` are the
     /// updated versions. Only one will have changed.
     pub fn eliminate_if_weaker(&self, other: &Player) -> Result<(Player, Player), Error> {
-        match (self._hand, other._hand) {
-            (Some(my_card), Some(their_card)) => {
-                if self._protected {
-                    Ok((self.clone(), other.clone()))
-                } else {
-                    Ok(match my_card.cmp(&their_card) {
-                        Less => (self.replace(None), other.clone()),
-                        Greater => (self.clone(), other.replace(None)),
-                        Equal => (self.clone(), other.clone())
-                    })
-                }
+        let my_card = try!(self._get_card());
+        let their_card = try!(other._get_card());
+        Ok(if self._protected {
+            (self.clone(), other.clone())
+        } else {
+            match my_card.cmp(&their_card) {
+                Less => (self.replace(None), other.clone()),
+                Greater => (self.clone(), other.replace(None)),
+                Equal => (self.clone(), other.clone())
             }
-            _ => Err(Error::Inactive),
-        }
+        })
     }
 
     /// Swap hands with the other player.
@@ -124,16 +116,13 @@ impl Player {
     /// Given that we were dealt `dealt` and chose to play `chosen`, discard
     /// `chosen` and put whatever card we didn't play in our hand.
     pub fn play_card(&self, dealt: Card, chosen: Card) -> Result<Player, Error> {
-        match self._hand {
-            None => Err(Error::Inactive),
-            Some(hand) =>
-                if chosen == hand {
-                    Ok(self.discard(chosen).replace(Some(dealt)))
-                } else if chosen == dealt {
-                    Ok(self.discard(chosen))
-                } else {
-                    Err(Error::NoSuchCard(chosen, (hand, dealt)))
-                },
+        let card = try!(self._get_card());
+        if chosen == card {
+            Ok(self.discard(chosen).replace(Some(dealt)))
+        } else if chosen == dealt {
+            Ok(self.discard(chosen))
+        } else {
+            Err(Error::NoSuchCard(chosen, (card, dealt)))
         }
     }
 
@@ -143,19 +132,16 @@ impl Player {
     /// available for us, in which case we're out of the game. Also, we never
     /// have to do this if we're protected.
     pub fn discard_and_draw(&self, new_card: Option<Card>) -> Result<Player, Error> {
-        match self._hand {
-            None => Err(Error::Inactive),
-            Some(hand) =>
-                if self._protected {
-                    Ok(self.clone())
-                } else {
-                    match hand {
-                        // XXX: Also need to make sure that when we eliminate in this
-                        // case, that we return the new_card to the stack.
-                        Card::Princess => self.eliminate(),
-                        _ => Ok(self.discard(hand).replace(new_card)),
-                    }
-                },
+        let card = try!(self._get_card());
+        if self._protected {
+            Ok(self.clone())
+        } else {
+            match card {
+                // XXX: Also need to make sure that when we eliminate in this
+                // case, that we return the new_card to the stack.
+                Card::Princess => self.eliminate(),
+                _ => Ok(self.discard(card).replace(new_card)),
+            }
         }
     }
 
