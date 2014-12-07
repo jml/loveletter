@@ -343,25 +343,16 @@ impl Game {
             let (card, play) = f(&new_game, &turn);
 
             // Update their hand and the played card.
-            let new_game = match new_game.update_player_by(turn.player, |p| p.play_card(turn.draw, card)) {
-                Err(e) => { return Err(e); }
-                Ok(player) => { player }
-            };
+            let new_game = try!(new_game.update_player_by(turn.player, |p| p.play_card(turn.draw, card)));
 
-            let action = match action::play_to_action(turn.player, card, play) {
-                Ok(a) => a,
-                Err(e) => return Err(e),
-            };
+            let action = try!(action::play_to_action(turn.player, card, play));
 
             (new_game, action)
         };
 
         // XXX: Probably should return the action so that an external client can
         // infer what happened?
-        match new_game.apply_action(action) {
-            Ok(g) => Ok(Some(g)),
-            Err(e) => return Err(e),
-        }
+        Ok(Some(try!(new_game.apply_action(action))))
     }
 }
 
