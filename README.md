@@ -84,3 +84,19 @@ player.
 Player 1 draws a card (a Clown), and then must choose to play either a Soldier
 or a Clown.
 
+## Events
+
+TODO: Incorporate these into the program.
+
+
+* player $N plays $CARD with $ACTION
+* Soldier: player $N does not have $CARD (inferrable)
+* Soldier: player $N has $CARD (inferrable)
+* Clown: player $N reveals card to player $M
+* Clown: player $N has $CARD (only revealed to one person)
+* Knight: player $N & $M secretly compared, and player $M lost with $CARD
+* Knight: player $N & $M secretly compare, $N has $CARD, $M has $CARD2
+* Wizard: player $N discards $CARD and draws another
+* General: player $N swaps cards with player $M (inferrable)
+* Minister: player $N busted with Minister and $CARD
+
