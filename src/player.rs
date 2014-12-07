@@ -181,7 +181,6 @@ impl Player {
 
 #[cfg(test)]
 mod test {
-    use deck;
     use deck::Card;
     use super::{Player, Error};
 

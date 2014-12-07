@@ -1,13 +1,15 @@
 use action;
+use action::Action;
 use deck;
+use deck::Card;
 use player;
 use util;
 
 #[deriving(Show, PartialEq, Eq)]
 pub struct Turn {
     pub player: uint,
-    pub hand: deck::Card,
-    pub draw: deck::Card,
+    pub hand: Card,
+    pub draw: Card,
 }
 
 // TODO: Data structure for all of the publicly visible actions in a game.
@@ -33,7 +35,7 @@ pub struct Turn {
 /// were, who the winner is, and what the burn card was.
 enum GameState {
     NotStarted,
-    PlayerReady(uint, deck::Card),
+    PlayerReady(uint, Card),
 }
 
 
@@ -42,7 +44,7 @@ enum GameState {
 /// Represents a single round of Love Letter.
 pub struct Game {
     /// The remaining cards in the deck.
-    _stack: Vec<deck::Card>,
+    _stack: Vec<Card>,
     /// All of the players of the game. The size does not change once the game is constructed.
     _players: Vec<player::Player>,
     /// The current state of the game.
@@ -85,7 +87,7 @@ impl Game {
         }
         let cards = deck.as_slice();
         let hand_end = num_players + 1;
-        let hands: Vec<Option<deck::Card>> = cards.slice(1, hand_end).iter().map(|&x| Some(x)).collect();
+        let hands: Vec<Option<Card>> = cards.slice(1, hand_end).iter().map(|&x| Some(x)).collect();
         Some(Game {
             _stack: cards.slice_from(hand_end).iter().map(|&x| x).collect(),
             _current: GameState::NotStarted,
@@ -106,13 +108,13 @@ impl Game {
     /// Otherwise (and this is a bit broken), the next player to play is the
     /// one **after** the one given here. e.g. `Some(0)` means it's player 1's
     /// turn next.
-    pub fn from_manual(hands: &[Option<deck::Card>], deck: &[deck::Card],
+    pub fn from_manual(hands: &[Option<Card>], deck: &[Card],
                        current_player: Option<uint>) -> Result<Game, GameError> {
         let num_players = hands.len();
         if !Game::valid_player_count(num_players) {
             return Err(GameError::InvalidPlayers(num_players));
         }
-        let mut stack: Vec<deck::Card> = deck.iter().map(|&x| x).collect();
+        let mut stack: Vec<Card> = deck.iter().map(|&x| x).collect();
         let mut all_cards = stack.clone();
         for x in hands.as_slice().iter().filter_map(|&x| x) {
             all_cards.push(x);
@@ -164,7 +166,7 @@ impl Game {
     }
 
     /// At the end of the game, return players and their hands.
-    fn survivors(&self) -> Vec<(uint, deck::Card)> {
+    fn survivors(&self) -> Vec<(uint, Card)> {
         // next_player essentially functions as a 'is game over' predicate.
         match self.next_player() {
             (_, Some(..)) => vec![],
@@ -181,7 +183,7 @@ impl Game {
     }
 
     /// At the end of the game, return all winners and their hands.
-    pub fn winners(&self) -> Vec<(uint, deck::Card)> {
+    pub fn winners(&self) -> Vec<(uint, Card)> {
         let survivors = self.survivors();
         let mut ws = vec![];
         for x in util::maxima_by(&survivors, |&(_, card)| card).iter() {
@@ -204,7 +206,7 @@ impl Game {
         }
     }
 
-    fn get_hand(&self, player_id: uint) -> Result<deck::Card, action::PlayError> {
+    fn get_hand(&self, player_id: uint) -> Result<Card, action::PlayError> {
         self.get_player(player_id).map(|p| p.get_hand().unwrap())
     }
 
@@ -245,16 +247,16 @@ impl Game {
     }
 
     #[cfg(test)]
-    fn hands(&self) -> Vec<Option<deck::Card>> {
+    fn hands(&self) -> Vec<Option<Card>> {
         self._players.iter().map(|ref x| x.get_hand()).collect()
     }
 
     #[cfg(test)]
-    fn deck(&self) -> &[deck::Card] {
+    fn deck(&self) -> &[Card] {
         self._stack.as_slice()
     }
 
-    fn draw(&self) -> (Game, Option<deck::Card>) {
+    fn draw(&self) -> (Game, Option<Card>) {
         let mut g = self.clone();
         let c = g._stack.pop();
         (g, c)
@@ -296,23 +298,23 @@ impl Game {
         }
     }
 
-    fn apply_action(&self, action: action::Action) -> Result<Game, action::PlayError> {
+    fn apply_action(&self, action: Action) -> Result<Game, action::PlayError> {
         match action {
-            action::Action::NoChange => Ok(self.clone()),
-            action::Action::Protect(i) => self.update_player_by(i, |player| player.protect(true)),
-            action::Action::EliminatePlayer(i) => self.update_player_by(i, |p| p.eliminate()),
-            action::Action::SwapHands(src, tgt) => self.update_two_players_by(
+            Action::NoChange => Ok(self.clone()),
+            Action::Protect(i) => self.update_player_by(i, |player| player.protect(true)),
+            Action::EliminatePlayer(i) => self.update_player_by(i, |p| p.eliminate()),
+            Action::SwapHands(src, tgt) => self.update_two_players_by(
                 tgt, src, |tgt_player, src_player| tgt_player.swap_hands(src_player)),
-            action::Action::ForceDiscard(i) => {
+            Action::ForceDiscard(i) => {
                 let (game, new_card) = self.draw();
                 game.update_player_by(i, |p| p.discard_and_draw(new_card))
             },
             // XXX: The fact that this is indistinguishable from NoChange
             // means we've implemented it wrong.
-            action::Action::ForceReveal(..) => Ok(self.clone()),
-            action::Action::EliminateWeaker(src, tgt) => self.update_two_players_by(
+            Action::ForceReveal(..) => Ok(self.clone()),
+            Action::EliminateWeaker(src, tgt) => self.update_two_players_by(
                 tgt, src, |tgt_player, src_player| tgt_player.eliminate_if_weaker(src_player)),
-            action::Action::EliminateOnGuess(p1, card) =>
+            Action::EliminateOnGuess(p1, card) =>
                 self.update_player_by(p1, |p| p.eliminate_if_guessed(card))
         }
     }
@@ -327,7 +329,7 @@ impl Game {
     ///
     /// If the game is now over, will return `Ok(None)`. If not, will return
     /// `Ok(Some(new_game))`.
-    pub fn handle_turn(&self, f: |&Game, &Turn| -> (deck::Card, action::Play)) -> Result<Option<Game>, action::PlayError> {
+    pub fn handle_turn(&self, f: |&Game, &Turn| -> (Card, action::Play)) -> Result<Option<Game>, action::PlayError> {
         let (new_game, turn) = self.next_player();
         let turn = match turn {
             None => return Ok(None),
@@ -335,7 +337,7 @@ impl Game {
         };
 
         let (new_game, action) = if minister_bust(turn.draw, turn.hand) {
-            (new_game, action::Action::EliminatePlayer(turn.player))
+            (new_game, Action::EliminatePlayer(turn.player))
         } else {
             // Find out what they'd like to play.
             let (card, play) = f(&new_game, &turn);
@@ -364,10 +366,10 @@ impl Game {
 }
 
 
-fn minister_bust(a: deck::Card, b: deck::Card) -> bool {
-    match util::other((a, b), deck::Card::Minister) {
-        Some(deck::Card::Wizard) | Some(deck::Card::General) | Some(deck::Card::Princess) => true,
-        Some(deck::Card::Minister) => panic!("Called with 2 ministers!"),
+fn minister_bust(a: Card, b: Card) -> bool {
+    match util::other((a, b), Card::Minister) {
+        Some(Card::Wizard) | Some(Card::General) | Some(Card::Princess) => true,
+        Some(Card::Minister) => panic!("Called with 2 ministers!"),
         _ => false,
     }
 }
