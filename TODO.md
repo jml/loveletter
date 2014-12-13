@@ -24,8 +24,7 @@
 
 * Data structure for all the publicly visible actions in a game (maybe this is
   already `Action`)
-* Return `Action` from `handle_turn`, since it seems to be pretty much the
-  obvious step.
+* Split `handle_turn` into two states: waiting for player & next player
 * Goal: display result Clown to person who played
 * Goal: display result of Knight to all other players
 
