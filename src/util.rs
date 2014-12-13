@@ -24,6 +24,9 @@ pub fn other<T: Eq>((a, b): (T, T), x: T) -> Option<T> {
 // TODO: Write tests.
 // TODO: Figure out if this can be written in terms of slices rather than
 // vectors.
+
+/// Return the "biggest" elements of `xs`, where `f` is a function applied to
+/// each element that returns some indication of magnitude.
 pub fn maxima_by<'a, A, B: Ord>(xs: &'a Vec<A>, f: |&A| -> B) -> Vec<&'a A> {
     let mut maxes = vec![];
     let indexes: Vec<(B, uint)> = xs.iter().enumerate().map(|(i, a)| (f(a), i)).collect();

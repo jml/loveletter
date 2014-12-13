@@ -68,8 +68,9 @@ pub fn play_to_action(
         Play::NoEffect => match played_card {
             Card::Priestess => Ok(Action::Protect(current_player)),
             Card::Minister => Ok(Action::NoChange),
-            // XXX: Another way to do this is to return NoChange here and have
-            // `Player` be responsible for eliminating self on Princess discard.
+            // Another way to do this is to return NoChange here and have
+            // `Player` be responsible for eliminating self on Princess
+            // discard.
             Card::Princess => Ok(Action::EliminatePlayer(current_player)),
             _ => Err(PlayError::BadActionForCard(play, played_card)),
         },

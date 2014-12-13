@@ -68,9 +68,6 @@ impl Game {
     // TODO: Create a state validator, that guarantees that no cards have been
     // created or destroyed.
 
-    // TODO: Create a nice formatter that shows what's visible to a particular
-    // player.
-
     /// Create a new game with a randomly shuffled deck.
     ///
     /// Will return None if given an invalid number of players.
