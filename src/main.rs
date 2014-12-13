@@ -1,5 +1,6 @@
 extern crate loveletter;
 
+use std::os;
 use loveletter::Card;
 
 #[cfg(not(test))]
@@ -93,7 +94,7 @@ fn main() {
         Some(g) => g,
         None => {
             println!("Invalid number of players: 2");
-            // XXX: [rust] How do I exit with a non-zero code?
+            os::set_exit_status(2);
             return;
         }
     };
