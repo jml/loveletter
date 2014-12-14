@@ -188,9 +188,10 @@ impl Game {
 
     /// At the end of the game, return all winners and their hands.
     pub fn winners(&self) -> Vec<(uint, Card)> {
-        match self.next_player() {
-            (_, Some(..)) => vec![],
-            (_, None) => self._game_result().winners()
+        let state = self._current.clone();
+        match state {
+            GameState::GameOver(game_result) => game_result.winners(),
+            _ => vec![],
         }
     }
 
@@ -278,23 +279,21 @@ impl Game {
         }
     }
 
-    fn next_player(&self) -> (Game, Option<Turn>) {
+    fn next_player(&self) -> Game {
         match (self._next_player(), self.draw()) {
             (Some(new_player_id), (game, Some(c))) => {
                 let mut new_game = game;
                 new_game._current = GameState::PlayerReady(new_player_id, c);
                 // Protection from the priestess expires when your
                 // turn begins.
-                new_game = new_game
+                new_game
                     .update_player_by(new_player_id, |p| p.protect(false))
-                    .ok().expect("Activated disabled player");
-                let turn = new_game.current_turn();
-                (new_game, turn)
+                    .ok().expect("Activated disabled player")
             },
             _ => {
                 let mut new_game = self.clone();
                 new_game._current = GameState::GameOver(self._game_result());
-                (new_game, None)
+                new_game
             },
         }
     }
@@ -331,8 +330,8 @@ impl Game {
     /// If the game is now over, will return `Ok(None)`. If not, will return
     /// `Ok(Some(new_game))`.
     pub fn handle_turn(&self, f: |&Game, &Turn| -> (Card, action::Play)) -> Result<Option<Game>, action::PlayError> {
-        let (new_game, turn) = self.next_player();
-        let turn = match turn {
+        let new_game = self.next_player();
+        let turn = match new_game.current_turn() {
             None => return Ok(None),
             Some(turn) => turn,
         };
@@ -527,15 +526,15 @@ mod test {
     #[test]
     fn test_current_player_after_next() {
         let g = make_arbitrary_game();
-        let (g2, _) = g.next_player();
+        let g2 = g.next_player();
         assert_eq!(Some(0), g2.current_player());
     }
 
     #[test]
     fn test_next_player_gets_draw() {
         let g = make_arbitrary_game();
-        let (_, turn) = g.next_player();
-        let Turn { player: p, draw: d, hand: _ } = turn.unwrap();
+        let new_g = g.next_player();
+        let Turn { player: p, draw: d, hand: _ } = new_g.current_turn().unwrap();
         let (_, expected) = g.draw();
         assert_eq!((p, d), (0, expected.unwrap()));
     }
@@ -543,17 +542,14 @@ mod test {
     #[test]
     fn test_next_player_increments() {
         let g = Game::new(2).unwrap();
-        let (g, _) = g.next_player();
-        let (g, _) = g.next_player();
+        let g = g.next_player().next_player();
         assert_eq!(Some(1), g.current_player());
     }
 
     #[test]
     fn test_next_player_cycles() {
         let g = Game::new(2).unwrap();
-        let (g, _) = g.next_player();
-        let (g, _) = g.next_player();
-        let (g, _) = g.next_player();
+        let g = g.next_player().next_player().next_player();
         assert_eq!(Some(0), g.current_player());
     }
 
@@ -601,12 +597,10 @@ mod test {
 
     #[test]
     fn test_skip_eliminated_player() {
-        let g = Game::new(3).unwrap();
-        let (g, _) = g.next_player();
-        let g = eliminate(&g, 1).unwrap();
-        let (g, t) = g.next_player();
+        let g = Game::new(3).unwrap().next_player();
+        let g = eliminate(&g, 1).unwrap().next_player();
         assert_eq!(g.current_player(), Some(2));
-        assert_eq!(t.unwrap().player, 2);
+        assert_eq!(g.current_turn().unwrap().player, 2);
     }
 
     fn assert_winners(game: &Game, expected_winners: Vec<uint>) {
@@ -616,21 +610,17 @@ mod test {
 
     #[test]
     fn test_last_player() {
-        let g = Game::new(2).unwrap();
-        let (g, _) = g.next_player();
+        let g = Game::new(2).unwrap().next_player();
         let g = eliminate(&g, 1).unwrap();
-        let (new_game, turn) = g.next_player();
-        assert_eq!(None, turn);
+        let new_game = g.next_player();
         assert_winners(&new_game, vec![0]);
     }
 
     #[test]
     fn test_eliminate_self_last_player() {
-        let g = Game::new(2).unwrap();
-        let (g, _) = g.next_player();
+        let g = Game::new(2).unwrap().next_player();
         let g = eliminate(&g, 0).unwrap();
-        let (new_game, turn) = g.next_player();
-        assert_eq!(None, turn);
+        let new_game = g.next_player();
         assert_winners(&new_game, vec![1]);
     }
 
@@ -666,9 +656,9 @@ mod test {
     #[test]
     fn test_eliminate_action() {
         let g = Game::new(3).unwrap();
-        let (g, _) = g.next_player();
-        let new_g = g.apply_action(Action::EliminatePlayer(1)).unwrap();
-        let (_, t) = new_g.next_player();
+        let g = g.next_player();
+        let new_g = g.apply_action(Action::EliminatePlayer(1)).unwrap().next_player();
+        let t = new_g.current_turn();
         assert_eq!(2, t.unwrap().player);
     }
 
@@ -677,8 +667,8 @@ mod test {
         let g = Game::from_manual(
             &[Some(Card::Soldier), Some(Card::Clown), Some(Card::Knight)],
             &[Card::Soldier, Card::Minister, Card::Princess, Card::Soldier, Card::General], None).unwrap();
-        let (g, t) = g.next_player();
-        let t = t.unwrap();
+        let g = g.next_player();
+        let t = g.current_turn().unwrap();
         let ours = t.hand;
         let theirs = g.get_hand(1).unwrap();
         let new_g = g.apply_action(Action::SwapHands(0, 1)).unwrap();
