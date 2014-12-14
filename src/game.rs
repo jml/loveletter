@@ -36,6 +36,7 @@ pub struct Turn {
 enum GameState {
     NotStarted,
     PlayerReady(uint, Card),
+    GameOver(GameResult),
 }
 
 
@@ -160,6 +161,7 @@ impl Game {
         match self._current {
             GameState::NotStarted => None,
             GameState::PlayerReady(i, _) => Some(i),
+            GameState::GameOver(..) => None,
         }
     }
 
@@ -273,7 +275,11 @@ impl Game {
                     hand: hand,
                 }))
             },
-            _ => (self.clone(), None),
+            _ => {
+                let mut new_game = self.clone();
+                new_game._current = GameState::GameOver(GameResult::new(self._players.clone()));
+                (new_game, None)
+            },
         }
     }
 
@@ -346,6 +352,7 @@ fn minister_bust(a: Card, b: Card) -> bool {
 
 
 /// The result of a finished round of Love Letter.
+#[deriving(Eq, PartialEq, Show, Clone)]
 pub struct GameResult {
     _players: Vec<player::Player>,
 }
@@ -586,6 +593,11 @@ mod test {
         assert_eq!(t.unwrap().player, 2);
     }
 
+    fn assert_winners(game: &Game, expected_winners: Vec<uint>) {
+        let observed_winners = game.winners();
+        assert_eq!(expected_winners, observed_winners.iter().map(|&(i, _)| i).collect());
+    }
+
     #[test]
     fn test_last_player() {
         let g = Game::new(2).unwrap();
@@ -593,7 +605,7 @@ mod test {
         let g = eliminate(&g, 1).unwrap();
         let (new_game, turn) = g.next_player();
         assert_eq!(None, turn);
-        assert_eq!(new_game, g);
+        assert_winners(&new_game, vec![0]);
     }
 
     #[test]
@@ -603,9 +615,8 @@ mod test {
         let g = eliminate(&g, 0).unwrap();
         let (new_game, turn) = g.next_player();
         assert_eq!(None, turn);
-        assert_eq!(new_game, g);
+        assert_winners(&new_game, vec![1]);
     }
-
 
     #[test]
     fn test_swap_cards() {
