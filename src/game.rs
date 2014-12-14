@@ -52,6 +52,7 @@ pub struct Game {
 }
 
 
+
 #[deriving(Show, PartialEq, Eq)]
 /// Errors that can occur while constructing a Game.
 pub enum GameError {
@@ -158,36 +159,17 @@ impl Game {
     fn current_player(&self) -> Option<uint> {
         match self._current {
             GameState::NotStarted => None,
-            GameState::PlayerReady(i, _) => Some(i)
-        }
-    }
-
-    /// At the end of the game, return players and their hands.
-    fn survivors(&self) -> Vec<(uint, Card)> {
-        // next_player essentially functions as a 'is game over' predicate.
-        match self.next_player() {
-            (_, Some(..)) => vec![],
-            (_, None) => self._players
-                .iter()
-                .enumerate()
-                .filter_map(
-                    |(i, ref p)| match p.get_hand() {
-                        Some(y) => Some((i, y)),
-                        None => None,
-                    })
-                .collect()
+            GameState::PlayerReady(i, _) => Some(i),
         }
     }
 
     /// At the end of the game, return all winners and their hands.
     pub fn winners(&self) -> Vec<(uint, Card)> {
-        let survivors = self.survivors();
-        let mut ws = vec![];
-        for x in util::maxima_by(&survivors, |&(_, card)| card).iter() {
-            let &&(i, c) = x;
-            ws.push((i, c))
+        match self.next_player() {
+            (_, Some(..)) => vec![],
+            // XXX: probably doesn't need to be a clone
+            (_, None) => GameResult::new(self._players.clone()).winners()
         }
-        ws
     }
 
     fn get_player(&self, player_id: uint) -> Result<&player::Player, action::PlayError> {
@@ -363,6 +345,59 @@ fn minister_bust(a: Card, b: Card) -> bool {
 }
 
 
+/// The result of a finished round of Love Letter.
+pub struct GameResult {
+    _players: Vec<player::Player>,
+}
+
+
+impl GameResult {
+
+    fn new(players: Vec<player::Player>) -> GameResult {
+        GameResult { _players: players }
+    }
+
+    /// At the end of the game, return players and their hands.
+    fn survivors(&self) -> Vec<(uint, Card)> {
+        self._players
+            .iter()
+            .enumerate()
+            .filter_map(
+                |(i, ref p)| match p.get_hand() {
+                    Some(y) => Some((i, y)),
+                    None => None,
+                })
+            .collect()
+    }
+
+    /// At the end of the game, return all winners and their hands.
+    pub fn winners(&self) -> Vec<(uint, Card)> {
+        let survivors = self.survivors();
+        let mut ws = vec![];
+        for x in util::maxima_by(&survivors, |&(_, card)| card).iter() {
+            let &&(i, c) = x;
+            ws.push((i, c))
+        }
+        ws
+    }
+}
+
+    // #[test]
+    // fn test_survivors_at_game_end() {
+    //     let g = Game::from_manual(
+    //         &[Some(Card::Knight), Some(Card::Princess)], &[Card::Soldier], Some(0)).unwrap();
+    //     assert_eq!(vec![(0, Card::Knight), (1, Card::Princess)], g.survivors());
+    // }
+
+    // #[test]
+    // fn test_winner_from_multiple_survivors() {
+    //     let g = Game::from_manual(
+    //         &[Some(Card::Knight), Some(Card::Princess)], &[Card::Soldier], Some(0)).unwrap();
+    //     assert_eq!(vec![(1, Card::Princess)], g.winners());
+    // }
+
+
+
 #[cfg(test)]
 mod test {
     use action;
@@ -464,20 +499,6 @@ mod test {
         assert_eq!(hands, game.hands());
         assert_eq!(stack.as_slice(), game.deck().as_slice());
         assert_eq!(hands.len(), game.num_players());
-    }
-
-    #[test]
-    fn test_survivors_at_game_end() {
-        let g = Game::from_manual(
-            &[Some(Card::Knight), Some(Card::Princess)], &[Card::Soldier], Some(0)).unwrap();
-        assert_eq!(vec![(0, Card::Knight), (1, Card::Princess)], g.survivors());
-    }
-
-    #[test]
-    fn test_winner_from_multiple_survivors() {
-        let g = Game::from_manual(
-            &[Some(Card::Knight), Some(Card::Princess)], &[Card::Soldier], Some(0)).unwrap();
-        assert_eq!(vec![(1, Card::Princess)], g.winners());
     }
 
     #[test]
