@@ -23,6 +23,7 @@ impl Turn {
 
 pub enum Event {
     NothingHappened,
+    BustedOut,
 }
 
 
@@ -341,8 +342,9 @@ impl Game {
             Some(turn) => turn,
         };
 
-        let (new_game, action) = if minister_bust(turn.draw, turn.hand) {
-            (new_game, Action::EliminatePlayer(turn.player))
+        if minister_bust(turn.draw, turn.hand) {
+            let new_game = try!(new_game.apply_action(Action::EliminatePlayer(turn.player)));
+            Ok((Some(new_game), Event::BustedOut))
         } else {
             // Find out what they'd like to play.
             let (card, play) = f(&new_game, &turn);
@@ -352,12 +354,8 @@ impl Game {
 
             let action = try!(action::play_to_action(turn.player, card, play));
 
-            (new_game, action)
-        };
-
-        // XXX: Probably should return the action so that an external client can
-        // infer what happened?
-        Ok((Some(try!(new_game.apply_action(action))), Event::NothingHappened))
+            Ok((Some(try!(new_game.apply_action(action))), Event::NothingHappened))
+        }
     }
 }
 
