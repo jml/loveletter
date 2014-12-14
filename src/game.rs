@@ -12,6 +12,12 @@ pub struct Turn {
     pub draw: Card,
 }
 
+impl Turn {
+    fn new(player: uint, hand: Card, draw: Card) -> Turn {
+        Turn { player: player, hand: hand, draw: draw }
+    }
+}
+
 // TODO: Data structure for all of the publicly visible actions in a game.
 // Must be enough to reconstruct the whole game.
 
@@ -165,12 +171,26 @@ impl Game {
         }
     }
 
+    fn current_turn(&self) -> Option<Turn> {
+        match self._current {
+            GameState::PlayerReady(i, card) => {
+                let hand = self.get_hand(i).ok().expect("Activated disabled player");
+                Some(Turn::new(i, hand, card))
+            },
+            _ => None,
+        }
+    }
+
+    fn _game_result(&self) -> GameResult {
+        // XXX: probably doesn't need to be a clone
+        GameResult::new(self._players.clone())
+    }
+
     /// At the end of the game, return all winners and their hands.
     pub fn winners(&self) -> Vec<(uint, Card)> {
         match self.next_player() {
             (_, Some(..)) => vec![],
-            // XXX: probably doesn't need to be a clone
-            (_, None) => GameResult::new(self._players.clone()).winners()
+            (_, None) => self._game_result().winners()
         }
     }
 
@@ -268,16 +288,12 @@ impl Game {
                 new_game = new_game
                     .update_player_by(new_player_id, |p| p.protect(false))
                     .ok().expect("Activated disabled player");
-                let hand = new_game.get_hand(new_player_id).ok().expect("Activated disabled player");
-                (new_game, Some(Turn {
-                    player: new_player_id,
-                    draw: c,
-                    hand: hand,
-                }))
+                let turn = new_game.current_turn();
+                (new_game, turn)
             },
             _ => {
                 let mut new_game = self.clone();
-                new_game._current = GameState::GameOver(GameResult::new(self._players.clone()));
+                new_game._current = GameState::GameOver(self._game_result());
                 (new_game, None)
             },
         }
