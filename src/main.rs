@@ -113,8 +113,8 @@ fn main() {
         // TODO: Currently no way of displaying the results of a Clown play to a player.
         // TODO: Currently no way of displaying the results of a Knight play to involved players.
         current_game = match result {
-            Ok(None) => break,
-            Ok(Some(game)) => game,
+            Ok((None, _)) => break,
+            Ok((Some(game), _)) => game,
             Err(e) => { println!("Invalid move: {}\n", e); continue }
         };
         println!("// game = {}\n", current_game);

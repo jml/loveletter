@@ -21,6 +21,10 @@ impl Turn {
 // TODO: Data structure for all of the publicly visible actions in a game.
 // Must be enough to reconstruct the whole game.
 
+pub enum Event {
+    NothingHappened,
+}
+
 
 #[deriving(Show, PartialEq, Eq, Clone)]
 /// Possible states of a round of Love Letter.
@@ -330,10 +334,10 @@ impl Game {
     ///
     /// If the game is now over, will return `Ok(None)`. If not, will return
     /// `Ok(Some(new_game))`.
-    pub fn handle_turn(&self, f: |&Game, &Turn| -> (Card, action::Play)) -> Result<Option<Game>, action::PlayError> {
+    pub fn handle_turn(&self, f: |&Game, &Turn| -> (Card, action::Play)) -> Result<(Option<Game>, Event), action::PlayError> {
         let (new_game, turn) = self.next_player();
         let turn = match turn {
-            None => return Ok(None),
+            None => return Ok((None, Event::NothingHappened)),
             Some(turn) => turn,
         };
 
@@ -353,7 +357,7 @@ impl Game {
 
         // XXX: Probably should return the action so that an external client can
         // infer what happened?
-        Ok(Some(try!(new_game.apply_action(action))))
+        Ok((Some(try!(new_game.apply_action(action))), Event::NothingHappened))
     }
 }
 
