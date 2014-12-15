@@ -21,11 +21,6 @@ impl Turn {
 // TODO: Data structure for all of the publicly visible actions in a game.
 // Must be enough to reconstruct the whole game.
 
-pub enum Event {
-    NothingHappened,
-    BustedOut,
-}
-
 
 #[deriving(Show, PartialEq, Eq, Clone)]
 /// Possible states of a round of Love Letter.
@@ -335,16 +330,15 @@ impl Game {
     ///
     /// If the game is now over, will return `Ok(None)`. If not, will return
     /// `Ok(Some(new_game))`.
-    pub fn handle_turn(&self, f: |&Game, &Turn| -> (Card, action::Play)) -> Result<(Option<Game>, Event), action::PlayError> {
+    pub fn handle_turn(&self, f: |&Game, &Turn| -> (Card, action::Play)) -> Result<Option<Game>, action::PlayError> {
         let (new_game, turn) = self.next_player();
         let turn = match turn {
-            None => return Ok((None, Event::NothingHappened)),
+            None => return Ok(None),
             Some(turn) => turn,
         };
 
-        if minister_bust(turn.draw, turn.hand) {
-            let new_game = try!(new_game.apply_action(Action::EliminatePlayer(turn.player)));
-            Ok((Some(new_game), Event::BustedOut))
+        let (new_game, action) = if minister_bust(turn.draw, turn.hand) {
+            (new_game, Action::EliminatePlayer(turn.player))
         } else {
             // Find out what they'd like to play.
             let (card, play) = f(&new_game, &turn);
@@ -354,8 +348,12 @@ impl Game {
 
             let action = try!(action::play_to_action(turn.player, card, play));
 
-            Ok((Some(try!(new_game.apply_action(action))), Event::NothingHappened))
-        }
+            (new_game, action)
+        };
+
+        // XXX: Probably should return the action so that an external client can
+        // infer what happened?
+        Ok(Some(try!(new_game.apply_action(action))))
     }
 }
 

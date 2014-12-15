@@ -6,15 +6,11 @@ use loveletter::PlayError;
 
 
 fn next_turn_err(g: &loveletter::Game, c: loveletter::Card, p: loveletter::Play) -> loveletter::PlayError {
-    match g.handle_turn(|_, _| (c, p)) {
-        Err(e) => e,
-        _ => panic!("Unexpected successful result"),
-    }
+    g.handle_turn(|_, _| (c, p)).unwrap_err()
 }
 
 fn next_turn(g: &loveletter::Game, c: loveletter::Card, p: loveletter::Play) -> loveletter::Game {
-    let (game, _) = g.handle_turn(|_, _| (c, p)).unwrap();
-    game.unwrap()
+    g.handle_turn(|_, _| (c, p)).unwrap().unwrap()
 }
 
 
