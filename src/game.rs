@@ -432,7 +432,8 @@ impl Game {
     ///
     /// If the game is now over, will return `Ok(None)`. If not, will return
     /// `Ok(Some(new_game))`.
-    pub fn handle_turn(&self, f: |&Game, &Turn| -> (Card, action::Play)) -> Result<Option<(Game, TurnOutcome)>, action::PlayError> {
+    pub fn handle_turn(&self, decide_play: |&Game, &Turn| -> (Card, action::Play))
+                       -> Result<Option<(Game, TurnOutcome)>, action::PlayError> {
         let (new_game, turn) = self.next_player();
         let turn = match turn {
             None => return Ok(None),
@@ -447,7 +448,7 @@ impl Game {
             Ok(Some((new_game, TurnOutcome::BustedOut(turn.player))))
         } else {
             // Find out what they'd like to play.
-            let (card, play) = f(&new_game, &turn);
+            let (card, play) = decide_play(&new_game, &turn);
 
             // Update their hand and the played card.
             let new_game = try!(new_game.update_player_by(turn.player, |p| p.play_card(turn.draw, card)));
