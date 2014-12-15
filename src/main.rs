@@ -1,7 +1,8 @@
 extern crate loveletter;
 
+use std::io;
 use std::os;
-use loveletter::Card;
+use loveletter::{Card, Event};
 
 #[cfg(not(test))]
 fn choose_card(turn: &loveletter::Turn) -> loveletter::Card {
@@ -55,8 +56,49 @@ fn choose(_game: &loveletter::Game, turn: &loveletter::Turn) -> (Card, lovelette
             }
         },
     };
-    println!("// action: player {} => {}: {}", turn.player + 1, chosen, action);
     (chosen, action)
+}
+
+
+fn report_outcome(game: &loveletter::Game, outcome: loveletter::TurnOutcome) -> String {
+    match outcome {
+        loveletter::TurnOutcome::BustedOut(player) => {
+            let discards = game.get_discards(player).ok().expect("Busted player did not exist");
+            let a = discards[discards.len() - 1];
+            let b = discards[discards.len() - 2];
+            format!("Player {} busted out with {} and {}!", player + 1, a, b)
+        },
+        loveletter::TurnOutcome::Played(player, card, play, events) => {
+            // XXX: Flesh this out!
+            let prelude = format!("Player {} played {}", player + 1, card);
+            let follow_up = match play {
+                loveletter::Play::NoEffect => ".".to_string(),
+                loveletter::Play::Attack(i) => format!(" on player {}.", i + 1),
+                loveletter::Play::Guess(i, guess) =>
+                    format!(" on player {}, guessing {}.", i + 1, guess),
+            };
+            let mut event_str = String::new();
+            for event in events.iter() {
+                event_str = event_str + (match *event {
+                    Event::NoChange => "Nothing happened.".to_string(),
+                    Event::Protected(_) => "Now protected until their next turn.".to_string(),
+                    Event::SwappedHands(_, b) => format!("Swapped hands with player {}.", b + 1),
+                    Event::PlayerEliminated(p) => format!("Player {} eliminated.", p + 1),
+                    Event::ForcedReveal(a, b) => format!("Player {} showed their card to player {}.", b + 1, a + 1),
+                    Event::ForcedDiscard(p) => {
+                        // XXX: Worth saying here whether the player was
+                        // allowed to draw another card.
+                        let last_discard: &Card = game
+                            .get_discards(p)
+                            .ok().expect("Targeted player did not exist")
+                            .last().expect("Player forced to discard does not have any discards");
+                        format!("Player {} forced to discard {}.", p + 1, last_discard)
+                    },
+                })
+            }
+            format!("{}{} {}", prelude, follow_up, event_str)
+        },
+    }
 }
 
 
@@ -112,11 +154,14 @@ fn main() {
         // different things!
         // TODO: Currently no way of displaying the results of a Clown play to a player.
         // TODO: Currently no way of displaying the results of a Knight play to involved players.
-        current_game = match result {
+        let (new_game, outcome) = match result {
             Ok(None) => break,
-            Ok(Some(game)) => game,
+            Ok(Some(result)) => result,
             Err(e) => { println!("Invalid move: {}\n", e); continue }
         };
+
+        io::println(report_outcome(&new_game, outcome).as_slice());
+        current_game = new_game;
         println!("// game = {}\n", current_game);
     }
     announce_winner(current_game.winners());

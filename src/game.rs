@@ -57,9 +57,16 @@ pub enum GameError {
 }
 
 
+#[deriving(Show)]
 pub enum TurnOutcome {
-    BustedOut,
-    Played(Card, action::Play, Vec<Event>),
+    // XXX: Not sure we should have originating player in this structure, but
+    // Game currently doesn't expose whose turn that just was.
+    BustedOut(uint),
+    // XXX: I think there's only one use case for needing more than one Event
+    // (a terrible name in itself): using the Wizard forcing someone to
+    // discard the Princess. It's _possible_ we don't need that, but included
+    // now for completeness.
+    Played(uint, Card, action::Play, Vec<Event>),
 }
 
 
@@ -425,10 +432,11 @@ impl Game {
         };
 
         if minister_bust(turn.draw, turn.hand) {
-            let (new_game, _) = try!(new_game.apply_event(Event::PlayerEliminated(turn.player)));
-            // XXX: Probably should return the action so that an external client can
-            // infer what happened?
-            Ok(Some((new_game, TurnOutcome::BustedOut)))
+            // XXX: Add tests to verify that the discard pile includes both
+            // picked up card & held card.
+            let new_game = try!(new_game.update_player_by(
+                turn.player, |p| p.play_card(turn.draw, turn.draw).and_then(|p| p.eliminate())));
+            Ok(Some((new_game, TurnOutcome::BustedOut(turn.player))))
         } else {
             // Find out what they'd like to play.
             let (card, play) = f(&new_game, &turn);
@@ -445,9 +453,7 @@ impl Game {
                 Some(event) => events.push(event),
                 None => (),
             };
-            // XXX: Probably should return the action so that an external client can
-            // infer what happened?
-            Ok(Some((new_game, TurnOutcome::Played(card, play, events))))
+            Ok(Some((new_game, TurnOutcome::Played(turn.player, card, play, events))))
         }
     }
 }
