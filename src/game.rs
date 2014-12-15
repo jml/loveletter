@@ -432,7 +432,8 @@ impl Game {
     ///
     /// If the game is now over, will return `Ok(None)`. If not, will return
     /// `Ok(Some(new_game))`.
-    pub fn handle_turn(&self, decide_play: |&Game, &Turn| -> (Card, action::Play))
+    pub fn handle_turn(&self, decide_play: |&Game, &Turn| -> (Card, action::Play),
+                       reveal_card: |uint, Card| -> ())
                        -> Result<Option<(Game, TurnOutcome)>, action::PlayError> {
         let (new_game, turn) = self.next_player();
         let turn = match turn {
@@ -456,6 +457,11 @@ impl Game {
             let action = try!(action::play_to_action(turn.player, card, play));
 
             let event = try!(new_game.action_to_event(action));
+            match event {
+                Event::ForcedReveal(_, target) =>
+                    reveal_card(target, self.get_hand(target).unwrap()),
+                _ => (),
+            }
             let mut events = vec![event];
             let (new_game, follow_up) = try!(new_game.apply_event(event));
             match follow_up {

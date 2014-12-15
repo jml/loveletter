@@ -126,6 +126,11 @@ fn announce_winner(winners: Vec<(uint, Card)>) {
 }
 
 
+fn handle_reveal(player: uint, card: Card) -> () {
+    println!("SECRET: Player {} has a {}", player + 1, card);
+}
+
+
 #[cfg(not(test))]
 fn main() {
     println!("Love Letter");
@@ -149,7 +154,7 @@ fn main() {
     //   Advance to the next player
     let mut current_game = game;
     loop {
-        let result = current_game.handle_turn(choose);
+        let result = current_game.handle_turn(choose, handle_reveal);
         // TODO: Report somehow on what happened. NOTE: different players see
         // different things!
         // TODO: Currently no way of displaying the results of a Clown play to a player.
