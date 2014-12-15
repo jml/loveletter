@@ -195,9 +195,3 @@ All players learn:
 
 The person who played learns:
 - On ForceReveal, the value of the card in a player's hand
-
-### TODO
-
-* make a function that applies this union type to game
-  * still incorporated into `handle_turn`, maybe OK?
-* update `handle_turn` to use this
