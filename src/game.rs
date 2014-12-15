@@ -1,3 +1,11 @@
+/// Core logic for a round of Love Letter
+///
+/// A round of Love Letter ends when all players except one are eliminated, or
+/// when there are no more cards to draw and the final player has played.
+///
+/// The winner is either the last player standing, or the player with the
+/// highest-valued card.
+
 use action;
 use action::{Action, Event};
 use deck;

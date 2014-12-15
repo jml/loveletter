@@ -4,7 +4,10 @@ use std::slice;
 
 use util;
 
+
 #[deriving(PartialEq, PartialOrd, Eq, Ord, Show, Clone)]
+/// Love Letter has eight different cards, each of different worth. The Soldier is the lowest and
+/// the Princess is the highest.
 pub enum Card {
     Soldier,
     Clown,
@@ -19,6 +22,17 @@ pub enum Card {
 
 const CARDS_IN_DECK: uint = 16;
 
+/// In the Love Letter deck, there are:
+/// - 5 Soldiers
+/// - 2 Clowns
+/// - 2 Knights
+/// - 2 Priestesses
+/// - 2 Wizards
+/// - 1 General
+/// - 1 Minister
+/// - 1 Princess
+///
+/// Altogether, there are 16 cards.
 const DECK: [Card, ..CARDS_IN_DECK] = [
     Card::Soldier,
     Card::Soldier,
@@ -38,10 +52,13 @@ const DECK: [Card, ..CARDS_IN_DECK] = [
     Card::Princess,
     ];
 
+
 #[deriving(Show)]
+/// A Love Letter deck.
 pub struct Deck(Vec<Card>);
 
 #[deriving(Show, PartialEq, Eq)]
+/// Returned when we try to construct a malformed Love Letter deck.
 pub enum DeckError {
     WrongCards,
     WrongNumber(uint),
@@ -56,6 +73,7 @@ impl Deck {
         Deck::from_slice(&DECK).unwrap().shuffled()
     }
 
+    /// Construct a deck from the given cards. The cards must represent a complete deck.
     pub fn from_slice(cards: &[Card]) -> Result<Deck, DeckError> {
         if cards.len() != CARDS_IN_DECK {
             return Err(DeckError::WrongNumber(cards.len()));
@@ -66,6 +84,7 @@ impl Deck {
         }
     }
 
+    /// Return a shuffled version of this deck.
     pub fn shuffled(&self) -> Deck {
         let &Deck(ref cards) = self;
         let mut new_cards = cards.clone();
@@ -85,6 +104,8 @@ impl Deck {
     }
 }
 
+/// Does the given list of cards represent a valid deck? That is, are cards present, with no extra
+/// cards.
 fn is_valid_deck(deck: &[Card]) -> bool {
     let mut full_deck: Vec<Card> = Vec::new();
     full_deck.push_all(&DECK);
@@ -95,6 +116,8 @@ fn is_valid_deck(deck: &[Card]) -> bool {
     full_deck == sorted_deck
 }
 
+/// Does the given list of cards represent a valid sub-deck? That is, could we add cards to this
+/// list to make up a full deck?
 pub fn is_valid_subdeck(cards: &[Card]) -> bool {
     util::subtract_vector(DECK.iter().map(|&x| x).collect(), cards).is_some()
 }
