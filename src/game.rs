@@ -173,6 +173,14 @@ impl Game {
         self._players.len()
     }
 
+    pub fn all_discards(&self) -> Vec<&[Card]> {
+        let mut discards = vec![];
+        for player in self._players.iter() {
+            discards.push(player.discards());
+        }
+        discards
+    }
+
     #[cfg(test)]
     fn num_cards_remaining(&self) -> uint {
         self._stack.len()

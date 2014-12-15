@@ -19,14 +19,7 @@
 * Improve speed of `subtract_vector`
 * Improve speed of `maxima_by` to be one pass
 * `GameState` is a bit weird: maybe try to have something better
-
-## Public information
-
-* Data structure for all the publicly visible actions in a game (maybe this is
-  already `Action`)
 * Split `handle_turn` into two states: waiting for player & next player
-* Goal: display result Clown to person who played
-* Goal: display result of Knight to all other players
 
 # Questions
 

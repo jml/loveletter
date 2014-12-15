@@ -69,7 +69,6 @@ fn report_outcome(game: &loveletter::Game, outcome: loveletter::TurnOutcome) -> 
             format!("Player {} busted out with {} and {}!", player + 1, a, b)
         },
         loveletter::TurnOutcome::Played(player, card, play, events) => {
-            // XXX: Flesh this out!
             let prelude = format!("Player {} played {}", player + 1, card);
             let follow_up = match play {
                 loveletter::Play::NoEffect => ".".to_string(),
@@ -80,11 +79,11 @@ fn report_outcome(game: &loveletter::Game, outcome: loveletter::TurnOutcome) -> 
             let mut event_str = String::new();
             for event in events.iter() {
                 event_str = event_str + (match *event {
-                    Event::NoChange => "Nothing happened.".to_string(),
-                    Event::Protected(_) => "Now protected until their next turn.".to_string(),
-                    Event::SwappedHands(_, b) => format!("Swapped hands with player {}.", b + 1),
-                    Event::PlayerEliminated(p) => format!("Player {} eliminated.", p + 1),
-                    Event::ForcedReveal(a, b) => format!("Player {} showed their card to player {}.", b + 1, a + 1),
+                    Event::NoChange => "Nothing happened. ".to_string(),
+                    Event::Protected(_) => "Now protected until their next turn. ".to_string(),
+                    Event::SwappedHands(_, b) => format!("Swapped hands with player {}. ", b + 1),
+                    Event::PlayerEliminated(p) => format!("Player {} eliminated. ", p + 1),
+                    Event::ForcedReveal(a, b) => format!("Player {} showed their card to player {}. ", b + 1, a + 1),
                     Event::ForcedDiscard(p) => {
                         // XXX: Worth saying here whether the player was
                         // allowed to draw another card.
@@ -92,7 +91,7 @@ fn report_outcome(game: &loveletter::Game, outcome: loveletter::TurnOutcome) -> 
                             .get_discards(p)
                             .ok().expect("Targeted player did not exist")
                             .last().expect("Player forced to discard does not have any discards");
-                        format!("Player {} forced to discard {}.", p + 1, last_discard)
+                        format!("Player {} forced to discard {}. ", p + 1, last_discard)
                     },
                 })
             }
@@ -137,15 +136,16 @@ fn main() {
     println!("===========");
     println!("");
 
-    let game = match loveletter::Game::new(2) {
+    let num_players = 2u;
+
+    let game = match loveletter::Game::new(num_players) {
         Some(g) => g,
         None => {
-            println!("Invalid number of players: 2");
+            println!("Invalid number of players: {}", num_players);
             os::set_exit_status(2);
             return;
         }
     };
-    println!("// game = {}\n", game);
     // While the game is not over
     //   Draw a card
     //   Give it to the player whose turn it is and ask them what their play is
@@ -154,6 +154,12 @@ fn main() {
     //   Advance to the next player
     let mut current_game = game;
     loop {
+        println!("All Discards");
+        println!("------------");
+        for (i, discards) in current_game.all_discards().iter().enumerate() {
+            println!("  P{}: {}", i + 1, discards);
+        }
+        println!("");
         let result = current_game.handle_turn(choose, handle_reveal);
         // TODO: Report somehow on what happened. NOTE: different players see
         // different things!
@@ -166,8 +172,8 @@ fn main() {
         };
 
         io::println(report_outcome(&new_game, outcome).as_slice());
+        println!("");
         current_game = new_game;
-        println!("// game = {}\n", current_game);
     }
     announce_winner(current_game.winners());
 }
