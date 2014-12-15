@@ -1,5 +1,5 @@
 use action;
-use action::Action;
+use action::{Action, Event};
 use deck;
 use deck::Card;
 use player;
@@ -299,6 +299,90 @@ impl Game {
         }
     }
 
+    fn action_to_event(&self, action: Action) -> Result<Event, action::PlayError> {
+        match action {
+            Action::NoChange => Ok(Event::NoChange),
+            Action::Protect(i) => self.get_player(i).map(|_| Event::Protected(i)),
+            Action::SwapHands(src, tgt) => {
+                let target = try!(self.get_player(tgt));
+                if target.protected() {
+                    Ok(Event::NoChange)
+                } else {
+                    Ok(Event::SwappedHands(src, tgt))
+                }
+            },
+            Action::EliminatePlayer(i) => {
+                let target = try!(self.get_player(i));
+                if target.protected() {
+                    Ok(Event::NoChange)
+                } else {
+                    Ok(Event::PlayerEliminated(i))
+                }
+            },
+            Action::ForceDiscard(i) => {
+                let target = try!(self.get_player(i));
+                if target.protected() {
+                    Ok(Event::NoChange)
+                } else {
+                    Ok(Event::ForcedDiscard(i))
+                }
+            },
+            Action::ForceReveal(src, tgt) => {
+                let target = try!(self.get_player(tgt));
+                if target.protected() {
+                    Ok(Event::NoChange)
+                } else {
+                    Ok(Event::ForcedReveal(src, tgt))
+                }
+            },
+            Action::EliminateWeaker(src, tgt) => {
+                let source_hand = try!(self.get_hand(src));
+                let target = try!(self.get_player(tgt));
+                if target.protected() {
+                    Ok(Event::NoChange)
+                } else {
+                    let target_hand = target.get_hand().expect("Hand should be active");
+                    match source_hand.cmp(&target_hand) {
+                        Less => Ok(Event::PlayerEliminated(src)),
+                        Greater => Ok(Event::PlayerEliminated(tgt)),
+                        Equal => Ok(Event::NoChange),
+                    }
+                }
+            },
+            Action::EliminateOnGuess(tgt, guess) => {
+                if guess == Card::Soldier {
+                    return Err(action::PlayError::BadGuess);
+                }
+                let target = try!(self.get_player(tgt));
+                if target.protected() {
+                    Ok(Event::NoChange)
+                } else {
+                    let target_hand = target.get_hand().expect("Hand should be active");
+                    if target_hand == guess {
+                        Ok(Event::PlayerEliminated(tgt))
+                    } else {
+                        Ok(Event::NoChange)
+                    }
+                }
+            },
+        }
+    }
+
+    fn apply_event(&self, event: Event) -> Result<Game, action::PlayError> {
+        match event {
+            Event::NoChange => Ok(self.clone()),
+            Event::Protected(i) => self.update_player_by(i, |player| player.protect(true)),
+            Event::PlayerEliminated(i) => self.update_player_by(i, |p| p.eliminate()),
+            Event::SwappedHands(src, tgt) => self.update_two_players_by(
+                tgt, src, |tgt_player, src_player| tgt_player.swap_hands(src_player)),
+            Event::ForcedDiscard(i) => {
+                let (game, new_card) = self.draw();
+                game.update_player_by(i, |p| p.discard_and_draw(new_card))
+            },
+            Event::ForcedReveal(..) => Ok(self.clone()),
+        }
+    }
+
     fn apply_action(&self, action: Action) -> Result<Game, action::PlayError> {
         match action {
             Action::NoChange => Ok(self.clone()),
@@ -351,9 +435,13 @@ impl Game {
             (new_game, action)
         };
 
+        let new_game = try!(
+            new_game
+                .action_to_event(action)
+                .and_then(|event| new_game.apply_event(event)));
         // XXX: Probably should return the action so that an external client can
         // infer what happened?
-        Ok(Some(try!(new_game.apply_action(action))))
+        Ok(Some(new_game))
     }
 }
 

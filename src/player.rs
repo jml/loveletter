@@ -35,6 +35,11 @@ impl Player {
         self._discard.as_slice()
     }
 
+    /// Is this player protected?
+    pub fn protected(&self) -> bool {
+        self._protected
+    }
+
     /// Get the player's hand. Returns `None` if player is no longer playing.
     pub fn get_hand(&self) -> Option<Card> {
         self._hand

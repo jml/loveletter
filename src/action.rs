@@ -52,6 +52,17 @@ pub enum Action {
 }
 
 
+#[deriving(PartialEq, Eq, Show)]
+pub enum Event {
+    NoChange,
+    Protected(uint),
+    SwappedHands(uint, uint),
+    PlayerEliminated(uint),
+    ForcedDiscard(uint),
+    ForcedReveal(uint, uint),
+}
+
+
 /// Turn a play into an Action.
 ///
 /// Translates a decision by a player to play a particular card in a
