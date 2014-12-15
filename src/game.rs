@@ -199,6 +199,13 @@ impl Game {
         }
     }
 
+    pub fn get_discards(&self, player_id: uint) -> Result<&[Card], action::PlayError> {
+        self._players
+            .get(player_id)
+            .ok_or(action::PlayError::InvalidPlayer(player_id))
+            .map(|p| p.discards())
+    }
+
     fn get_player(&self, player_id: uint) -> Result<&player::Player, action::PlayError> {
         if player_id < self.num_players() {
             let ref p = self._players[player_id];
