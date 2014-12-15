@@ -100,3 +100,107 @@ TODO: Incorporate these into the program.
 * General: player $N swaps cards with player $M (inferrable)
 * Minister: player $N busted with Minister and $CARD
 
+## Let's try again, shall we?
+
+There's a shuffled deck of cards.
+
+There's a group of players.
+
+Each player gets a card.
+
+When it's their turn, they draw a card.
+
+If the card is a Minister and they have a Wizard, General, or Princess, their
+out.
+
+Otherwise, they choose a card (one of two) to play. They place it face down in
+front of them and choose what to do with it.
+
+If it's a Minister, Princess, or Priestess, they do nothing.
+
+If it's a General, Wizard, Knight, or Clown, they choose a person to attack
+with it.
+
+If it's a Soldier, they choose a person to attack and make a guess as to what
+they have.
+
+### Princess
+
+They lose. Players see they've lost, and that they played a princess.
+
+Princess, NoEffect, EliminatePlayer(i)
+
+### Minister
+
+Nothing ever happens.
+
+If drawn, might BustOut.
+
+### General
+
+If protected, NoChange
+Otherwise SwapHands
+
+### Wizard
+
+If protected, NoChange
+Otherwise ForceDiscard
+
+If ForceDiscard causes Princess to be discarded, targeted player is eliminated
+
+### Priestess
+
+Protected
+
+### Knight
+
+If protected, NoChange
+Compare hands:
+ if equal, NoChange
+ otherwise, lesser Eliminated
+
+### Clown
+
+If protected, NoChange
+Otherwise, player can see card
+Actual game not changed
+
+### Soldier
+
+If protected, NoChange
+Guess correct: EliminatePlayer
+Incorrect: NoChange
+
+## Result of a turn
+
+Either:
+
+a) Busting out before playing
+b) Player, Card, Play, and ...
+NoChange (also communicate if was because of Protected? Can be inferred)
+Protect
+EliminatePlayer
+SwapHands
+ForceDiscard
+ForceReveal
+
+ForceDiscard can trigger another 'event', when the one forced discards the
+Princess.
+
+All players learn:
+- who played
+- the card they played
+- their intended action
+- the result of their action
+
+The person who played learns:
+- On ForceReveal, the value of the card in a player's hand
+
+### TODO
+
+* remove EliminateWeaker and EliminateOnGuess actions
+* restore a function on Game that takes player, card, Play, and returns the
+actual action
+* create a new type that unions busting out with 'normal' plays
+* make a function that applies this union type to game
+* update `handle_turn` to use this
