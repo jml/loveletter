@@ -12,7 +12,6 @@ pub struct Player {
 #[deriving(Show, PartialEq, Eq)]
 pub enum Error {
     Inactive,
-    BadGuess,
     NoSuchCard(Card, (Card, Card)),
 }
 
@@ -71,39 +70,6 @@ impl Player {
             self.clone()
         } else {
             self.replace(None).discard(card)
-        })
-    }
-
-    /// Eliminate this player if they've got the guessed card in their hand.
-    pub fn eliminate_if_guessed(&self, guess: Card) -> Result<Player, Error> {
-        if guess == Card::Soldier {
-            return Err(Error::BadGuess)
-        }
-        let card = try!(self._get_card());
-        if card == guess {
-            self.eliminate()
-        } else {
-            Ok(self.clone())
-        }
-    }
-
-    /// Eliminate this player if their card is weaker than the other player's.
-    /// Otherwise, eliminate the other player. If it's a draw, leave them both
-    /// as they are.
-    ///
-    /// Returns a tuple of `(self, other)` where `self` and `other` are the
-    /// updated versions. Only one will have changed.
-    pub fn eliminate_if_weaker(&self, other: &Player) -> Result<(Player, Player), Error> {
-        let my_card = try!(self._get_card());
-        let their_card = try!(other._get_card());
-        Ok(if self._protected {
-            (self.clone(), other.clone())
-        } else {
-            match my_card.cmp(&their_card) {
-                Less => (self.replace(None), other.clone()),
-                Greater => (self.clone(), other.replace(None)),
-                Equal => (self.clone(), other.clone())
-            }
         })
     }
 

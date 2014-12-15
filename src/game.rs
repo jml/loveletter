@@ -224,7 +224,6 @@ impl Game {
                 |result| match result {
                     Ok(new_player) => Ok(self.update_player(player_id, new_player)),
                     Err(player::Error::Inactive) => Err(action::PlayError::InactivePlayer(player_id)),
-                    Err(player::Error::BadGuess) => Err(action::PlayError::BadGuess),
                     Err(player::Error::NoSuchCard(c, d)) => Err(action::PlayError::CardNotFound(c, d)),
                 })
     }
@@ -383,27 +382,6 @@ impl Game {
         }
     }
 
-    fn apply_action(&self, action: Action) -> Result<Game, action::PlayError> {
-        match action {
-            Action::NoChange => Ok(self.clone()),
-            Action::Protect(i) => self.update_player_by(i, |player| player.protect(true)),
-            Action::EliminatePlayer(i) => self.update_player_by(i, |p| p.eliminate()),
-            Action::SwapHands(src, tgt) => self.update_two_players_by(
-                tgt, src, |tgt_player, src_player| tgt_player.swap_hands(src_player)),
-            Action::ForceDiscard(i) => {
-                let (game, new_card) = self.draw();
-                game.update_player_by(i, |p| p.discard_and_draw(new_card))
-            },
-            // XXX: The fact that this is indistinguishable from NoChange
-            // means we've implemented it wrong.
-            Action::ForceReveal(..) => Ok(self.clone()),
-            Action::EliminateWeaker(src, tgt) => self.update_two_players_by(
-                tgt, src, |tgt_player, src_player| tgt_player.eliminate_if_weaker(src_player)),
-            Action::EliminateOnGuess(p1, card) =>
-                self.update_player_by(p1, |p| p.eliminate_if_guessed(card))
-        }
-    }
-
     /// Crank the handle of a loveletter game.
     ///
     /// Takes a function which is given the game, the current player, the card
@@ -512,7 +490,7 @@ impl GameResult {
 #[cfg(test)]
 mod test {
     use action;
-    use action::{Action, PlayError};
+    use action::{Event, PlayError};
     use deck;
     use deck::Card;
     use super::{Game, Turn};
@@ -727,7 +705,7 @@ mod test {
         let g = Game::from_manual(
             &[Some(Card::General), Some(Card::Clown), None, Some(Card::Priestess)],
             &[Card::Soldier, Card::Minister, Card::Princess, Card::Soldier, Card::Wizard], None).unwrap();
-        let new_game = g.apply_action(Action::SwapHands(0, 1)).unwrap();
+        let new_game = g.apply_event(Event::SwappedHands(0, 1)).unwrap();
         assert_eq!(
             vec![Some(Card::Clown), Some(Card::General), None, Some(Card::Priestess)],
             new_game.hands());
@@ -738,16 +716,16 @@ mod test {
         let g = Game::from_manual(
             &[Some(Card::General), Some(Card::Clown), None, Some(Card::Priestess)],
             &[Card::Soldier, Card::Minister, Card::Princess, Card::Soldier, Card::Wizard], None).unwrap();
-        let error = g.apply_action(Action::SwapHands(0, 5)).unwrap_err();
+        let error = g.apply_event(Event::SwappedHands(0, 5)).unwrap_err();
         assert_eq!(PlayError::InvalidPlayer(5), error);
-        let error = g.apply_action(Action::SwapHands(5, 0)).unwrap_err();
+        let error = g.apply_event(Event::SwappedHands(5, 0)).unwrap_err();
         assert_eq!(PlayError::InvalidPlayer(5), error);
     }
 
     #[test]
     fn test_no_change() {
         let g = make_arbitrary_game();
-        let new_g = g.apply_action(Action::NoChange).unwrap();
+        let new_g = g.apply_event(Event::NoChange).unwrap();
         assert_eq!(g, new_g);
     }
 
@@ -755,7 +733,7 @@ mod test {
     fn test_eliminate_action() {
         let g = Game::new(3).unwrap();
         let (g, _) = g.next_player();
-        let new_g = g.apply_action(Action::EliminatePlayer(1)).unwrap();
+        let new_g = g.apply_event(Event::PlayerEliminated(1)).unwrap();
         let (_, t) = new_g.next_player();
         assert_eq!(2, t.unwrap().player);
     }
@@ -769,39 +747,8 @@ mod test {
         let t = t.unwrap();
         let ours = t.hand;
         let theirs = g.get_hand(1).unwrap();
-        let new_g = g.apply_action(Action::SwapHands(0, 1)).unwrap();
+        let new_g = g.apply_event(Event::SwappedHands(0, 1)).unwrap();
         assert_eq!(theirs, new_g.get_hand(0).unwrap());
         assert_eq!(ours, new_g.get_hand(1).unwrap());
-    }
-
-    #[test]
-    fn test_eliminate_on_guess_incorrect() {
-        // Got this error:
-        // Player 2: pick a card:
-        //   1. Priestess
-        //   2. Soldier
-        // 2
-        // Player 2 => Soldier: Guess(0, Wizard)
-        // Error: BadGuess
-        let g = Game::from_manual(
-            &[Some(Card::Soldier), Some(Card::Soldier)], &[Card::Wizard, Card::Wizard], Some(0)).unwrap();
-        let result = g.apply_action(Action::EliminateOnGuess(1, Card::Clown));
-        assert_eq!(Ok(g), result);
-    }
-
-    #[test]
-    fn test_eliminate_on_guess_correct() {
-        let g = Game::from_manual(
-            &[Some(Card::Soldier), Some(Card::Clown)], &[Card::Wizard, Card::Wizard], Some(0)).unwrap();
-        let result = g.apply_action(Action::EliminateOnGuess(1, Card::Clown));
-        assert_eq!(eliminate(&g, 1), result);
-    }
-
-    #[test]
-    fn test_eliminate_on_guess_soldier() {
-        let g = Game::from_manual(
-            &[Some(Card::Soldier), Some(Card::Soldier)], &[Card::Wizard, Card::Wizard], Some(0)).unwrap();
-        let result = g.apply_action(Action::EliminateOnGuess(1, Card::Soldier));
-        assert_eq!(Err(PlayError::BadGuess), result);
     }
 }
