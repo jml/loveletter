@@ -198,9 +198,6 @@ The person who played learns:
 
 ### TODO
 
-* remove EliminateWeaker and EliminateOnGuess actions
-* restore a function on Game that takes player, card, Play, and returns the
-actual action
-* create a new type that unions busting out with 'normal' plays
 * make a function that applies this union type to game
+  * still incorporated into `handle_turn`, maybe OK?
 * update `handle_turn` to use this

@@ -47,6 +47,22 @@ enum GameState {
 
 
 
+#[deriving(Show, PartialEq, Eq)]
+/// Errors that can occur while constructing a Game.
+pub enum GameError {
+    /// Specified an invalid number of players.
+    InvalidPlayers(uint),
+    /// The given cards do not form a valid deck.
+    BadDeck,
+}
+
+
+pub enum TurnOutcome {
+    BustedOut,
+    Played(Card, action::Play, Vec<Event>),
+}
+
+
 #[deriving(Show, PartialEq, Eq, Clone)]
 /// Represents a single round of Love Letter.
 pub struct Game {
@@ -56,17 +72,6 @@ pub struct Game {
     _players: Vec<player::Player>,
     /// The current state of the game.
     _current: GameState,
-}
-
-
-
-#[deriving(Show, PartialEq, Eq)]
-/// Errors that can occur while constructing a Game.
-pub enum GameError {
-    /// Specified an invalid number of players.
-    InvalidPlayers(uint),
-    /// The given cards do not form a valid deck.
-    BadDeck,
 }
 
 
@@ -299,6 +304,12 @@ impl Game {
     }
 
     fn action_to_event(&self, action: Action) -> Result<Event, action::PlayError> {
+        // XXX: I think the types I've chosen are working against me. If we
+        // keep Play around, then we can simplify the checking code a great
+        // deal (only check the target is active & not protected once).
+        //
+        // Perhaps it's also wise to have a type that actually has a reference
+        // to a player rather than a uint
         match action {
             Action::NoChange => Ok(Event::NoChange),
             Action::Protect(i) => self.get_player(i).map(|_| Event::Protected(i)),
@@ -367,18 +378,25 @@ impl Game {
         }
     }
 
-    fn apply_event(&self, event: Event) -> Result<Game, action::PlayError> {
+    fn apply_event(&self, event: Event) -> Result<(Game, Option<Event>), action::PlayError> {
         match event {
-            Event::NoChange => Ok(self.clone()),
-            Event::Protected(i) => self.update_player_by(i, |player| player.protect(true)),
-            Event::PlayerEliminated(i) => self.update_player_by(i, |p| p.eliminate()),
+            Event::NoChange => Ok((self.clone(), None)),
+            Event::Protected(i) => self.update_player_by(i, |player| player.protect(true)).map(|g| (g, None)),
+            Event::PlayerEliminated(i) => self.update_player_by(i, |p| p.eliminate()).map(|g| (g, None)),
             Event::SwappedHands(src, tgt) => self.update_two_players_by(
-                tgt, src, |tgt_player, src_player| tgt_player.swap_hands(src_player)),
+                tgt, src, |tgt_player, src_player| tgt_player.swap_hands(src_player)).map(|g| (g, None)),
             Event::ForcedDiscard(i) => {
-                let (game, new_card) = self.draw();
-                game.update_player_by(i, |p| p.discard_and_draw(new_card))
+                // XXX: This can cause another event.
+                let player = try!(self.get_player(i));
+                if player.get_hand() == Some(Card::Princess) {
+                    self.update_player_by(
+                        i, |p| p.eliminate()).map(|g| (g, Some(Event::PlayerEliminated(i))))
+                } else {
+                    let (game, new_card) = self.draw();
+                    game.update_player_by(i, |p| p.discard_and_draw(new_card)).map(|g| (g, None))
+                }
             },
-            Event::ForcedReveal(..) => Ok(self.clone()),
+            Event::ForcedReveal(..) => Ok((self.clone(), None)),
         }
     }
 
@@ -392,15 +410,18 @@ impl Game {
     ///
     /// If the game is now over, will return `Ok(None)`. If not, will return
     /// `Ok(Some(new_game))`.
-    pub fn handle_turn(&self, f: |&Game, &Turn| -> (Card, action::Play)) -> Result<Option<Game>, action::PlayError> {
+    pub fn handle_turn(&self, f: |&Game, &Turn| -> (Card, action::Play)) -> Result<Option<(Game, TurnOutcome)>, action::PlayError> {
         let (new_game, turn) = self.next_player();
         let turn = match turn {
             None => return Ok(None),
             Some(turn) => turn,
         };
 
-        let (new_game, action) = if minister_bust(turn.draw, turn.hand) {
-            (new_game, Action::EliminatePlayer(turn.player))
+        if minister_bust(turn.draw, turn.hand) {
+            let (new_game, _) = try!(new_game.apply_event(Event::PlayerEliminated(turn.player)));
+            // XXX: Probably should return the action so that an external client can
+            // infer what happened?
+            Ok(Some((new_game, TurnOutcome::BustedOut)))
         } else {
             // Find out what they'd like to play.
             let (card, play) = f(&new_game, &turn);
@@ -410,16 +431,17 @@ impl Game {
 
             let action = try!(action::play_to_action(turn.player, card, play));
 
-            (new_game, action)
-        };
-
-        let new_game = try!(
-            new_game
-                .action_to_event(action)
-                .and_then(|event| new_game.apply_event(event)));
-        // XXX: Probably should return the action so that an external client can
-        // infer what happened?
-        Ok(Some(new_game))
+            let event = try!(new_game.action_to_event(action));
+            let mut events = vec![event];
+            let (new_game, follow_up) = try!(new_game.apply_event(event));
+            match follow_up {
+                Some(event) => events.push(event),
+                None => (),
+            };
+            // XXX: Probably should return the action so that an external client can
+            // infer what happened?
+            Ok(Some((new_game, TurnOutcome::Played(card, play, events))))
+        }
     }
 }
 
@@ -705,7 +727,7 @@ mod test {
         let g = Game::from_manual(
             &[Some(Card::General), Some(Card::Clown), None, Some(Card::Priestess)],
             &[Card::Soldier, Card::Minister, Card::Princess, Card::Soldier, Card::Wizard], None).unwrap();
-        let new_game = g.apply_event(Event::SwappedHands(0, 1)).unwrap();
+        let (new_game, _) = g.apply_event(Event::SwappedHands(0, 1)).unwrap();
         assert_eq!(
             vec![Some(Card::Clown), Some(Card::General), None, Some(Card::Priestess)],
             new_game.hands());
@@ -725,7 +747,7 @@ mod test {
     #[test]
     fn test_no_change() {
         let g = make_arbitrary_game();
-        let new_g = g.apply_event(Event::NoChange).unwrap();
+        let (new_g, _) = g.apply_event(Event::NoChange).unwrap();
         assert_eq!(g, new_g);
     }
 
@@ -733,7 +755,7 @@ mod test {
     fn test_eliminate_action() {
         let g = Game::new(3).unwrap();
         let (g, _) = g.next_player();
-        let new_g = g.apply_event(Event::PlayerEliminated(1)).unwrap();
+        let (new_g, _) = g.apply_event(Event::PlayerEliminated(1)).unwrap();
         let (_, t) = new_g.next_player();
         assert_eq!(2, t.unwrap().player);
     }
@@ -747,7 +769,7 @@ mod test {
         let t = t.unwrap();
         let ours = t.hand;
         let theirs = g.get_hand(1).unwrap();
-        let new_g = g.apply_event(Event::SwappedHands(0, 1)).unwrap();
+        let (new_g, _) = g.apply_event(Event::SwappedHands(0, 1)).unwrap();
         assert_eq!(theirs, new_g.get_hand(0).unwrap());
         assert_eq!(ours, new_g.get_hand(1).unwrap());
     }
