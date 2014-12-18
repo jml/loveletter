@@ -26,9 +26,6 @@ impl Turn {
     }
 }
 
-// TODO: Data structure for all of the publicly visible actions in a game.
-// Must be enough to reconstruct the whole game.
-
 
 #[deriving(Show, PartialEq, Eq, Clone)]
 /// Possible states of a round of Love Letter.
@@ -47,10 +44,10 @@ impl Turn {
 /// and (probably) to inspect public state. After the game, the only thing
 /// that can happen is you look at who the survivors are, what their cards
 /// were, who the winner is, and what the burn card was.
-enum GameState {
+enum State {
     NotStarted,
     PlayerReady(uint, Card),
-    GameOver(GameResult),
+    GameOver(RoundResult),
 }
 
 
@@ -86,7 +83,7 @@ pub struct Round {
     /// All of the players of the game. The size does not change once the game is constructed.
     _players: Vec<player::Player>,
     /// The current state of the game.
-    _current: GameState,
+    _current: State,
 }
 
 
@@ -115,7 +112,7 @@ impl Round {
         let hands: Vec<Option<Card>> = cards.slice(1, hand_end).iter().map(|&x| Some(x)).collect();
         Some(Round {
             _stack: cards.slice_from(hand_end).iter().map(|&x| x).collect(),
-            _current: GameState::NotStarted,
+            _current: State::NotStarted,
             _players: hands.iter().map(|&x| player::Player::new(x)).collect(),
         })
     }
@@ -146,10 +143,10 @@ impl Round {
         }
         if deck::is_valid_subdeck(all_cards.as_slice()) {
             let state = match current_player {
-                None => GameState::NotStarted,
+                None => State::NotStarted,
                 Some(i) => {
                     match stack.pop() {
-                        Some(card) => GameState::PlayerReady(i, card),
+                        Some(card) => State::PlayerReady(i, card),
                         None => { return Err(GameError::BadDeck); }
                     }
                 }
@@ -193,15 +190,15 @@ impl Round {
 
     fn current_player(&self) -> Option<uint> {
         match self._current {
-            GameState::NotStarted => None,
-            GameState::PlayerReady(i, _) => Some(i),
-            GameState::GameOver(..) => None,
+            State::NotStarted => None,
+            State::PlayerReady(i, _) => Some(i),
+            State::GameOver(..) => None,
         }
     }
 
     fn current_turn(&self) -> Option<Turn> {
         match self._current {
-            GameState::PlayerReady(i, card) => {
+            State::PlayerReady(i, card) => {
                 let hand = self.get_hand(i).ok().expect("Activated disabled player");
                 Some(Turn::new(i, hand, card))
             },
@@ -316,7 +313,7 @@ impl Round {
         match (self._next_player(), self.draw()) {
             (Some(new_player_id), (game, Some(c))) => {
                 let mut new_game = game;
-                new_game._current = GameState::PlayerReady(new_player_id, c);
+                new_game._current = State::PlayerReady(new_player_id, c);
                 // Protection from the priestess expires when your
                 // turn begins.
                 new_game = new_game
@@ -327,7 +324,7 @@ impl Round {
             },
             _ => {
                 let mut new_game = self.clone();
-                new_game._current = GameState::GameOver(self._game_result());
+                new_game._current = State::GameOver(self._game_result());
                 (new_game, None)
             },
         }
