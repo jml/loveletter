@@ -532,21 +532,6 @@ impl RoundResult {
     }
 }
 
-    // #[test]
-    // fn test_survivors_at_game_end() {
-    //     let g = Round::from_manual(
-    //         &[Some(Card::Knight), Some(Card::Princess)], &[Card::Soldier], Some(0)).unwrap();
-    //     assert_eq!(vec![(0, Card::Knight), (1, Card::Princess)], g.survivors());
-    // }
-
-    // #[test]
-    // fn test_winner_from_multiple_survivors() {
-    //     let g = Round::from_manual(
-    //         &[Some(Card::Knight), Some(Card::Princess)], &[Card::Soldier], Some(0)).unwrap();
-    //     assert_eq!(vec![(1, Card::Princess)], g.winners());
-    // }
-
-
 
 #[cfg(test)]
 mod test {
@@ -554,7 +539,10 @@ mod test {
     use action::{Event, PlayError};
     use deck;
     use deck::Card;
+    use player;
     use super::{Round, Turn};
+    use super::RoundResult;
+
 
     fn make_arbitrary_game() -> Round {
         Round::new(4).unwrap()
@@ -811,5 +799,22 @@ mod test {
         let (new_g, _) = g.apply_event(Event::SwappedHands(0, 1)).unwrap();
         assert_eq!(theirs, new_g.get_hand(0).unwrap());
         assert_eq!(ours, new_g.get_hand(1).unwrap());
+    }
+
+    #[test]
+    fn test_round_result_survivors() {
+        let p1 = player::Player::new(Some(Card::Princess));
+        let p2 = player::Player::new(None);
+        let r = RoundResult::new(vec![p1, p2]);
+        assert_eq!(vec![(0, Card::Princess)], r.survivors());
+    }
+
+    #[test]
+    fn test_round_result_multiple_survivors() {
+        let p1 = player::Player::new(Some(Card::Princess));
+        let p2 = player::Player::new(Some(Card::Wizard));
+        let p3 = player::Player::new(None);
+        let r = RoundResult::new(vec![p1, p2, p3]);
+        assert_eq!(vec![(0, Card::Princess), (1, Card::Wizard)], r.survivors());
     }
 }
