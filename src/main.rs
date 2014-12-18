@@ -161,10 +161,6 @@ fn main() {
         }
         println!("");
         let result = current_game.handle_turn(choose, handle_reveal);
-        // TODO: Report somehow on what happened. NOTE: different players see
-        // different things!
-        // TODO: Currently no way of displaying the results of a Clown play to a player.
-        // TODO: Currently no way of displaying the results of a Knight play to involved players.
         let (new_game, outcome) = match result {
             Ok(None) => break,
             Ok(Some(result)) => result,
