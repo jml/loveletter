@@ -25,3 +25,12 @@
 
 * Is it possible to represent `play_to_action` as a data structure, rather
   than a function?
+* Currently there's a bunch of punning around player id being the index of the
+  vector in both `Game` and `Round`, with both objects using the same ids. It
+  would be nice to make this explicit.
+* What should the remote interface look like?
+* `Game` is currently constructed from a `Config` object but maybe it should
+  instead take a list of player IDs that are then used opaquely throughout the
+  program?
+* How do I cleanly separate the command-line program from the core code?
+* What's the best way cleanly separate the (anticipated!) server?
