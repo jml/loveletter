@@ -80,7 +80,7 @@ pub enum TurnOutcome {
 
 #[deriving(Show, PartialEq, Eq, Clone)]
 /// Represents a single round of Love Letter.
-pub struct Game {
+pub struct Round {
     /// The remaining cards in the deck.
     _stack: Vec<Card>,
     /// All of the players of the game. The size does not change once the game is constructed.
@@ -90,7 +90,7 @@ pub struct Game {
 }
 
 
-impl Game {
+impl Round {
     // TODO: Provide some way of getting the burnt card when play is over.
 
     // TODO: Create a state validator, that guarantees that no cards have been
@@ -99,21 +99,21 @@ impl Game {
     /// Create a new game with a randomly shuffled deck.
     ///
     /// Will return None if given an invalid number of players.
-    pub fn new(num_players: uint) -> Option<Game> {
-        Game::from_deck(num_players, deck::Deck::new())
+    pub fn new(num_players: uint) -> Option<Round> {
+        Round::from_deck(num_players, deck::Deck::new())
     }
 
     /// Create a new game given an already-shuffled deck.
     ///
     /// Will return None if given an invalid number of players.
-    pub fn from_deck(num_players: uint, deck: deck::Deck) -> Option<Game> {
-        if !Game::valid_player_count(num_players) {
+    pub fn from_deck(num_players: uint, deck: deck::Deck) -> Option<Round> {
+        if !Round::valid_player_count(num_players) {
             return None
         }
         let cards = deck.as_slice();
         let hand_end = num_players + 1;
         let hands: Vec<Option<Card>> = cards.slice(1, hand_end).iter().map(|&x| Some(x)).collect();
-        Some(Game {
+        Some(Round {
             _stack: cards.slice_from(hand_end).iter().map(|&x| x).collect(),
             _current: GameState::NotStarted,
             _players: hands.iter().map(|&x| player::Player::new(x)).collect(),
@@ -134,9 +134,9 @@ impl Game {
     /// one **after** the one given here. e.g. `Some(0)` means it's player 1's
     /// turn next.
     pub fn from_manual(hands: &[Option<Card>], deck: &[Card],
-                       current_player: Option<uint>) -> Result<Game, GameError> {
+                       current_player: Option<uint>) -> Result<Round, GameError> {
         let num_players = hands.len();
-        if !Game::valid_player_count(num_players) {
+        if !Round::valid_player_count(num_players) {
             return Err(GameError::InvalidPlayers(num_players));
         }
         let mut stack: Vec<Card> = deck.iter().map(|&x| x).collect();
@@ -154,7 +154,7 @@ impl Game {
                     }
                 }
             };
-            Ok(Game {
+            Ok(Round {
                 _stack: stack,
                 _current: state,
                 _players: hands.iter().map(|&x| player::Player::new(x)).collect(),
@@ -246,13 +246,13 @@ impl Game {
         self.get_player(player_id).map(|p| p.get_hand().unwrap())
     }
 
-    fn update_player(&self, player_id: uint, player: player::Player) -> Game {
+    fn update_player(&self, player_id: uint, player: player::Player) -> Round {
         let mut new_game = self.clone();
         new_game._players[player_id] = player;
         new_game
     }
 
-    fn update_player_by(&self, player_id: uint, updater: |&player::Player| -> Result<player::Player, player::Error>) -> Result<Game, action::PlayError> {
+    fn update_player_by(&self, player_id: uint, updater: |&player::Player| -> Result<player::Player, player::Error>) -> Result<Round, action::PlayError> {
         self.get_player(player_id)
             .map(updater)
             .and_then(
@@ -263,7 +263,7 @@ impl Game {
                 })
     }
 
-    fn update_two_players_by(&self, p1_id: uint, p2_id: uint, updater: |&player::Player, &player::Player| -> Result<(player::Player, player::Player), player::Error>) -> Result<Game, action::PlayError> {
+    fn update_two_players_by(&self, p1_id: uint, p2_id: uint, updater: |&player::Player, &player::Player| -> Result<(player::Player, player::Player), player::Error>) -> Result<Round, action::PlayError> {
         match (self.get_player(p1_id), self.get_player(p2_id)) {
             (Ok(player1), Ok(player2)) => {
                 match updater(player1, player2) {
@@ -291,7 +291,7 @@ impl Game {
         self._stack.as_slice()
     }
 
-    fn draw(&self) -> (Game, Option<Card>) {
+    fn draw(&self) -> (Round, Option<Card>) {
         let mut g = self.clone();
         let c = g._stack.pop();
         (g, c)
@@ -312,7 +312,7 @@ impl Game {
         }
     }
 
-    fn next_player(&self) -> (Game, Option<Turn>) {
+    fn next_player(&self) -> (Round, Option<Turn>) {
         match (self._next_player(), self.draw()) {
             (Some(new_player_id), (game, Some(c))) => {
                 let mut new_game = game;
@@ -408,7 +408,7 @@ impl Game {
         }
     }
 
-    fn apply_event(&self, event: Event) -> Result<(Game, Option<Event>), action::PlayError> {
+    fn apply_event(&self, event: Event) -> Result<(Round, Option<Event>), action::PlayError> {
         match event {
             Event::NoChange => Ok((self.clone(), None)),
             Event::Protected(i) => self.update_player_by(i, |player| player.protect(true)).map(|g| (g, None)),
@@ -440,9 +440,9 @@ impl Game {
     ///
     /// If the game is now over, will return `Ok(None)`. If not, will return
     /// `Ok(Some(new_game))`.
-    pub fn handle_turn(&self, decide_play: |&Game, &Turn| -> (Card, action::Play),
+    pub fn handle_turn(&self, decide_play: |&Round, &Turn| -> (Card, action::Play),
                        reveal_card: |uint, Card| -> ())
-                       -> Result<Option<(Game, TurnOutcome)>, action::PlayError> {
+                       -> Result<Option<(Round, TurnOutcome)>, action::PlayError> {
         let (new_game, turn) = self.next_player();
         let turn = match turn {
             None => return Ok(None),
@@ -551,13 +551,13 @@ mod test {
     use action::{Event, PlayError};
     use deck;
     use deck::Card;
-    use super::{Game, Turn};
+    use super::{Round, Turn};
 
-    fn make_arbitrary_game() -> Game {
-        Game::new(4).unwrap()
+    fn make_arbitrary_game() -> Round {
+        Round::new(4).unwrap()
     }
 
-    fn eliminate(g: &Game, player_id: uint) -> Result<Game, action::PlayError> {
+    fn eliminate(g: &Round, player_id: uint) -> Result<Round, action::PlayError> {
         g.update_player_by(player_id, |p| p.eliminate())
     }
 
@@ -627,7 +627,7 @@ mod test {
             ];
         let deck = deck::Deck::from_slice(&cards).unwrap();
         let num_players = 3u;
-        let g = Game::from_deck(num_players, deck).unwrap();
+        let g = Round::from_deck(num_players, deck).unwrap();
         assert_eq!(
             cards.slice(1, num_players + 1)
                 .iter()
@@ -642,7 +642,7 @@ mod test {
     fn test_manual_game() {
         let hands = vec![Some(Card::Soldier), Some(Card::Clown), Some(Card::Soldier)];
         let stack = [Card::Soldier, Card::Soldier, Card::Minister];
-        let game = Game::from_manual(hands.as_slice(), &stack, None).unwrap();
+        let game = Round::from_manual(hands.as_slice(), &stack, None).unwrap();
         assert_eq!(hands, game.hands());
         assert_eq!(stack.as_slice(), game.deck().as_slice());
         assert_eq!(hands.len(), game.num_players());
@@ -666,7 +666,7 @@ mod test {
 
     #[test]
     fn test_next_player_increments() {
-        let g = Game::new(2).unwrap();
+        let g = Round::new(2).unwrap();
         let (g, _) = g.next_player();
         let (g, _) = g.next_player();
         assert_eq!(Some(1), g.current_player());
@@ -674,7 +674,7 @@ mod test {
 
     #[test]
     fn test_next_player_cycles() {
-        let g = Game::new(2).unwrap();
+        let g = Round::new(2).unwrap();
         let (g, _) = g.next_player();
         let (g, _) = g.next_player();
         let (g, _) = g.next_player();
@@ -683,7 +683,7 @@ mod test {
 
     #[test]
     fn test_get_card_active_player() {
-        let g = Game::from_manual(
+        let g = Round::from_manual(
             &[Some(Card::General), Some(Card::Clown), Some(Card::Knight), Some(Card::Priestess)],
             &[Card::Soldier, Card::Minister, Card::Princess, Card::Soldier, Card::Wizard], None).unwrap();
         assert_eq!(g.get_hand(0), Ok(Card::General));
@@ -691,7 +691,7 @@ mod test {
 
     #[test]
     fn test_get_card_nonexistent_player() {
-        let g = Game::from_manual(
+        let g = Round::from_manual(
             &[Some(Card::General), Some(Card::Clown), Some(Card::Knight), Some(Card::Priestess)],
             &[Card::Soldier, Card::Minister, Card::Princess, Card::Soldier, Card::Wizard], None).unwrap();
         assert_eq!(g.get_hand(5), Err(PlayError::InvalidPlayer(5)));
@@ -699,7 +699,7 @@ mod test {
 
     #[test]
     fn test_get_card_inactive_player() {
-        let g = Game::from_manual(
+        let g = Round::from_manual(
             &[Some(Card::General), Some(Card::Clown), None, Some(Card::Priestess)],
             &[Card::Soldier, Card::Minister, Card::Princess, Card::Soldier, Card::Wizard], None).unwrap();
         assert_eq!(g.get_hand(2), Err(PlayError::InactivePlayer(2)));
@@ -707,7 +707,7 @@ mod test {
 
     #[test]
     fn test_update_nonexistent_player() {
-        let g = Game::from_manual(
+        let g = Round::from_manual(
             &[Some(Card::General), Some(Card::Clown), None, Some(Card::Priestess)],
             &[Card::Soldier, Card::Minister, Card::Princess, Card::Soldier, Card::Wizard], None).unwrap();
         let error = g.update_player_by(5, |p| Ok(p.clone())).unwrap_err();
@@ -716,7 +716,7 @@ mod test {
 
     #[test]
     fn test_eliminate_gone_player() {
-        let g = Game::from_manual(
+        let g = Round::from_manual(
             &[Some(Card::General), Some(Card::Clown), None, Some(Card::Priestess)],
             &[Card::Soldier, Card::Minister, Card::Princess, Card::Soldier, Card::Wizard], None).unwrap();
         let error = eliminate(&g, 2).unwrap_err();
@@ -725,7 +725,7 @@ mod test {
 
     #[test]
     fn test_skip_eliminated_player() {
-        let g = Game::new(3).unwrap();
+        let g = Round::new(3).unwrap();
         let (g, _) = g.next_player();
         let g = eliminate(&g, 1).unwrap();
         let (g, t) = g.next_player();
@@ -733,14 +733,14 @@ mod test {
         assert_eq!(t.unwrap().player, 2);
     }
 
-    fn assert_winners(game: &Game, expected_winners: Vec<uint>) {
+    fn assert_winners(game: &Round, expected_winners: Vec<uint>) {
         let observed_winners = game.winners();
         assert_eq!(expected_winners, observed_winners.iter().map(|&(i, _)| i).collect());
     }
 
     #[test]
     fn test_last_player() {
-        let g = Game::new(2).unwrap();
+        let g = Round::new(2).unwrap();
         let (g, _) = g.next_player();
         let g = eliminate(&g, 1).unwrap();
         let (new_game, turn) = g.next_player();
@@ -750,7 +750,7 @@ mod test {
 
     #[test]
     fn test_eliminate_self_last_player() {
-        let g = Game::new(2).unwrap();
+        let g = Round::new(2).unwrap();
         let (g, _) = g.next_player();
         let g = eliminate(&g, 0).unwrap();
         let (new_game, turn) = g.next_player();
@@ -760,7 +760,7 @@ mod test {
 
     #[test]
     fn test_swap_cards() {
-        let g = Game::from_manual(
+        let g = Round::from_manual(
             &[Some(Card::General), Some(Card::Clown), None, Some(Card::Priestess)],
             &[Card::Soldier, Card::Minister, Card::Princess, Card::Soldier, Card::Wizard], None).unwrap();
         let (new_game, _) = g.apply_event(Event::SwappedHands(0, 1)).unwrap();
@@ -771,7 +771,7 @@ mod test {
 
     #[test]
     fn test_swap_cards_nonexistent() {
-        let g = Game::from_manual(
+        let g = Round::from_manual(
             &[Some(Card::General), Some(Card::Clown), None, Some(Card::Priestess)],
             &[Card::Soldier, Card::Minister, Card::Princess, Card::Soldier, Card::Wizard], None).unwrap();
         let error = g.apply_event(Event::SwappedHands(0, 5)).unwrap_err();
@@ -789,7 +789,7 @@ mod test {
 
     #[test]
     fn test_eliminate_action() {
-        let g = Game::new(3).unwrap();
+        let g = Round::new(3).unwrap();
         let (g, _) = g.next_player();
         let (new_g, _) = g.apply_event(Event::PlayerEliminated(1)).unwrap();
         let (_, t) = new_g.next_player();
@@ -798,7 +798,7 @@ mod test {
 
     #[test]
     fn test_force_swap() {
-        let g = Game::from_manual(
+        let g = Round::from_manual(
             &[Some(Card::Soldier), Some(Card::Clown), Some(Card::Knight)],
             &[Card::Soldier, Card::Minister, Card::Princess, Card::Soldier, Card::General], None).unwrap();
         let (g, t) = g.next_player();

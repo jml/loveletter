@@ -5,7 +5,7 @@ use loveletter::Play;
 use loveletter::PlayError;
 
 
-fn next_turn_err(g: &loveletter::Game, c: loveletter::Card, p: loveletter::Play) -> loveletter::PlayError {
+fn next_turn_err(g: &loveletter::Round, c: loveletter::Card, p: loveletter::Play) -> loveletter::PlayError {
     let result = g.handle_turn(|_, _| (c, p), |_, _| ());
     match result {
         Err(e) => e,
@@ -13,7 +13,7 @@ fn next_turn_err(g: &loveletter::Game, c: loveletter::Card, p: loveletter::Play)
     }
 }
 
-fn next_turn(g: &loveletter::Game, c: loveletter::Card, p: loveletter::Play) -> loveletter::Game {
+fn next_turn(g: &loveletter::Round, c: loveletter::Card, p: loveletter::Play) -> loveletter::Round {
     let (g, _) = g.handle_turn(|_, _| (c, p), |_, _| ()).unwrap().unwrap();
     g
 }
@@ -21,7 +21,7 @@ fn next_turn(g: &loveletter::Game, c: loveletter::Card, p: loveletter::Play) -> 
 
 #[test]
 fn test_invalid_target_attack() {
-    let g = loveletter::Game::from_manual(
+    let g = loveletter::Round::from_manual(
         &[Some(Card::General), Some(Card::Clown)],
         &[Card::Soldier, Card::Minister, Card::Princess, Card::Soldier], None).unwrap();
     assert_eq!(
@@ -31,7 +31,7 @@ fn test_invalid_target_attack() {
 
 #[test]
 fn test_invalid_target_guess() {
-    let g = loveletter::Game::from_manual(
+    let g = loveletter::Round::from_manual(
         &[Some(Card::General), Some(Card::Clown)],
         &[Card::Soldier, Card::Minister, Card::Princess, Card::Soldier], None).unwrap();
     assert_eq!(
@@ -41,7 +41,7 @@ fn test_invalid_target_guess() {
 
 #[test]
 fn test_inactive_player_attack() {
-    let g = loveletter::Game::from_manual(
+    let g = loveletter::Round::from_manual(
         &[Some(Card::General), Some(Card::Clown), None],
         &[Card::Soldier, Card::Minister, Card::Princess, Card::Soldier], None).unwrap();
     assert_eq!(
@@ -51,7 +51,7 @@ fn test_inactive_player_attack() {
 
 #[test]
 fn test_inactive_player_guess() {
-    let g = loveletter::Game::from_manual(
+    let g = loveletter::Round::from_manual(
         &[Some(Card::General), Some(Card::Clown), None],
         &[Card::Soldier, Card::Minister, Card::Princess, Card::Soldier], None).unwrap();
     assert_eq!(
@@ -61,7 +61,7 @@ fn test_inactive_player_guess() {
 
 #[test]
 fn test_bad_guess() {
-    let g = loveletter::Game::from_manual(
+    let g = loveletter::Round::from_manual(
         &[Some(Card::General), Some(Card::Clown), None],
         &[Card::Soldier, Card::Minister, Card::Princess, Card::Soldier], None).unwrap();
     assert_eq!(
@@ -71,7 +71,7 @@ fn test_bad_guess() {
 
 #[test]
 fn test_princess_discard_loses() {
-    let g = loveletter::Game::from_manual(
+    let g = loveletter::Round::from_manual(
         &[Some(Card::Princess), Some(Card::Clown), None],
         &[Card::Soldier, Card::Minister, Card::Soldier, Card::Soldier], None).unwrap();
     let new_g = next_turn(&g, Card::Princess, Play::NoEffect);
@@ -80,7 +80,7 @@ fn test_princess_discard_loses() {
 
 #[test]
 fn test_princess_forced_discard_loses() {
-    let g = loveletter::Game::from_manual(
+    let g = loveletter::Round::from_manual(
         &[Some(Card::Wizard), Some(Card::Princess), None],
         &[Card::Soldier, Card::Minister, Card::Soldier, Card::Soldier], None).unwrap();
     let new_g = next_turn(&g, Card::Wizard, Play::Attack(1));
@@ -89,7 +89,7 @@ fn test_princess_forced_discard_loses() {
 
 #[test]
 fn test_princess_self_forced_discard_loses() {
-    let g = loveletter::Game::from_manual(
+    let g = loveletter::Round::from_manual(
         &[Some(Card::Wizard), Some(Card::Soldier), None],
         &[Card::Soldier, Card::Minister, Card::Soldier, Card::Princess], None).unwrap();
     let new_g = next_turn(&g, Card::Wizard, Play::Attack(0));
@@ -98,7 +98,7 @@ fn test_princess_self_forced_discard_loses() {
 
 #[test]
 fn test_minister_eliminates_player() {
-    let g = loveletter::Game::from_manual(
+    let g = loveletter::Round::from_manual(
         &[Some(Card::General), Some(Card::Soldier)],
         &[Card::Wizard, Card::Minister], None).unwrap();
     let new_g = next_turn(&g, Card::General, Play::Attack(1));
@@ -107,7 +107,7 @@ fn test_minister_eliminates_player() {
 
 #[test]
 fn test_minister_eliminates_player_2() {
-    let g = loveletter::Game::from_manual(
+    let g = loveletter::Round::from_manual(
         &[Some(Card::Minister), Some(Card::Soldier)],
         &[Card::Wizard, Card::Wizard], None).unwrap();
     let new_g = next_turn(&g, Card::General, Play::Attack(1));
@@ -117,7 +117,7 @@ fn test_minister_eliminates_player_2() {
 
 #[test]
 fn test_priestess_immune_to_soldier_guess() {
-    let g = loveletter::Game::from_manual(
+    let g = loveletter::Round::from_manual(
         &[Some(Card::Priestess), Some(Card::Soldier)],
         &[Card::Clown, Card::Wizard], None).unwrap();
     let new_g = next_turn(&g, Card::Priestess, Play::NoEffect);
@@ -130,7 +130,7 @@ fn test_priestess_immune_to_soldier_guess() {
 
 #[test]
 fn test_priestess_immune_to_clown() {
-    let g = loveletter::Game::from_manual(
+    let g = loveletter::Round::from_manual(
         &[Some(Card::Priestess), Some(Card::Clown)],
         &[Card::Clown, Card::Wizard], None).unwrap();
     let new_g = next_turn(&g, Card::Priestess, Play::NoEffect);
@@ -143,7 +143,7 @@ fn test_priestess_immune_to_clown() {
 
 #[test]
 fn test_priestess_immune_to_knight() {
-    let g = loveletter::Game::from_manual(
+    let g = loveletter::Round::from_manual(
         &[Some(Card::Priestess), Some(Card::Knight)],
         &[Card::Soldier, Card::Wizard, Card::Minister, Card::Wizard], None).unwrap();
     let new_g = next_turn(&g, Card::Priestess, Play::NoEffect);
@@ -157,7 +157,7 @@ fn test_priestess_immune_to_knight() {
 
 #[test]
 fn test_priestess_immune_to_wizard() {
-    let g = loveletter::Game::from_manual(
+    let g = loveletter::Round::from_manual(
         &[Some(Card::Priestess), Some(Card::Wizard)],
         &[Card::Clown, Card::Wizard], None).unwrap();
     let new_g = next_turn(&g, Card::Priestess, Play::NoEffect);
@@ -170,7 +170,7 @@ fn test_priestess_immune_to_wizard() {
 
 #[test]
 fn test_priestess_immune_to_general() {
-    let g = loveletter::Game::from_manual(
+    let g = loveletter::Round::from_manual(
         &[Some(Card::Priestess), Some(Card::General)],
         &[Card::Soldier, Card::Princess], None).unwrap();
     let new_g = next_turn(&g, Card::Priestess, Play::NoEffect);
@@ -183,7 +183,7 @@ fn test_priestess_immune_to_general() {
 
 #[test]
 fn test_priestess_immunity_expires() {
-    let g = loveletter::Game::from_manual(
+    let g = loveletter::Round::from_manual(
         &[Some(Card::Priestess), Some(Card::Soldier)],
         &[Card::Soldier, Card::Wizard, Card::Clown, Card::Clown], None).unwrap();
     let new_g = next_turn(&g, Card::Priestess, Play::NoEffect);

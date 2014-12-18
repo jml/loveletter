@@ -2,7 +2,7 @@
 
 pub use action::{Event, Play, PlayError};
 pub use deck::Card;
-pub use round::{Game, GameError, Turn, TurnOutcome};
+pub use round::{Round, GameError, Turn, TurnOutcome};
 
 pub mod deck;
 pub mod prompt;

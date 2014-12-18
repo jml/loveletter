@@ -13,7 +13,7 @@ fn choose_card(turn: &loveletter::Turn) -> loveletter::Card {
 
 
 #[cfg(not(test))]
-fn choose_target(game: &loveletter::Game) -> uint {
+fn choose_target(game: &loveletter::Round) -> uint {
     let num_players = game.num_players();
     loveletter::prompt::repeated_prompt(
         format!(
@@ -39,7 +39,7 @@ fn choose_guess() -> Card {
 
 /// Allow the player to choose a card to play.
 #[cfg(not(test))]
-fn choose(_game: &loveletter::Game, turn: &loveletter::Turn) -> (Card, loveletter::Play) {
+fn choose(_game: &loveletter::Round, turn: &loveletter::Turn) -> (Card, loveletter::Play) {
     println!("Player {}", turn.player + 1);
     println!("---------");
     let chosen = choose_card(turn);
@@ -60,7 +60,7 @@ fn choose(_game: &loveletter::Game, turn: &loveletter::Turn) -> (Card, lovelette
 }
 
 
-fn report_outcome(game: &loveletter::Game, outcome: loveletter::TurnOutcome) -> String {
+fn report_outcome(game: &loveletter::Round, outcome: loveletter::TurnOutcome) -> String {
     match outcome {
         loveletter::TurnOutcome::BustedOut(player) => {
             let discards = game.get_discards(player).ok().expect("Busted player did not exist");
@@ -138,7 +138,7 @@ fn main() {
 
     let num_players = 2u;
 
-    let game = match loveletter::Game::new(num_players) {
+    let game = match loveletter::Round::new(num_players) {
         Some(g) => g,
         None => {
             println!("Invalid number of players: {}", num_players);
