@@ -206,9 +206,9 @@ impl Round {
         }
     }
 
-    fn _game_result(&self) -> GameResult {
+    fn _game_result(&self) -> RoundResult {
         // XXX: probably doesn't need to be a clone
-        GameResult::new(self._players.clone())
+        RoundResult::new(self._players.clone())
     }
 
     /// At the end of the game, return all winners and their hands.
@@ -490,15 +490,15 @@ fn minister_bust(a: Card, b: Card) -> bool {
 
 /// The result of a finished round of Love Letter.
 #[deriving(Eq, PartialEq, Show, Clone)]
-pub struct GameResult {
+pub struct RoundResult {
     _players: Vec<player::Player>,
 }
 
 
-impl GameResult {
+impl RoundResult {
 
-    fn new(players: Vec<player::Player>) -> GameResult {
-        GameResult { _players: players }
+    fn new(players: Vec<player::Player>) -> RoundResult {
+        RoundResult { _players: players }
     }
 
     /// At the end of the game, return players and their hands.
