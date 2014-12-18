@@ -4,6 +4,7 @@
 /// just the number of players and the score you need to win.
 
 
+#[deriving(Clone)]
 pub struct Config {
     _num_players: uint,
 }

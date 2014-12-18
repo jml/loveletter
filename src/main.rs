@@ -102,13 +102,13 @@ fn report_outcome(game: &loveletter::Round, outcome: loveletter::TurnOutcome) ->
 
 
 #[cfg(not(test))]
-fn announce_winner(winners: Vec<(uint, Card)>) {
+fn announce_winner(winners: &Vec<(uint, Card)>) {
     // TODO: Probably want to report on all survivors.
     // TODO: Probably want to say *why* the game is over: no more players or
     // no more cards.
     // TODO: Message for last player standing should be different from highest
     // card.
-    println!("GAME OVER");
+    print!("ROUND OVER: ");
     match winners.len() {
         0 => println!("Something went wrong. No winners at all. Is the game over yet?"),
         1 => {
@@ -122,6 +122,23 @@ fn announce_winner(winners: Vec<(uint, Card)>) {
             }
         }
     }
+    println!("");
+}
+
+
+fn announce_current_scores(scores: &[uint]) {
+    println!("Scores");
+    println!("------");
+    for (player_id, &score) in scores.iter().enumerate() {
+        println!("Player {}: {}", player_id + 1, score);
+    }
+    println!("");
+}
+
+fn announce_game_winners(scores: &[uint]) {
+    println!("GAME OVER");
+    println!("");
+    announce_current_scores(scores);
 }
 
 
@@ -153,24 +170,40 @@ fn main() {
     //   They discard that card
     //   Process it
     //   Advance to the next player
-    let mut current_round = game.new_round();
-    loop {
-        println!("All Discards");
-        println!("------------");
-        for (i, discards) in current_round.all_discards().iter().enumerate() {
-            println!("  P{}: {}", i + 1, discards);
-        }
-        println!("");
-        let result = current_round.handle_turn(choose, handle_reveal);
-        let (new_game, outcome) = match result {
-            Ok(None) => break,
-            Ok(Some(result)) => result,
-            Err(e) => { println!("Invalid move: {}\n", e); continue }
-        };
 
-        io::println(report_outcome(&new_game, outcome).as_slice());
+    let mut current_game = game;
+    loop {
+        let round = match current_game.next_round() {
+            Some(r) => r,
+            None => break,
+        };
+        let mut current_round = round;
+        println!("NEW ROUND");
         println!("");
-        current_round = new_game;
+        loop {
+            println!("All Discards");
+            println!("------------");
+            for (i, discards) in current_round.all_discards().iter().enumerate() {
+                println!("  P{}: {}", i + 1, discards);
+            }
+            println!("");
+            let result = current_round.handle_turn(choose, handle_reveal);
+            let (new_round, outcome) = match result {
+                Ok(None) => break,
+                Ok(Some(result)) => result,
+                Err(e) => { println!("Invalid move: {}\n", e); continue }
+            };
+
+            io::println(report_outcome(&new_round, outcome).as_slice());
+            println!("");
+            current_round = new_round;
+        }
+        let winners = current_round.winners();
+        announce_winner(&winners);
+        let winner_ids: Vec<uint> = winners.iter().map(|&(i, _)| i).collect();
+        current_game = current_game.players_won(winner_ids.as_slice());
+        announce_current_scores(current_game.scores());
+        println!("");
     }
-    announce_winner(current_round.winners());
+    announce_game_winners(current_game.scores());
 }
