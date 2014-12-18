@@ -32,7 +32,7 @@ impl Turn {
 ///
 /// ### Notes
 ///
-/// XXX: Not sure I (jml) like this. The current Game class only accepts a
+/// XXX: Not sure I (jml) like this. The current Round class only accepts a
 /// callback, so a player is dealt a card and must respond in the same method.
 /// It is always some player's turn unless it's the beginning or end. A
 /// different concept would be to have a very high level game state enum which
@@ -53,9 +53,11 @@ enum State {
 
 
 #[deriving(Show, PartialEq, Eq)]
-/// Errors that can occur while constructing a Game.
-pub enum GameError {
+/// Errors that can occur while constructing a Round.
+pub enum Error {
     /// Specified an invalid number of players.
+    // TODO: Now that we're making a distinction between a game and a round,
+    // the Round will be told the number of players by the Game
     InvalidPlayers(uint),
     /// The given cards do not form a valid deck.
     BadDeck,
@@ -92,6 +94,10 @@ impl Round {
 
     // TODO: Create a state validator, that guarantees that no cards have been
     // created or destroyed.
+
+    // TODO: Create a GameConfiguration object that has only the number of
+    // players. We can then rely on that to be correct, allowing our
+    // type-checker to prevent an invalid number of players.
 
     /// Create a new game with a randomly shuffled deck.
     ///
@@ -131,10 +137,10 @@ impl Round {
     /// one **after** the one given here. e.g. `Some(0)` means it's player 1's
     /// turn next.
     pub fn from_manual(hands: &[Option<Card>], deck: &[Card],
-                       current_player: Option<uint>) -> Result<Round, GameError> {
+                       current_player: Option<uint>) -> Result<Round, Error> {
         let num_players = hands.len();
         if !Round::valid_player_count(num_players) {
-            return Err(GameError::InvalidPlayers(num_players));
+            return Err(Error::InvalidPlayers(num_players));
         }
         let mut stack: Vec<Card> = deck.iter().map(|&x| x).collect();
         let mut all_cards = stack.clone();
@@ -147,7 +153,7 @@ impl Round {
                 Some(i) => {
                     match stack.pop() {
                         Some(card) => State::PlayerReady(i, card),
-                        None => { return Err(GameError::BadDeck); }
+                        None => { return Err(Error::BadDeck); }
                     }
                 }
             };
@@ -157,7 +163,7 @@ impl Round {
                 _players: hands.iter().map(|&x| player::Player::new(x)).collect(),
             })
         } else {
-            Err(GameError::BadDeck)
+            Err(Error::BadDeck)
         }
     }
 
