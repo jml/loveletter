@@ -8,6 +8,7 @@
 
 use action;
 use action::{Action, Event};
+use config;
 use deck;
 use deck::Card;
 use player;
@@ -95,26 +96,25 @@ impl Round {
     // TODO: Create a state validator, that guarantees that no cards have been
     // created or destroyed.
 
-    // TODO: Create a GameConfiguration object that has only the number of
-    // players. We can then rely on that to be correct, allowing our
-    // type-checker to prevent an invalid number of players.
-
     /// Create a new game with a randomly shuffled deck.
     ///
     /// Will return None if given an invalid number of players.
     pub fn new(num_players: uint) -> Option<Round> {
-        Round::from_deck(num_players, deck::Deck::new())
+        config::Config::new(num_players)
+            .ok()
+            .and_then(|cfg| Round::from_deck(cfg.num_players(), deck::Deck::new()))
     }
 
     /// Create a new game given an already-shuffled deck.
     ///
     /// Will return None if given an invalid number of players.
     pub fn from_deck(num_players: uint, deck: deck::Deck) -> Option<Round> {
-        if !Round::valid_player_count(num_players) {
-            return None
-        }
+        let cfg = match config::Config::new(num_players) {
+            Err(..) => return None,
+            Ok(c) => c,
+        };
         let cards = deck.as_slice();
-        let hand_end = num_players + 1;
+        let hand_end = cfg.num_players() + 1;
         let hands: Vec<Option<Card>> = cards.slice(1, hand_end).iter().map(|&x| Some(x)).collect();
         Some(Round {
             _stack: cards.slice_from(hand_end).iter().map(|&x| x).collect(),
@@ -138,10 +138,10 @@ impl Round {
     /// turn next.
     pub fn from_manual(hands: &[Option<Card>], deck: &[Card],
                        current_player: Option<uint>) -> Result<Round, Error> {
-        let num_players = hands.len();
-        if !Round::valid_player_count(num_players) {
-            return Err(Error::InvalidPlayers(num_players));
-        }
+        match config::Config::new(hands.len()) {
+            Err(..) => return Err(Error::InvalidPlayers(hands.len())),
+            _ => ()
+        };
         let mut stack: Vec<Card> = deck.iter().map(|&x| x).collect();
         let mut all_cards = stack.clone();
         for x in hands.as_slice().iter().filter_map(|&x| x) {
@@ -165,10 +165,6 @@ impl Round {
         } else {
             Err(Error::BadDeck)
         }
-    }
-
-    fn valid_player_count(num_players: uint) -> bool {
-        2 <= num_players && num_players <= 4
     }
 
     /// Number of players in this game.

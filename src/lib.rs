@@ -9,6 +9,7 @@ pub mod deck;
 pub mod prompt;
 
 mod action;
+mod config;
 mod round;
 mod player;
 mod util;
