@@ -13,12 +13,12 @@
 ## Code health
 
 * Write tests for everything in `util`
-* Create a state validator for `Game`
+* Create a state validator for `Round`
 * Provide a way of getting the burnt card at the end
-* Try using the State pattern for Game
+* Try using the State pattern for `Round`
 * Improve speed of `subtract_vector`
 * Improve speed of `maxima_by` to be one pass
-* `GameState` is a bit weird: maybe try to have something better
+* `State` is a bit weird: maybe try to have something better
 * Split `handle_turn` into two states: waiting for player & next player
 
 # Questions

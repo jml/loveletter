@@ -66,8 +66,8 @@ pub enum Error {
 
 #[deriving(Show)]
 pub enum TurnOutcome {
-    // XXX: Not sure we should have originating player in this structure, but
-    // Game currently doesn't expose whose turn that just was.
+    // XXX: Not sure we should include originating player id in this
+    // structure, but Round currently doesn't expose whose turn that just was.
     BustedOut(uint),
     // XXX: I think there's only one use case for needing more than one Event
     // (a terrible name in itself): using the Wizard forcing someone to
@@ -439,7 +439,7 @@ impl Round {
     /// they were dealt and the card in their hand. That function must return
     /// a card to play and the `Play` associated with it.
     ///
-    /// `handle_turn` makes sure everything is valid and returns the new `Game`.
+    /// `handle_turn` makes sure everything is valid and returns the new `Round`.
     ///
     /// If the game is now over, will return `Ok(None)`. If not, will return
     /// `Ok(Some(new_game))`.
@@ -534,14 +534,14 @@ impl RoundResult {
 
     // #[test]
     // fn test_survivors_at_game_end() {
-    //     let g = Game::from_manual(
+    //     let g = Round::from_manual(
     //         &[Some(Card::Knight), Some(Card::Princess)], &[Card::Soldier], Some(0)).unwrap();
     //     assert_eq!(vec![(0, Card::Knight), (1, Card::Princess)], g.survivors());
     // }
 
     // #[test]
     // fn test_winner_from_multiple_survivors() {
-    //     let g = Game::from_manual(
+    //     let g = Round::from_manual(
     //         &[Some(Card::Knight), Some(Card::Princess)], &[Card::Soldier], Some(0)).unwrap();
     //     assert_eq!(vec![(1, Card::Princess)], g.winners());
     // }

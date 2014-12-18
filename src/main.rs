@@ -116,7 +116,7 @@ fn announce_winner(winners: Vec<(uint, Card)>) {
             println!("Player {} wins, holding {}", i + 1, card);
         },
         n => {
-            println!("Game tied between {} players.", n);
+            println!("Round tied between {} players.", n);
             for &(i, card) in winners.iter() {
                 println!("  Player {} holds a {}", i + 1, card);
             }
