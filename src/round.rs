@@ -47,7 +47,7 @@ impl Turn {
 enum State {
     NotStarted,
     PlayerReady(uint, Card),
-    GameOver(RoundResult),
+    RoundOver(RoundResult),
 }
 
 
@@ -192,7 +192,7 @@ impl Round {
         match self._current {
             State::NotStarted => None,
             State::PlayerReady(i, _) => Some(i),
-            State::GameOver(..) => None,
+            State::RoundOver(..) => None,
         }
     }
 
@@ -324,7 +324,7 @@ impl Round {
             },
             _ => {
                 let mut new_game = self.clone();
-                new_game._current = State::GameOver(self._game_result());
+                new_game._current = State::RoundOver(self._game_result());
                 (new_game, None)
             },
         }
