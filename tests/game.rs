@@ -5,20 +5,10 @@ use loveletter::RoundError;
 
 
 #[test]
-fn test_too_few_players() {
-    assert_eq!(None, loveletter::Round::new(1));
-}
-
-#[test]
-fn test_too_many_players() {
-    assert_eq!(None, loveletter::Round::new(5));
-}
-
-
-#[test]
-fn test_new_game() {
-    let g = loveletter::Round::new(4).unwrap();
-    assert_eq!(g.num_players(), 4);
+fn test_new_round_from_game() {
+    let game = loveletter::game::new_game(4).ok().unwrap();
+    let round = game.new_round();
+    assert_eq!(round.num_players(), 4);
 }
 
 #[test]

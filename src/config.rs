@@ -9,7 +9,7 @@ pub struct Config {
 }
 
 
-enum Error {
+pub enum Error {
     /// Specified an invalid number of players.
     InvalidPlayers(uint),
 }

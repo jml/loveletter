@@ -99,28 +99,22 @@ impl Round {
     /// Create a new game with a randomly shuffled deck.
     ///
     /// Will return None if given an invalid number of players.
-    pub fn new(num_players: uint) -> Option<Round> {
-        config::Config::new(num_players)
-            .ok()
-            .and_then(|cfg| Round::from_deck(cfg.num_players(), deck::Deck::new()))
+    pub fn new(cfg: &config::Config) -> Round {
+        Round::from_deck(cfg, deck::Deck::new())
     }
 
     /// Create a new game given an already-shuffled deck.
     ///
     /// Will return None if given an invalid number of players.
-    pub fn from_deck(num_players: uint, deck: deck::Deck) -> Option<Round> {
-        let cfg = match config::Config::new(num_players) {
-            Err(..) => return None,
-            Ok(c) => c,
-        };
+    pub fn from_deck(cfg: &config::Config, deck: deck::Deck) -> Round {
         let cards = deck.as_slice();
         let hand_end = cfg.num_players() + 1;
         let hands: Vec<Option<Card>> = cards.slice(1, hand_end).iter().map(|&x| Some(x)).collect();
-        Some(Round {
+        Round {
             _stack: cards.slice_from(hand_end).iter().map(|&x| x).collect(),
             _current: State::NotStarted,
             _players: hands.iter().map(|&x| player::Player::new(x)).collect(),
-        })
+        }
     }
 
     /// Create a new, in-progress game.
@@ -533,6 +527,7 @@ impl RoundResult {
 mod test {
     use action;
     use action::{Event, PlayError};
+    use config;
     use deck;
     use deck::Card;
     use player;
@@ -541,7 +536,11 @@ mod test {
 
 
     fn make_arbitrary_game() -> Round {
-        Round::new(4).unwrap()
+        make_round(4)
+    }
+
+    fn make_round(num_players: uint) -> Round {
+        Round::new(&config::Config::new(num_players).ok().unwrap())
     }
 
     fn eliminate(g: &Round, player_id: uint) -> Result<Round, action::PlayError> {
@@ -614,7 +613,8 @@ mod test {
             ];
         let deck = deck::Deck::from_slice(&cards).unwrap();
         let num_players = 3u;
-        let g = Round::from_deck(num_players, deck).unwrap();
+        let cfg = config::Config::new(num_players).ok().unwrap();
+        let g = Round::from_deck(&cfg, deck);
         assert_eq!(
             cards.slice(1, num_players + 1)
                 .iter()
@@ -653,7 +653,7 @@ mod test {
 
     #[test]
     fn test_next_player_increments() {
-        let g = Round::new(2).unwrap();
+        let g = make_round(2);
         let (g, _) = g.next_player();
         let (g, _) = g.next_player();
         assert_eq!(Some(1), g.current_player());
@@ -661,7 +661,7 @@ mod test {
 
     #[test]
     fn test_next_player_cycles() {
-        let g = Round::new(2).unwrap();
+        let g = make_round(2);
         let (g, _) = g.next_player();
         let (g, _) = g.next_player();
         let (g, _) = g.next_player();
@@ -712,7 +712,7 @@ mod test {
 
     #[test]
     fn test_skip_eliminated_player() {
-        let g = Round::new(3).unwrap();
+        let g = make_round(3);
         let (g, _) = g.next_player();
         let g = eliminate(&g, 1).unwrap();
         let (g, t) = g.next_player();
@@ -727,7 +727,7 @@ mod test {
 
     #[test]
     fn test_last_player() {
-        let g = Round::new(2).unwrap();
+        let g = make_round(2);
         let (g, _) = g.next_player();
         let g = eliminate(&g, 1).unwrap();
         let (new_game, turn) = g.next_player();
@@ -737,7 +737,7 @@ mod test {
 
     #[test]
     fn test_eliminate_self_last_player() {
-        let g = Round::new(2).unwrap();
+        let g = make_round(2);
         let (g, _) = g.next_player();
         let g = eliminate(&g, 0).unwrap();
         let (new_game, turn) = g.next_player();
@@ -776,7 +776,7 @@ mod test {
 
     #[test]
     fn test_eliminate_action() {
-        let g = Round::new(3).unwrap();
+        let g = make_round(3);
         let (g, _) = g.next_player();
         let (new_g, _) = g.apply_event(Event::PlayerEliminated(1)).unwrap();
         let (_, t) = new_g.next_player();

@@ -138,29 +138,30 @@ fn main() {
 
     let num_players = 2u;
 
-    let game = match loveletter::Round::new(num_players) {
-        Some(g) => g,
-        None => {
+    let game = match loveletter::game::new_game(num_players) {
+        Ok(g) => g,
+        Err(loveletter::Error::InvalidPlayers(..)) => {
             println!("Invalid number of players: {}", num_players);
             os::set_exit_status(2);
             return;
         }
     };
+
     // While the game is not over
     //   Draw a card
     //   Give it to the player whose turn it is and ask them what their play is
     //   They discard that card
     //   Process it
     //   Advance to the next player
-    let mut current_game = game;
+    let mut current_round = game.new_round();
     loop {
         println!("All Discards");
         println!("------------");
-        for (i, discards) in current_game.all_discards().iter().enumerate() {
+        for (i, discards) in current_round.all_discards().iter().enumerate() {
             println!("  P{}: {}", i + 1, discards);
         }
         println!("");
-        let result = current_game.handle_turn(choose, handle_reveal);
+        let result = current_round.handle_turn(choose, handle_reveal);
         let (new_game, outcome) = match result {
             Ok(None) => break,
             Ok(Some(result)) => result,
@@ -169,7 +170,7 @@ fn main() {
 
         io::println(report_outcome(&new_game, outcome).as_slice());
         println!("");
-        current_game = new_game;
+        current_round = new_game;
     }
-    announce_winner(current_game.winners());
+    announce_winner(current_round.winners());
 }
