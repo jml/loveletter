@@ -2,7 +2,7 @@ extern crate loveletter;
 
 use std::io;
 use std::os;
-use loveletter::{Card, Event};
+use loveletter::{Card, Event, PlayerId};
 
 #[cfg(not(test))]
 fn choose_card(turn: &loveletter::Turn) -> loveletter::Card {
@@ -13,7 +13,7 @@ fn choose_card(turn: &loveletter::Turn) -> loveletter::Card {
 
 
 #[cfg(not(test))]
-fn choose_target(game: &loveletter::Round) -> uint {
+fn choose_target(game: &loveletter::Round) -> PlayerId {
     let num_players = game.num_players();
     loveletter::prompt::repeated_prompt(
         format!(
@@ -102,7 +102,7 @@ fn report_outcome(game: &loveletter::Round, outcome: loveletter::TurnOutcome) ->
 
 
 #[cfg(not(test))]
-fn announce_winner(winners: &Vec<(uint, Card)>) {
+fn announce_winner(winners: &Vec<(PlayerId, Card)>) {
     // TODO: Probably want to report on all survivors.
     // TODO: Probably want to say *why* the game is over: no more players or
     // no more cards.
@@ -142,7 +142,7 @@ fn announce_game_winners(scores: &[uint]) {
 }
 
 
-fn handle_reveal(player: uint, card: Card) -> () {
+fn handle_reveal(player: PlayerId, card: Card) -> () {
     println!("SECRET: Player {} has a {}", player + 1, card);
 }
 
@@ -200,7 +200,7 @@ fn main() {
         }
         let winners = current_round.winners();
         announce_winner(&winners);
-        let winner_ids: Vec<uint> = winners.iter().map(|&(i, _)| i).collect();
+        let winner_ids: Vec<PlayerId> = winners.iter().map(|&(i, _)| i).collect();
         current_game = current_game.players_won(winner_ids.as_slice());
         announce_current_scores(current_game.scores());
         println!("");

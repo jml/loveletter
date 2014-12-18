@@ -5,6 +5,7 @@
 /// receive four tokens of affection are declared to have won her heart, and
 /// thus, the game.
 
+use action::PlayerId;
 use config;
 use round;
 
@@ -49,26 +50,26 @@ impl Game {
         self._scores.as_slice()
     }
 
-    fn player_won_mut(&mut self, player_id: uint) {
+    fn player_won_mut(&mut self, player_id: PlayerId) {
         // XXX: Will panic if player_id wrong
         // XXX: What if score exceeds WINNING_SCORE
         self._scores[player_id] += 1;
     }
 
-    fn players_won_mut(&mut self, player_ids: &[uint]) {
+    fn players_won_mut(&mut self, player_ids: &[PlayerId]) {
         // XXX: what if not unique
         for i in player_ids.iter() {
             self.player_won_mut(*i);
         }
     }
 
-    pub fn players_won(&self, player_ids: &[uint]) -> Game {
+    pub fn players_won(&self, player_ids: &[PlayerId]) -> Game {
         let mut new_game = self.clone();
         new_game.players_won_mut(player_ids);
         new_game
     }
 
-    fn winners(&self) -> Vec<uint> {
+    fn winners(&self) -> Vec<PlayerId> {
         self._scores
             .iter()
             .enumerate()

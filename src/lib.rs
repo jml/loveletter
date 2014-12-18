@@ -1,6 +1,6 @@
 /// loveletter: implementation of [Love Letter](http://boardgamegeek.com/boardgame/129622/love-letter)
 
-pub use action::{Event, Play, PlayError};
+pub use action::{Event, Play, PlayError, PlayerId};
 pub use config::Error as Error;
 pub use deck::Card;
 pub use round::{Round, Turn, TurnOutcome};

@@ -1,14 +1,18 @@
 use deck::Card;
 
+
+pub type PlayerId = uint;
+
+
 #[deriving(PartialEq, Eq, Show)]
 /// The play that accompanies a card.
 pub enum Play {
     /// This card has no effect.
     NoEffect,
     /// Use this card to attack the specified player.
-    Attack(uint),
+    Attack(PlayerId),
     /// Use this card to guess that the specified player has a certain card.
-    Guess(uint, Card),
+    Guess(PlayerId, Card),
 }
 
 
@@ -16,13 +20,13 @@ pub enum Play {
 /// Represents an invalid action in a game, taken by a player.
 pub enum PlayError {
     /// Targeted a player who has never existed.
-    InvalidPlayer(uint),
+    InvalidPlayer(PlayerId),
     /// Tried to play a card that's not in the hand.
     CardNotFound(Card, (Card, Card)),
     /// Targeted a player who is no longer in the game.
-    InactivePlayer(uint),
+    InactivePlayer(PlayerId),
     /// Tried to play a card against yourself.
-    SelfTarget(uint, Card),
+    SelfTarget(PlayerId, Card),
     /// Tried to play an action for a card that doesn't support it.
     BadActionForCard(Play, Card),
     /// Bad guess. You can't guess soldier.
@@ -36,30 +40,30 @@ pub enum Action {
     /// Nothing happens.
     NoChange,
     /// Mark player as protected.
-    Protect(uint),
+    Protect(PlayerId),
     /// source wants to swap hands with target
-    SwapHands(uint, uint),
+    SwapHands(PlayerId, PlayerId),
     /// You have lost
-    EliminatePlayer(uint),
+    EliminatePlayer(PlayerId),
     /// Discard your current card and draw a new one
-    ForceDiscard(uint),
+    ForceDiscard(PlayerId),
     /// 2nd player shows their card to 1st.
-    ForceReveal(uint, uint),
+    ForceReveal(PlayerId, PlayerId),
     /// Eliminate the player with the weaker hand.
-    EliminateWeaker(uint, uint),
+    EliminateWeaker(PlayerId, PlayerId),
     /// Eliminate the player if they have the given card.
-    EliminateOnGuess(uint, Card),
+    EliminateOnGuess(PlayerId, Card),
 }
 
 
 #[deriving(PartialEq, Eq, Show)]
 pub enum Event {
     NoChange,
-    Protected(uint),
-    SwappedHands(uint, uint),
-    PlayerEliminated(uint),
-    ForcedDiscard(uint),
-    ForcedReveal(uint, uint),
+    Protected(PlayerId),
+    SwappedHands(PlayerId, PlayerId),
+    PlayerEliminated(PlayerId),
+    ForcedDiscard(PlayerId),
+    ForcedReveal(PlayerId, PlayerId),
 }
 
 
@@ -70,7 +74,7 @@ pub enum Event {
 ///
 /// Returns an error if that particular `(card, play)` combination is not valid.
 pub fn play_to_action(
-    current_player: uint, played_card: Card, play: Play) -> Result<Action, PlayError> {
+    current_player: PlayerId, played_card: Card, play: Play) -> Result<Action, PlayError> {
 
     // XXX: Ideally, I'd express this with a data structure that mapped card,
     // play combinations to valid actions.

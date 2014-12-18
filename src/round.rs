@@ -7,22 +7,23 @@
 /// highest-valued card.
 
 use action;
-use action::{Action, Event};
+use action::{Action, Event, PlayerId};
 use config;
 use deck;
 use deck::Card;
 use player;
 use util;
 
+
 #[deriving(Show, PartialEq, Eq)]
 pub struct Turn {
-    pub player: uint,
+    pub player: PlayerId,
     pub hand: Card,
     pub draw: Card,
 }
 
 impl Turn {
-    fn new(player: uint, hand: Card, draw: Card) -> Turn {
+    fn new(player: PlayerId, hand: Card, draw: Card) -> Turn {
         Turn { player: player, hand: hand, draw: draw }
     }
 }
@@ -47,7 +48,7 @@ impl Turn {
 /// were, who the winner is, and what the burn card was.
 enum State {
     NotStarted,
-    PlayerReady(uint, Card),
+    PlayerReady(PlayerId, Card),
     RoundOver(RoundResult),
 }
 
@@ -69,12 +70,12 @@ pub enum Error {
 pub enum TurnOutcome {
     // XXX: Not sure we should include originating player id in this
     // structure, but Round currently doesn't expose whose turn that just was.
-    BustedOut(uint),
+    BustedOut(PlayerId),
     // XXX: I think there's only one use case for needing more than one Event
     // (a terrible name in itself): using the Wizard forcing someone to
     // discard the Princess. It's _possible_ we don't need that, but included
     // now for completeness.
-    Played(uint, Card, action::Play, Vec<Event>),
+    Played(PlayerId, Card, action::Play, Vec<Event>),
 }
 
 
@@ -131,7 +132,7 @@ impl Round {
     /// one **after** the one given here. e.g. `Some(0)` means it's player 1's
     /// turn next.
     pub fn from_manual(hands: &[Option<Card>], deck: &[Card],
-                       current_player: Option<uint>) -> Result<Round, Error> {
+                       current_player: Option<PlayerId>) -> Result<Round, Error> {
         match config::Config::new(hands.len()) {
             Err(..) => return Err(Error::InvalidPlayers(hands.len())),
             _ => ()
@@ -184,7 +185,7 @@ impl Round {
         self._players.iter().filter(|p| p.active()).count()
     }
 
-    fn current_player(&self) -> Option<uint> {
+    fn current_player(&self) -> Option<PlayerId> {
         match self._current {
             State::NotStarted => None,
             State::PlayerReady(i, _) => Some(i),
@@ -208,21 +209,21 @@ impl Round {
     }
 
     /// At the end of the game, return all winners and their hands.
-    pub fn winners(&self) -> Vec<(uint, Card)> {
+    pub fn winners(&self) -> Vec<(PlayerId, Card)> {
         match self.next_player() {
             (_, Some(..)) => vec![],
             (_, None) => self._game_result().winners()
         }
     }
 
-    pub fn get_discards(&self, player_id: uint) -> Result<&[Card], action::PlayError> {
+    pub fn get_discards(&self, player_id: PlayerId) -> Result<&[Card], action::PlayError> {
         self._players
             .get(player_id)
             .ok_or(action::PlayError::InvalidPlayer(player_id))
             .map(|p| p.discards())
     }
 
-    fn get_player(&self, player_id: uint) -> Result<&player::Player, action::PlayError> {
+    fn get_player(&self, player_id: PlayerId) -> Result<&player::Player, action::PlayError> {
         if player_id < self.num_players() {
             let ref p = self._players[player_id];
             if p.active() {
@@ -235,17 +236,17 @@ impl Round {
         }
     }
 
-    fn get_hand(&self, player_id: uint) -> Result<Card, action::PlayError> {
+    fn get_hand(&self, player_id: PlayerId) -> Result<Card, action::PlayError> {
         self.get_player(player_id).map(|p| p.get_hand().unwrap())
     }
 
-    fn update_player(&self, player_id: uint, player: player::Player) -> Round {
+    fn update_player(&self, player_id: PlayerId, player: player::Player) -> Round {
         let mut new_game = self.clone();
         new_game._players[player_id] = player;
         new_game
     }
 
-    fn update_player_by(&self, player_id: uint, updater: |&player::Player| -> Result<player::Player, player::Error>) -> Result<Round, action::PlayError> {
+    fn update_player_by(&self, player_id: PlayerId, updater: |&player::Player| -> Result<player::Player, player::Error>) -> Result<Round, action::PlayError> {
         self.get_player(player_id)
             .map(updater)
             .and_then(
@@ -256,7 +257,7 @@ impl Round {
                 })
     }
 
-    fn update_two_players_by(&self, p1_id: uint, p2_id: uint, updater: |&player::Player, &player::Player| -> Result<(player::Player, player::Player), player::Error>) -> Result<Round, action::PlayError> {
+    fn update_two_players_by(&self, p1_id: PlayerId, p2_id: PlayerId, updater: |&player::Player, &player::Player| -> Result<(player::Player, player::Player), player::Error>) -> Result<Round, action::PlayError> {
         match (self.get_player(p1_id), self.get_player(p2_id)) {
             (Ok(player1), Ok(player2)) => {
                 match updater(player1, player2) {
@@ -290,7 +291,7 @@ impl Round {
         (g, c)
     }
 
-    fn _next_player(&self) -> Option<uint> {
+    fn _next_player(&self) -> Option<PlayerId> {
         if self.num_players_remaining() <= 1 {
             None
         } else {
@@ -434,7 +435,7 @@ impl Round {
     /// If the game is now over, will return `Ok(None)`. If not, will return
     /// `Ok(Some(new_game))`.
     pub fn handle_turn(&self, decide_play: |&Round, &Turn| -> (Card, action::Play),
-                       reveal_card: |uint, Card| -> ())
+                       reveal_card: |PlayerId, Card| -> ())
                        -> Result<Option<(Round, TurnOutcome)>, action::PlayError> {
         let (new_game, turn) = self.next_player();
         let turn = match turn {
@@ -498,7 +499,7 @@ impl RoundResult {
     }
 
     /// At the end of the game, return players and their hands.
-    fn survivors(&self) -> Vec<(uint, Card)> {
+    fn survivors(&self) -> Vec<(PlayerId, Card)> {
         self._players
             .iter()
             .enumerate()
@@ -511,7 +512,7 @@ impl RoundResult {
     }
 
     /// At the end of the game, return all winners and their hands.
-    pub fn winners(&self) -> Vec<(uint, Card)> {
+    pub fn winners(&self) -> Vec<(PlayerId, Card)> {
         let survivors = self.survivors();
         let mut ws = vec![];
         for x in util::maxima_by(&survivors, |&(_, card)| card).iter() {
@@ -526,7 +527,7 @@ impl RoundResult {
 #[cfg(test)]
 mod test {
     use action;
-    use action::{Event, PlayError};
+    use action::{Event, PlayError, PlayerId};
     use config;
     use deck;
     use deck::Card;
@@ -543,7 +544,7 @@ mod test {
         Round::new(&config::Config::new(num_players).ok().unwrap())
     }
 
-    fn eliminate(g: &Round, player_id: uint) -> Result<Round, action::PlayError> {
+    fn eliminate(g: &Round, player_id: PlayerId) -> Result<Round, action::PlayError> {
         g.update_player_by(player_id, |p| p.eliminate())
     }
 
@@ -720,7 +721,7 @@ mod test {
         assert_eq!(t.unwrap().player, 2);
     }
 
-    fn assert_winners(game: &Round, expected_winners: Vec<uint>) {
+    fn assert_winners(game: &Round, expected_winners: Vec<PlayerId>) {
         let observed_winners = game.winners();
         assert_eq!(expected_winners, observed_winners.iter().map(|&(i, _)| i).collect());
     }

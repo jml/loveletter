@@ -1,5 +1,6 @@
 use deck::Card;
 
+
 #[deriving(Show, PartialEq, Eq, Clone)]
 /// A player of Love Letter.
 pub struct Player {
