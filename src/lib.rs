@@ -10,6 +10,7 @@ pub mod prompt;
 
 mod action;
 mod config;
+mod game;
 mod round;
 mod player;
 mod util;
