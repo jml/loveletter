@@ -1,7 +1,7 @@
 extern crate loveletter;
 
 use loveletter::Card;
-use loveletter::GameError;
+use loveletter::RoundError;
 
 
 #[test]
@@ -35,10 +35,10 @@ fn test_invalid_manual_game() {
         Card::Minister,
         ];
     let result = loveletter::Round::from_manual(&hands, &stack, None).unwrap_err();
-    assert_eq!(result, GameError::BadDeck);
+    assert_eq!(result, RoundError::BadDeck);
 }
 
 #[test]
 fn test_manual_game_bad_players() {
-    assert_eq!(Err(GameError::InvalidPlayers(0)), loveletter::Round::from_manual(&[], &[], None));
+    assert_eq!(Err(RoundError::InvalidPlayers(0)), loveletter::Round::from_manual(&[], &[], None));
 }
