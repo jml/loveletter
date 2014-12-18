@@ -75,6 +75,10 @@ pub fn play_to_action(
     // XXX: Ideally, I'd express this with a data structure that mapped card,
     // play combinations to valid actions.
 
+    // XXX: Do I even *need* Action, now that I've got Event. It provides nice
+    // separation between cards and what the cards do, and allows me to do
+    // some validation, but does that justify the complexity?
+
     match play {
         Play::NoEffect => match played_card {
             Card::Priestess => Ok(Action::Protect(current_player)),
