@@ -5,8 +5,8 @@
 /// receive four tokens of affection are declared to have won her heart, and
 /// thus, the game.
 
-use config;
-use player_id::{PlayerId, player_id_generator};
+use player_id;
+use player_id::{PlayerId, Players};
 use round;
 
 
@@ -24,7 +24,7 @@ pub struct Game {
 
 
 impl Game {
-    fn new(players: &[PlayerId]) -> Game {
+    fn new(players: Players) -> Game {
         let players: Vec<(PlayerId, uint)> = players.iter().map(|&p| (p, 0)).collect();
         Game { _players: players }
     }
@@ -88,17 +88,15 @@ impl Game {
 
 
 /// Create a new game with the given number of arbitrary players.
-pub fn new_game(num_players: uint) -> Result<Game, config::Error> {
-    let player_id_gen = player_id_generator();
-    let players: Vec<PlayerId> = player_id_gen.take(num_players).collect();
-    Ok(Game::new(players.as_slice()))
+pub fn new_game(num_players: uint) -> Option<Game> {
+    player_id::make_players(num_players).map(|players| Game::new(players))
 }
 
 
 #[cfg(test)]
 mod test {
 
-    use player_id::{player_id_generator, PlayerId};
+    use player_id::{player_id_generator, PlayerId, Players};
     use super::Game;
 
     // XXX: Duplicated from round.rs
@@ -106,8 +104,12 @@ mod test {
         player_id_generator().take(num_players).collect()
     }
 
+    fn make_game_from_players(players: &[PlayerId]) -> Game {
+        Players::new(players.as_slice()).map(|players| Game::new(players)).ok().unwrap()
+    }
+
     fn make_game(num_players: uint) -> Game {
-        super::new_game(num_players).ok().unwrap()
+        super::new_game(num_players).unwrap()
     }
 
     #[test]
@@ -133,7 +135,7 @@ mod test {
     #[test]
     fn test_one_player_winning() {
         let players = make_player_ids(2);
-        let mut game = Game::new(players.as_slice());
+        let mut game = make_game_from_players(players.as_slice());
         let expected = vec![0, 1];
         game.player_won_mut(players[1]);
         assert_eq!(expected, game.scores());
@@ -142,7 +144,7 @@ mod test {
     #[test]
     fn many_players_winning() {
         let players = make_player_ids(4);
-        let mut game = Game::new(players.as_slice());
+        let mut game = make_game_from_players(players.as_slice());
         let expected = vec![0, 1, 1, 0];
         game.players_won_mut(&[players[1], players[2]]);
         assert_eq!(expected, game.scores());
@@ -151,7 +153,7 @@ mod test {
     #[test]
     fn immutable_players_winning() {
         let players = make_player_ids(4);
-        let game = Game::new(players.as_slice());
+        let game = make_game_from_players(players.as_slice());
         let expected = vec![0, 1, 1, 0];
         let new_game = game.players_won(&[players[1], players[2]]);
         let new_scores = new_game.scores();

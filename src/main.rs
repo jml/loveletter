@@ -157,8 +157,8 @@ fn main() {
     let num_players = 2u;
 
     let game = match loveletter::game::new_game(num_players) {
-        Ok(g) => g,
-        Err(loveletter::Error::InvalidPlayers(..)) => {
+        Some(g) => g,
+        None => {
             println!("Invalid number of players: {}", num_players);
             os::set_exit_status(2);
             return;
@@ -188,7 +188,7 @@ fn main() {
                 println!("  P{}: {}", i + 1, discards);
             }
             println!("");
-            // XXX: Maybe Round should have a reference to Game so this capture isn't needed.
+            // XXX: Maybe Round should have a reference to Game so this capture isn't need
             let result = current_round.handle_turn(
                 |_, turn| choose(&current_game, turn), handle_reveal);
             let (new_round, outcome) = match result {

@@ -6,14 +6,14 @@ use loveletter::RoundError;
 
 #[test]
 fn test_new_round_from_game() {
-    let game = loveletter::game::new_game(4).ok().unwrap();
+    let game = loveletter::game::new_game(4).unwrap();
     let round = game.new_round();
     assert_eq!(round.num_players(), 4);
 }
 
 #[test]
 fn test_invalid_manual_game() {
-    let game = loveletter::game::new_game(4).ok().unwrap();
+    let game = loveletter::game::new_game(4).unwrap();
     let players = game.players();
     let stack = [
         Card::Soldier,

@@ -6,7 +6,7 @@ use loveletter::PlayError;
 
 
 fn make_round(hands: &[Option<Card>], deck: &[Card], current_player: Option<uint>) -> (loveletter::Round, Vec<loveletter::PlayerId>) {
-    let game = loveletter::game::new_game(hands.len()).ok().unwrap();
+    let game = loveletter::game::new_game(hands.len()).unwrap();
     let players = game.players();
     assert_eq!(players.len(), hands.len());
     let hands: Vec<(loveletter::PlayerId, Option<Card>)> = players
