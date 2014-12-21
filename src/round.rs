@@ -85,7 +85,7 @@ pub struct Round {
     /// The remaining cards in the deck.
     _stack: Vec<Card>,
     /// All of the players of the game. The size does not change once the game is constructed.
-    _players: Vec<player::Player>,
+    _players: Vec<(action::PlayerId, player::Player)>,
     /// The current state of the game.
     _current: State,
 }
@@ -100,21 +100,29 @@ impl Round {
     /// Create a new game with a randomly shuffled deck.
     ///
     /// Will return None if given an invalid number of players.
-    pub fn new(cfg: &config::Config) -> Round {
-        Round::from_deck(cfg, deck::Deck::new())
+    pub fn new(player_ids: &[PlayerId]) -> Round {
+        Round::from_deck(player_ids, deck::Deck::new())
     }
 
     /// Create a new game given an already-shuffled deck.
     ///
     /// Will return None if given an invalid number of players.
-    pub fn from_deck(cfg: &config::Config, deck: deck::Deck) -> Round {
-        let cards = deck.as_slice();
-        let hand_end = cfg.num_players() + 1;
-        let hands: Vec<Option<Card>> = cards.slice(1, hand_end).iter().map(|&x| Some(x)).collect();
+    pub fn from_deck(player_ids: &[PlayerId], deck: deck::Deck) -> Round {
+        // XXX: ... aaaand we now allow invalid numbers of players.
+        let mut cards: Vec<Card> = deck.as_slice().iter().map(|&x| x).collect();
+        let mut players = vec![];
+
+        cards.pop().expect("Deck had no cards!");
+        for &player_id in player_ids.iter() {
+            let card = cards.pop().expect("Deck had too few cards!");
+            let player = player::Player::new(Some(card));
+            players.push((player_id, player));
+        }
+
         Round {
-            _stack: cards.slice_from(hand_end).iter().map(|&x| x).collect(),
+            _stack: cards,
             _current: State::NotStarted,
-            _players: hands.iter().map(|&x| player::Player::new(x)).collect(),
+            _players: players,
         }
     }
 
@@ -131,35 +139,35 @@ impl Round {
     /// Otherwise (and this is a bit broken), the next player to play is the
     /// one **after** the one given here. e.g. `Some(0)` means it's player 1's
     /// turn next.
-    pub fn from_manual(hands: &[Option<Card>], deck: &[Card],
+    pub fn from_manual(players: &[(PlayerId, Option<Card>)], deck: &[Card],
                        current_player: Option<PlayerId>) -> Result<Round, Error> {
-        match config::Config::new(hands.len()) {
-            Err(..) => return Err(Error::InvalidPlayers(hands.len())),
+        match config::Config::new(players.len()) {
+            Err(..) => return Err(Error::InvalidPlayers(players.len())),
             _ => ()
         };
         let mut stack: Vec<Card> = deck.iter().map(|&x| x).collect();
         let mut all_cards = stack.clone();
-        for x in hands.as_slice().iter().filter_map(|&x| x) {
+        for x in players.iter().filter_map(|&(_, x)| x) {
             all_cards.push(x);
         }
-        if deck::is_valid_subdeck(all_cards.as_slice()) {
-            let state = match current_player {
-                None => State::NotStarted,
-                Some(i) => {
-                    match stack.pop() {
-                        Some(card) => State::PlayerReady(i, card),
-                        None => { return Err(Error::BadDeck); }
-                    }
-                }
-            };
-            Ok(Round {
-                _stack: stack,
-                _current: state,
-                _players: hands.iter().map(|&x| player::Player::new(x)).collect(),
-            })
-        } else {
-            Err(Error::BadDeck)
+        if !deck::is_valid_subdeck(all_cards.as_slice()) {
+            return Err(Error::BadDeck);
         }
+
+        let state = match current_player {
+            None => State::NotStarted,
+            Some(i) => {
+                match stack.pop() {
+                    Some(card) => State::PlayerReady(i, card),
+                    None => { return Err(Error::BadDeck); }
+                }
+            }
+        };
+        Ok(Round {
+            _stack: stack,
+            _current: state,
+            _players: players.iter().map(|&(id, x)| (id, player::Player::new(x))).collect(),
+        })
     }
 
     /// Number of players in this game.
@@ -167,9 +175,19 @@ impl Round {
         self._players.len()
     }
 
+    /// Return the player IDs in the order of play.
+    fn player_ids(&self) -> Vec<PlayerId> {
+        let mut ids = vec![];
+        for &(id, _) in self._players.iter() {
+            ids.push(id)
+        }
+        ids
+    }
+
     pub fn all_discards(&self) -> Vec<&[Card]> {
         let mut discards = vec![];
-        for player in self._players.iter() {
+        for p in self._players.iter() {
+            let &(_, ref player) = p;
             discards.push(player.discards());
         }
         discards
@@ -182,7 +200,7 @@ impl Round {
 
     /// Number of active players still playing.
     fn num_players_remaining(&self) -> uint {
-        self._players.iter().filter(|p| p.active()).count()
+        self._players.iter().filter(|&&(_, ref p)| p.active()).count()
     }
 
     fn current_player(&self) -> Option<PlayerId> {
@@ -217,22 +235,24 @@ impl Round {
     }
 
     pub fn get_discards(&self, player_id: PlayerId) -> Result<&[Card], action::PlayError> {
+        self.get_player(player_id).map(|p| p.discards())
+    }
+
+    fn _player_index(&self, player_id: PlayerId) -> uint {
         self._players
-            .get(player_id)
-            .ok_or(action::PlayError::InvalidPlayer(player_id))
-            .map(|p| p.discards())
+            .iter()
+            .position(|&(id, _)| id == player_id)
+            .expect(format!("Unknown player ID: {}", player_id).as_slice())
     }
 
     fn get_player(&self, player_id: PlayerId) -> Result<&player::Player, action::PlayError> {
-        if player_id < self.num_players() {
-            let ref p = self._players[player_id];
-            if p.active() {
-                Ok(p)
+        match self._players.iter().find(|&&(id, _)| id == player_id) {
+            None => Err(action::PlayError::InvalidPlayer(player_id)),
+            Some(&(_, ref player)) => if player.active() {
+                Ok(player)
             } else {
                 Err(action::PlayError::InactivePlayer(player_id))
-            }
-        } else {
-            Err(action::PlayError::InvalidPlayer(player_id))
+            },
         }
     }
 
@@ -241,8 +261,9 @@ impl Round {
     }
 
     fn update_player(&self, player_id: PlayerId, player: player::Player) -> Round {
+        let i = self._player_index(player_id);
         let mut new_game = self.clone();
-        new_game._players[player_id] = player;
+        new_game._players[i] = (player_id, player);
         new_game
     }
 
@@ -257,27 +278,26 @@ impl Round {
                 })
     }
 
-    fn update_two_players_by(&self, p1_id: PlayerId, p2_id: PlayerId, updater: |&player::Player, &player::Player| -> Result<(player::Player, player::Player), player::Error>) -> Result<Round, action::PlayError> {
-        match (self.get_player(p1_id), self.get_player(p2_id)) {
-            (Ok(player1), Ok(player2)) => {
-                match updater(player1, player2) {
-                    Ok((new_player1, new_player2)) => {
-                        let mut new_game = self.clone();
-                        new_game._players[p1_id] = new_player1;
-                        new_game._players[p2_id] = new_player2;
-                        Ok(new_game)
-                    },
-                    Err(player::Error::Inactive) => Err(action::PlayError::InactivePlayer(p2_id)),
-                    Err(e) => panic!(e),
-                }
+    fn update_two_players_by(
+        &self, p1_id: PlayerId, p2_id: PlayerId,
+        updater: |&player::Player, &player::Player| -> Result<(player::Player, player::Player), player::Error>)
+        -> Result<Round, action::PlayError> {
+
+        let p1 = try!(self.get_player(p1_id));
+        let p2 = try!(self.get_player(p2_id));
+
+        match updater(p1, p2) {
+            Ok((new_player1, new_player2)) => {
+                Ok(self.update_player(p1_id, new_player1).update_player(p2_id, new_player2))
             },
-            (_, Err(e)) | (Err(e), _) => Err(e),
+            Err(player::Error::Inactive) => Err(action::PlayError::InactivePlayer(p2_id)),
+            Err(e) => panic!(e),
         }
     }
 
     #[cfg(test)]
     fn hands(&self) -> Vec<Option<Card>> {
-        self._players.iter().map(|ref x| x.get_hand()).collect()
+        self._players.iter().map(|&(_, ref x)| x.get_hand()).collect()
     }
 
     #[cfg(test)]
@@ -297,12 +317,13 @@ impl Round {
         } else {
             let current_num = match self.current_player() {
                 None => -1,
-                Some(i) => i,
+                Some(player) => self._player_index(player),
             };
             let num_players = self.num_players();
             range(1, num_players)
-                .map(|i| (current_num + i) % num_players)
-                .find(|i| self._players[*i].active())
+                .map(|i| &self._players[(current_num + i) % num_players])
+                .find(|&&(_, ref player)| player.active())
+                .map(|&(id, _)| id)
         }
     }
 
@@ -488,13 +509,13 @@ fn minister_bust(a: Card, b: Card) -> bool {
 /// The result of a finished round of Love Letter.
 #[deriving(Eq, PartialEq, Show, Clone)]
 pub struct RoundResult {
-    _players: Vec<player::Player>,
+    _players: Vec<(action::PlayerId, player::Player)>,
 }
 
 
 impl RoundResult {
 
-    fn new(players: Vec<player::Player>) -> RoundResult {
+    fn new(players: Vec<(action::PlayerId, player::Player)>) -> RoundResult {
         RoundResult { _players: players }
     }
 
@@ -502,9 +523,8 @@ impl RoundResult {
     fn survivors(&self) -> Vec<(PlayerId, Card)> {
         self._players
             .iter()
-            .enumerate()
             .filter_map(
-                |(i, ref p)| match p.get_hand() {
+                |&(i, ref p)| match p.get_hand() {
                     Some(y) => Some((i, y)),
                     None => None,
                 })
@@ -528,7 +548,6 @@ impl RoundResult {
 mod test {
     use action;
     use action::{Event, PlayError, PlayerId};
-    use config;
     use deck;
     use deck::Card;
     use player;
@@ -540,8 +559,13 @@ mod test {
         make_round(4)
     }
 
+    fn make_player_ids(num_players: uint) -> Vec<PlayerId> {
+        action::player_id_generator().take(num_players).collect()
+    }
+
     fn make_round(num_players: uint) -> Round {
-        Round::new(&config::Config::new(num_players).ok().unwrap())
+        let players: Vec<PlayerId> = make_player_ids(num_players);
+        Round::new(players.as_slice())
     }
 
     fn eliminate(g: &Round, player_id: PlayerId) -> Result<Round, action::PlayError> {
@@ -612,113 +636,140 @@ mod test {
             Card::Soldier,
             Card::Wizard,
             ];
+        let num_cards = cards.len();
         let deck = deck::Deck::from_slice(&cards).unwrap();
         let num_players = 3u;
-        let cfg = config::Config::new(num_players).ok().unwrap();
-        let g = Round::from_deck(&cfg, deck);
+        let players = make_player_ids(num_players);
+        let g = Round::from_deck(players.as_slice(), deck);
         assert_eq!(
-            cards.slice(1, num_players + 1)
+            cards.slice(num_cards - num_players - 1, num_cards - 1)
                 .iter()
                 .map(|&x| Some(x))
                 .collect::<Vec<Option<Card>>>(),
             g.hands());
-        assert_eq!(cards.slice_from(num_players + 1), g.deck());
+        assert_eq!(cards.slice_to(num_cards - num_players - 1), g.deck());
         assert_eq!(num_players, g.num_players());
     }
 
     #[test]
     fn test_manual_game() {
-        let hands = vec![Some(Card::Soldier), Some(Card::Clown), Some(Card::Soldier)];
+        let mut id_gen = action::player_id_generator();
+        let hands = vec![
+            (id_gen.next().unwrap(), Some(Card::Soldier)),
+            (id_gen.next().unwrap(), Some(Card::Clown)),
+            (id_gen.next().unwrap(), Some(Card::Soldier)),
+            ];
         let stack = [Card::Soldier, Card::Soldier, Card::Minister];
-        let game = Round::from_manual(hands.as_slice(), &stack, None).unwrap();
-        assert_eq!(hands, game.hands());
-        assert_eq!(stack.as_slice(), game.deck().as_slice());
-        assert_eq!(hands.len(), game.num_players());
+        let round = Round::from_manual(hands.as_slice(), &stack, None).unwrap();
+        assert_eq!(
+            vec![Some(Card::Soldier), Some(Card::Clown), Some(Card::Soldier)], round.hands());
+        assert_eq!(stack.as_slice(), round.deck().as_slice());
+        assert_eq!(hands.len(), round.num_players());
     }
 
     #[test]
     fn test_current_player_after_next() {
         let g = make_arbitrary_game();
         let (g2, _) = g.next_player();
-        assert_eq!(Some(0), g2.current_player());
+        let player_ids = g.player_ids();
+        assert_eq!(player_ids[0], g2.current_player().unwrap());
     }
 
     #[test]
     fn test_next_player_gets_draw() {
         let g = make_arbitrary_game();
-        let (_, turn) = g.next_player();
+        let (g2, turn) = g.next_player();
         let Turn { player: p, draw: d, hand: _ } = turn.unwrap();
-        let (_, expected) = g.draw();
-        assert_eq!((p, d), (0, expected.unwrap()));
+        let expected_player = g2.current_player().unwrap();
+        let (_, expected_draw) = g.draw();
+        assert_eq!((p, d), (expected_player, expected_draw.unwrap()));
     }
 
     #[test]
     fn test_next_player_increments() {
         let g = make_round(2);
+        let player_ids = g.player_ids();
         let (g, _) = g.next_player();
         let (g, _) = g.next_player();
-        assert_eq!(Some(1), g.current_player());
+        assert_eq!(player_ids[1], g.current_player().unwrap());
     }
 
     #[test]
     fn test_next_player_cycles() {
         let g = make_round(2);
+        let player_ids = g.player_ids();
         let (g, _) = g.next_player();
         let (g, _) = g.next_player();
         let (g, _) = g.next_player();
-        assert_eq!(Some(0), g.current_player());
+        assert_eq!(player_ids[0], g.current_player().unwrap());
     }
 
     #[test]
     fn test_get_card_active_player() {
+        let player_ids = make_player_ids(4);
         let g = Round::from_manual(
-            &[Some(Card::General), Some(Card::Clown), Some(Card::Knight), Some(Card::Priestess)],
+            &[(player_ids[0], Some(Card::General)),
+              (player_ids[1], Some(Card::Clown)),
+              (player_ids[2], Some(Card::Knight)),
+              (player_ids[3], Some(Card::Priestess)),
+              ],
             &[Card::Soldier, Card::Minister, Card::Princess, Card::Soldier, Card::Wizard], None).unwrap();
-        assert_eq!(g.get_hand(0), Ok(Card::General));
+        assert_eq!(g.get_hand(player_ids[0]), Ok(Card::General));
     }
 
     #[test]
     fn test_get_card_nonexistent_player() {
-        let g = Round::from_manual(
-            &[Some(Card::General), Some(Card::Clown), Some(Card::Knight), Some(Card::Priestess)],
-            &[Card::Soldier, Card::Minister, Card::Princess, Card::Soldier, Card::Wizard], None).unwrap();
-        assert_eq!(g.get_hand(5), Err(PlayError::InvalidPlayer(5)));
+        let players: Vec<PlayerId> = make_player_ids(5);
+        let round = Round::new(players.slice_to(4));
+        let bad_id = players[4];
+        assert_eq!(round.get_hand(bad_id), Err(PlayError::InvalidPlayer(bad_id)));
     }
 
     #[test]
     fn test_get_card_inactive_player() {
+        let player_ids = make_player_ids(4);
         let g = Round::from_manual(
-            &[Some(Card::General), Some(Card::Clown), None, Some(Card::Priestess)],
+            &[(player_ids[0], Some(Card::General)),
+              (player_ids[1], Some(Card::Clown)),
+              (player_ids[2], None),
+              (player_ids[3], Some(Card::Priestess)),
+              ],
             &[Card::Soldier, Card::Minister, Card::Princess, Card::Soldier, Card::Wizard], None).unwrap();
-        assert_eq!(g.get_hand(2), Err(PlayError::InactivePlayer(2)));
+        assert_eq!(g.get_hand(player_ids[2]), Err(PlayError::InactivePlayer(player_ids[2])));
     }
 
     #[test]
     fn test_update_nonexistent_player() {
-        let g = Round::from_manual(
-            &[Some(Card::General), Some(Card::Clown), None, Some(Card::Priestess)],
-            &[Card::Soldier, Card::Minister, Card::Princess, Card::Soldier, Card::Wizard], None).unwrap();
-        let error = g.update_player_by(5, |p| Ok(p.clone())).unwrap_err();
-        assert_eq!(PlayError::InvalidPlayer(5), error);
+        let players: Vec<PlayerId> = make_player_ids(5);
+        let round = Round::new(players.slice_to(4));
+        let bad_id = players[4];
+        let error = round.update_player_by(bad_id, |p| Ok(p.clone())).unwrap_err();
+        assert_eq!(PlayError::InvalidPlayer(bad_id), error);
     }
 
     #[test]
     fn test_eliminate_gone_player() {
+        let player_ids = make_player_ids(4);
         let g = Round::from_manual(
-            &[Some(Card::General), Some(Card::Clown), None, Some(Card::Priestess)],
+            &[(player_ids[0], Some(Card::General)),
+              (player_ids[1], Some(Card::Clown)),
+              (player_ids[2], None),
+              (player_ids[3], Some(Card::Priestess)),
+              ],
             &[Card::Soldier, Card::Minister, Card::Princess, Card::Soldier, Card::Wizard], None).unwrap();
-        let error = eliminate(&g, 2).unwrap_err();
-        assert_eq!(PlayError::InactivePlayer(2), error);
+        let error = eliminate(&g, player_ids[2]).unwrap_err();
+        assert_eq!(PlayError::InactivePlayer(player_ids[2]), error);
     }
 
     #[test]
     fn test_skip_eliminated_player() {
-        let g = make_round(3);
-        let (g, _) = g.next_player();
-        let g = eliminate(&g, 1).unwrap();
-        let (g, t) = g.next_player();
-        assert_eq!(g.current_player(), Some(2));
-        assert_eq!(t.unwrap().player, 2);
+        let round = make_round(3);
+        let player_ids = round.player_ids();
+        let (round, _) = round.next_player();
+        let round = eliminate(&round, player_ids[1]).unwrap();
+        let (round, t) = round.next_player();
+        assert_eq!(round.current_player(), Some(player_ids[2]));
+        assert_eq!(t.unwrap().player, player_ids[2]);
     }
 
     fn assert_winners(game: &Round, expected_winners: Vec<PlayerId>) {
@@ -729,43 +780,46 @@ mod test {
     #[test]
     fn test_last_player() {
         let g = make_round(2);
+        let players = g.player_ids();
         let (g, _) = g.next_player();
-        let g = eliminate(&g, 1).unwrap();
+        let g = eliminate(&g, players[1]).unwrap();
         let (new_game, turn) = g.next_player();
         assert_eq!(None, turn);
-        assert_winners(&new_game, vec![0]);
+        assert_winners(&new_game, vec![players[0]]);
     }
 
     #[test]
     fn test_eliminate_self_last_player() {
         let g = make_round(2);
+        let players = g.player_ids();
         let (g, _) = g.next_player();
-        let g = eliminate(&g, 0).unwrap();
+        let g = eliminate(&g, players[0]).unwrap();
         let (new_game, turn) = g.next_player();
         assert_eq!(None, turn);
-        assert_winners(&new_game, vec![1]);
+        assert_winners(&new_game, vec![players[1]]);
     }
 
     #[test]
     fn test_swap_cards() {
-        let g = Round::from_manual(
-            &[Some(Card::General), Some(Card::Clown), None, Some(Card::Priestess)],
-            &[Card::Soldier, Card::Minister, Card::Princess, Card::Soldier, Card::Wizard], None).unwrap();
-        let (new_game, _) = g.apply_event(Event::SwappedHands(0, 1)).unwrap();
+        let round = make_round(4);
+        let original_hands = round.hands();
+        let players = round.player_ids();
+        let (new_round, _) = round.apply_event(Event::SwappedHands(players[0], players[1])).unwrap();
+
         assert_eq!(
-            vec![Some(Card::Clown), Some(Card::General), None, Some(Card::Priestess)],
-            new_game.hands());
+            vec![original_hands[1], original_hands[0], original_hands[2], original_hands[3]],
+            new_round.hands());
     }
 
     #[test]
     fn test_swap_cards_nonexistent() {
-        let g = Round::from_manual(
-            &[Some(Card::General), Some(Card::Clown), None, Some(Card::Priestess)],
-            &[Card::Soldier, Card::Minister, Card::Princess, Card::Soldier, Card::Wizard], None).unwrap();
-        let error = g.apply_event(Event::SwappedHands(0, 5)).unwrap_err();
-        assert_eq!(PlayError::InvalidPlayer(5), error);
-        let error = g.apply_event(Event::SwappedHands(5, 0)).unwrap_err();
-        assert_eq!(PlayError::InvalidPlayer(5), error);
+        let players: Vec<PlayerId> = make_player_ids(5);
+        let round = Round::new(players.slice_to(4));
+        let bad_id = players[4];
+        let error = round.apply_event(Event::SwappedHands(players[0], bad_id)).unwrap_err();
+        assert_eq!(PlayError::InvalidPlayer(bad_id), error);
+        let error = round.apply_event(Event::SwappedHands(bad_id, players[0])).unwrap_err();
+        assert_eq!(PlayError::InvalidPlayer(bad_id), error);
     }
 
     #[test]
@@ -778,40 +832,31 @@ mod test {
     #[test]
     fn test_eliminate_action() {
         let g = make_round(3);
+        let players = g.player_ids();
         let (g, _) = g.next_player();
-        let (new_g, _) = g.apply_event(Event::PlayerEliminated(1)).unwrap();
+        let (new_g, _) = g.apply_event(Event::PlayerEliminated(players[1])).unwrap();
         let (_, t) = new_g.next_player();
-        assert_eq!(2, t.unwrap().player);
-    }
-
-    #[test]
-    fn test_force_swap() {
-        let g = Round::from_manual(
-            &[Some(Card::Soldier), Some(Card::Clown), Some(Card::Knight)],
-            &[Card::Soldier, Card::Minister, Card::Princess, Card::Soldier, Card::General], None).unwrap();
-        let (g, t) = g.next_player();
-        let t = t.unwrap();
-        let ours = t.hand;
-        let theirs = g.get_hand(1).unwrap();
-        let (new_g, _) = g.apply_event(Event::SwappedHands(0, 1)).unwrap();
-        assert_eq!(theirs, new_g.get_hand(0).unwrap());
-        assert_eq!(ours, new_g.get_hand(1).unwrap());
+        assert_eq!(players[2], t.unwrap().player);
     }
 
     #[test]
     fn test_round_result_survivors() {
+        let player_ids = make_player_ids(2);
         let p1 = player::Player::new(Some(Card::Princess));
         let p2 = player::Player::new(None);
-        let r = RoundResult::new(vec![p1, p2]);
-        assert_eq!(vec![(0, Card::Princess)], r.survivors());
+        let r = RoundResult::new(vec![(player_ids[0], p1), (player_ids[1], p2)]);
+        assert_eq!(vec![(player_ids[0], Card::Princess)], r.survivors());
     }
 
     #[test]
     fn test_round_result_multiple_survivors() {
+        let player_ids = make_player_ids(3);
         let p1 = player::Player::new(Some(Card::Princess));
         let p2 = player::Player::new(Some(Card::Wizard));
         let p3 = player::Player::new(None);
-        let r = RoundResult::new(vec![p1, p2, p3]);
-        assert_eq!(vec![(0, Card::Princess), (1, Card::Wizard)], r.survivors());
+        let r = RoundResult::new(
+            vec![(player_ids[0], p1), (player_ids[1], p2), (player_ids[2], p3)]);
+        assert_eq!(
+            vec![(player_ids[0], Card::Princess), (player_ids[1], Card::Wizard)], r.survivors());
     }
 }

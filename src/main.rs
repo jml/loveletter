@@ -4,6 +4,7 @@ use std::io;
 use std::os;
 use loveletter::{Card, Event, PlayerId};
 
+
 #[cfg(not(test))]
 fn choose_card(turn: &loveletter::Turn) -> loveletter::Card {
     let list = [turn.hand, turn.draw];
@@ -13,13 +14,13 @@ fn choose_card(turn: &loveletter::Turn) -> loveletter::Card {
 
 
 #[cfg(not(test))]
-fn choose_target(game: &loveletter::Round) -> PlayerId {
-    let num_players = game.num_players();
-    loveletter::prompt::repeated_prompt(
+fn choose_target(game: &loveletter::Game) -> PlayerId {
+    let players = game.players();
+    *loveletter::prompt::choose_from_list(
         format!(
             "Who are you playing it on? (1-{})\n>>> ",
-            num_players).as_slice(),
-        |x| loveletter::prompt::read_int_in_range(x, num_players))
+            players.len()).as_slice(),
+        players.as_slice())
 }
 
 
@@ -39,14 +40,14 @@ fn choose_guess() -> Card {
 
 /// Allow the player to choose a card to play.
 #[cfg(not(test))]
-fn choose(_game: &loveletter::Round, turn: &loveletter::Turn) -> (Card, loveletter::Play) {
-    println!("Player {}", turn.player + 1);
+fn choose(game: &loveletter::Game, turn: &loveletter::Turn) -> (Card, loveletter::Play) {
+    println!("{}", turn.player);
     println!("---------");
     let chosen = choose_card(turn);
     let action = match chosen {
         Card::Priestess | Card::Minister | Card::Princess => loveletter::Play::NoEffect,
         _ => {
-            let other = choose_target(_game);
+            let other = choose_target(game);
             match chosen {
                 Card::Soldier => {
                     let guess = choose_guess();
@@ -66,24 +67,24 @@ fn report_outcome(game: &loveletter::Round, outcome: loveletter::TurnOutcome) ->
             let discards = game.get_discards(player).ok().expect("Busted player did not exist");
             let a = discards[discards.len() - 1];
             let b = discards[discards.len() - 2];
-            format!("Player {} busted out with {} and {}!", player + 1, a, b)
+            format!("{} busted out with {} and {}!", player, a, b)
         },
         loveletter::TurnOutcome::Played(player, card, play, events) => {
-            let prelude = format!("Player {} played {}", player + 1, card);
+            let prelude = format!("{} played {}", player, card);
             let follow_up = match play {
                 loveletter::Play::NoEffect => ".".to_string(),
-                loveletter::Play::Attack(i) => format!(" on player {}.", i + 1),
+                loveletter::Play::Attack(i) => format!(" on {}.", i),
                 loveletter::Play::Guess(i, guess) =>
-                    format!(" on player {}, guessing {}.", i + 1, guess),
+                    format!(" on {}, guessing {}.", i, guess),
             };
             let mut event_str = String::new();
             for event in events.iter() {
                 event_str = event_str + (match *event {
                     Event::NoChange => "Nothing happened. ".to_string(),
                     Event::Protected(_) => "Now protected until their next turn. ".to_string(),
-                    Event::SwappedHands(_, b) => format!("Swapped hands with player {}. ", b + 1),
-                    Event::PlayerEliminated(p) => format!("Player {} eliminated. ", p + 1),
-                    Event::ForcedReveal(a, b) => format!("Player {} showed their card to player {}. ", b + 1, a + 1),
+                    Event::SwappedHands(_, b) => format!("Swapped hands with {}. ", b),
+                    Event::PlayerEliminated(p) => format!("{} eliminated. ", p),
+                    Event::ForcedReveal(a, b) => format!("{} showed their card to {}. ", b, a),
                     Event::ForcedDiscard(p) => {
                         // XXX: Worth saying here whether the player was
                         // allowed to draw another card.
@@ -91,7 +92,7 @@ fn report_outcome(game: &loveletter::Round, outcome: loveletter::TurnOutcome) ->
                             .get_discards(p)
                             .ok().expect("Targeted player did not exist")
                             .last().expect("Player forced to discard does not have any discards");
-                        format!("Player {} forced to discard {}. ", p + 1, last_discard)
+                        format!("{} forced to discard {}. ", p, last_discard)
                     },
                 })
             }
@@ -113,12 +114,12 @@ fn announce_winner(winners: &Vec<(PlayerId, Card)>) {
         0 => println!("Something went wrong. No winners at all. Is the game over yet?"),
         1 => {
             let (i, card) = winners[0];
-            println!("Player {} wins, holding {}", i + 1, card);
+            println!("{} wins, holding {}", i, card);
         },
         n => {
             println!("Round tied between {} players.", n);
             for &(i, card) in winners.iter() {
-                println!("  Player {} holds a {}", i + 1, card);
+                println!("  {} holds a {}", i, card);
             }
         }
     }
@@ -143,7 +144,7 @@ fn announce_game_winners(scores: &[uint]) {
 
 
 fn handle_reveal(player: PlayerId, card: Card) -> () {
-    println!("SECRET: Player {} has a {}", player + 1, card);
+    println!("SECRET: {} has a {}", player, card);
 }
 
 
@@ -187,7 +188,9 @@ fn main() {
                 println!("  P{}: {}", i + 1, discards);
             }
             println!("");
-            let result = current_round.handle_turn(choose, handle_reveal);
+            // XXX: Maybe Round should have a reference to Game so this capture isn't needed.
+            let result = current_round.handle_turn(
+                |_, turn| choose(&current_game, turn), handle_reveal);
             let (new_round, outcome) = match result {
                 Ok(None) => break,
                 Ok(Some(result)) => result,
@@ -202,8 +205,10 @@ fn main() {
         announce_winner(&winners);
         let winner_ids: Vec<PlayerId> = winners.iter().map(|&(i, _)| i).collect();
         current_game = current_game.players_won(winner_ids.as_slice());
-        announce_current_scores(current_game.scores());
+        let scores = current_game.scores();
+        announce_current_scores(scores.as_slice());
         println!("");
     }
-    announce_game_winners(current_game.scores());
+    let scores = current_game.scores();
+    announce_game_winners(scores.as_slice());
 }

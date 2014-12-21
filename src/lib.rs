@@ -3,6 +3,7 @@
 pub use action::{Event, Play, PlayError, PlayerId};
 pub use config::Error as Error;
 pub use deck::Card;
+pub use game::Game;
 pub use round::{Round, Turn, TurnOutcome};
 pub use round::Error as RoundError;
 

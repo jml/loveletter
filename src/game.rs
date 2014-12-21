@@ -5,7 +5,7 @@
 /// receive four tokens of affection are declared to have won her heart, and
 /// thus, the game.
 
-use action::PlayerId;
+use action::{PlayerId, player_id_generator};
 use config;
 use round;
 
@@ -19,23 +19,23 @@ pub struct Game {
     // XXX: Possibly Game should not own Config. In the only current non-test
     // use case, Config can easily last longer than Game. The only reason we
     // want to own this is for the helper `make_game` function.
-    _config: config::Config,
-    _scores: Vec<uint>,
+    _players: Vec<(PlayerId, uint)>,
 }
 
 
 impl Game {
-    fn new(config: config::Config) -> Game {
-        let scores = Vec::from_elem(config.num_players(), 0u);
-        Game { _config: config, _scores: scores }
+    fn new(players: &[PlayerId]) -> Game {
+        let players: Vec<(PlayerId, uint)> = players.iter().map(|&p| (p, 0)).collect();
+        Game { _players: players }
     }
 
     fn num_players(&self) -> uint {
-        self._config.num_players()
+        self._players.len()
     }
 
     pub fn new_round(&self) -> round::Round {
-        round::Round::new(&self._config)
+        let players: Vec<PlayerId> = self._players.iter().map(|&(i, _)| i).collect();
+        round::Round::new(players.as_slice())
     }
 
     pub fn next_round(&self) -> Option<round::Round> {
@@ -46,14 +46,23 @@ impl Game {
         }
     }
 
-    pub fn scores(&self) -> &[uint] {
-        self._scores.as_slice()
+    pub fn players(&self) -> Vec<PlayerId> {
+        self._players.iter().map(|&(p, _)| p).collect()
+    }
+
+    pub fn scores(&self) -> Vec<uint> {
+        self._players.iter().map(|&(_, x)| x).collect()
     }
 
     fn player_won_mut(&mut self, player_id: PlayerId) {
         // XXX: Will panic if player_id wrong
         // XXX: What if score exceeds WINNING_SCORE
-        self._scores[player_id] += 1;
+        let idx = self._players
+            .iter()
+            .position(|&(id, _)| id == player_id)
+            .expect("No such player ID");
+        let (p, score) = self._players[idx];
+        self._players[idx] = (p, score + 1);
     }
 
     fn players_won_mut(&mut self, player_ids: &[PlayerId]) {
@@ -70,37 +79,41 @@ impl Game {
     }
 
     fn winners(&self) -> Vec<PlayerId> {
-        self._scores
+        self._players
             .iter()
-            .enumerate()
-            .filter_map(|(i, &n)| if n >= WINNING_SCORE { Some(i) } else { None })
+            .filter_map(|&(i, n)| if n >= WINNING_SCORE { Some(i) } else { None })
             .collect()
     }
 }
 
 
+/// Create a new game with the given number of arbitrary players.
 pub fn new_game(num_players: uint) -> Result<Game, config::Error> {
-    config::Config::new(num_players).map(|cfg| Game::new(cfg))
+    let player_id_gen = player_id_generator();
+    let players: Vec<PlayerId> = player_id_gen.take(num_players).collect();
+    Ok(Game::new(players.as_slice()))
 }
 
 
 #[cfg(test)]
 mod test {
 
-    use config;
+    use action::{player_id_generator, PlayerId};
     use super::Game;
 
+    // XXX: Duplicated from round.rs
+    fn make_player_ids(num_players: uint) -> Vec<PlayerId> {
+        player_id_generator().take(num_players).collect()
+    }
+
     fn make_game(num_players: uint) -> Game {
-        let cfg = config::Config::new(num_players).ok().unwrap();
-        Game::new(cfg)
+        super::new_game(num_players).ok().unwrap()
     }
 
     #[test]
     fn test_num_players() {
-        let num_players = 4;
-        let cfg = config::Config::new(num_players).ok().unwrap();
-        let g = Game::new(cfg);
-        assert_eq!(g.num_players(), num_players);
+        let game = make_game(4);
+        assert_eq!(game.num_players(), 4);
     }
 
     #[test]
@@ -113,33 +126,36 @@ mod test {
     #[test]
     fn initial_scores_zero() {
         let game = make_game(4);
-        let expected = [0, 0, 0, 0];
-        assert_eq!(expected.as_slice(), game.scores());
+        let expected = vec![0, 0, 0, 0];
+        assert_eq!(expected, game.scores());
     }
 
     #[test]
     fn test_one_player_winning() {
-        let mut game = make_game(4);
-        let expected = [0, 1, 0, 0];
-        game.player_won_mut(1);
-        assert_eq!(expected.as_slice(), game.scores());
+        let players = make_player_ids(2);
+        let mut game = Game::new(players.as_slice());
+        let expected = vec![0, 1];
+        game.player_won_mut(players[1]);
+        assert_eq!(expected, game.scores());
     }
 
     #[test]
     fn many_players_winning() {
-        let mut game = make_game(4);
-        let expected = [0, 1, 1, 0];
-        game.players_won_mut(&[1, 2]);
-        assert_eq!(expected.as_slice(), game.scores());
+        let players = make_player_ids(4);
+        let mut game = Game::new(players.as_slice());
+        let expected = vec![0, 1, 1, 0];
+        game.players_won_mut(&[players[1], players[2]]);
+        assert_eq!(expected, game.scores());
     }
 
     #[test]
     fn immutable_players_winning() {
-        let game = make_game(4);
-        let expected = [0, 1, 1, 0];
-        let new_game = game.players_won(&[1, 2]);
+        let players = make_player_ids(4);
+        let game = Game::new(players.as_slice());
+        let expected = vec![0, 1, 1, 0];
+        let new_game = game.players_won(&[players[1], players[2]]);
         let new_scores = new_game.scores();
-        assert_eq!(expected.as_slice(), new_scores);
+        assert_eq!(expected, new_scores);
     }
 
     #[test]

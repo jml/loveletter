@@ -13,18 +13,19 @@ fn test_new_round_from_game() {
 
 #[test]
 fn test_invalid_manual_game() {
-    let hands = [
-        Some(Card::Soldier),
-        Some(Card::Clown),
-        Some(Card::Soldier),
-        Some(Card::Princess),
-        ];
+    let game = loveletter::game::new_game(4).ok().unwrap();
+    let players = game.players();
     let stack = [
         Card::Soldier,
         Card::Princess,
         Card::Minister,
         ];
-    let result = loveletter::Round::from_manual(&hands, &stack, None).unwrap_err();
+    let result = loveletter::Round::from_manual(
+        &[(players[0], Some(Card::Soldier)),
+          (players[1], Some(Card::Clown)),
+          (players[2], Some(Card::Soldier)),
+          (players[3], Some(Card::Princess))],
+        &stack, None).unwrap_err();
     assert_eq!(result, RoundError::BadDeck);
 }
 

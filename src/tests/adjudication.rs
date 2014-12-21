@@ -2,67 +2,84 @@ use deck::Card::{Soldier, Clown, Knight, Wizard, General};
 
 use action::Play::{Attack, Guess};
 use action::PlayError::{BadActionForCard, BadGuess, SelfTarget};
+use action::{PlayerId, player_id_generator};
 use action::Action::{
     SwapHands, ForceDiscard, ForceReveal, EliminateWeaker, EliminateOnGuess};
 use action::play_to_action;
 
 
+fn make_players() -> (PlayerId, PlayerId) {
+    let players: Vec<PlayerId> = player_id_generator().take(2).collect();
+    (players[0], players[1])
+}
+
+
 #[test]
 fn test_general_swap() {
-    let result = play_to_action(0, General, Attack(3)).unwrap();
-    assert_eq!(result, SwapHands(0, 3));
+    let (player1, player2) = make_players();
+    let result = play_to_action(player1, General, Attack(player2)).unwrap();
+    assert_eq!(result, SwapHands(player1, player2));
 }
 
 #[test]
 fn test_self_target_attack() {
-    let result = play_to_action(0, General, Attack(0));
-    assert_eq!(SelfTarget(0, General), result.unwrap_err());
+    let (player1, player2) = make_players();
+    let result = play_to_action(player1, General, Attack(player1));
+    assert_eq!(SelfTarget(player1, General), result.unwrap_err());
 }
 
 #[test]
 fn test_self_target_guess() {
-    let result = play_to_action(0, Soldier, Guess(0, Wizard));
-    assert_eq!(SelfTarget(0, Soldier), result.unwrap_err());
+    let (player1, player2) = make_players();
+    let result = play_to_action(player1, Soldier, Guess(player1, Wizard));
+    assert_eq!(SelfTarget(player1, Soldier), result.unwrap_err());
 }
 
 #[test]
 fn test_self_target_wizard() {
-    let result = play_to_action(0, Wizard, Attack(0));
-    assert_eq!(ForceDiscard(0), result.unwrap());
+    let (player1, player2) = make_players();
+    let result = play_to_action(player1, Wizard, Attack(player1));
+    assert_eq!(ForceDiscard(player1), result.unwrap());
 }
 
 #[test]
 fn test_knight() {
-    let result = play_to_action(0, Knight, Attack(3));
-    assert_eq!(EliminateWeaker(0, 3), result.unwrap());
+    let (player1, player2) = make_players();
+    let result = play_to_action(player1, Knight, Attack(player2));
+    assert_eq!(EliminateWeaker(player1, player2), result.unwrap());
 }
 
 #[test]
 fn test_wizard() {
-    let result = play_to_action(0, Wizard, Attack(1));
-    assert_eq!(ForceDiscard(1), result.unwrap());
+    let (player1, player2) = make_players();
+    let result = play_to_action(player1, Wizard, Attack(player2));
+    assert_eq!(ForceDiscard(player2), result.unwrap());
 }
 
 #[test]
 fn test_clown() {
-    let result = play_to_action(0, Clown, Attack(1));
-    assert_eq!(ForceReveal(0, 1), result.unwrap());
+    let (player1, player2) = make_players();
+    let result = play_to_action(player1, Clown, Attack(player2));
+    assert_eq!(ForceReveal(player1, player2), result.unwrap());
 }
 
 #[test]
 fn test_non_attack() {
-    let result = play_to_action(1, Soldier, Attack(0));
-    assert_eq!(BadActionForCard(Attack(0), Soldier), result.unwrap_err());
+    let (player1, player2) = make_players();
+    let result = play_to_action(player2, Soldier, Attack(player1));
+    assert_eq!(BadActionForCard(Attack(player1), Soldier), result.unwrap_err());
 }
 
 #[test]
 fn test_soldier() {
-    let result = play_to_action(0, Soldier, Guess(1, Wizard));
-    assert_eq!(EliminateOnGuess(1, Wizard), result.unwrap());
+    let (player1, player2) = make_players();
+    let result = play_to_action(player1, Soldier, Guess(player2, Wizard));
+    assert_eq!(EliminateOnGuess(player2, Wizard), result.unwrap());
 }
 
 #[test]
 fn test_guess_soldier() {
-    let result = play_to_action(0, Soldier, Guess(1, Soldier));
+    let (player1, player2) = make_players();
+    let result = play_to_action(player1, Soldier, Guess(player2, Soldier));
     assert_eq!(BadGuess, result.unwrap_err());
 }
