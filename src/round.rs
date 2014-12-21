@@ -7,11 +7,12 @@
 /// highest-valued card.
 
 use action;
-use action::{Action, Event, PlayerId};
+use action::{Action, Event};
 use config;
 use deck;
 use deck::Card;
 use player;
+use player_id::PlayerId;
 use util;
 
 
@@ -85,7 +86,7 @@ pub struct Round {
     /// The remaining cards in the deck.
     _stack: Vec<Card>,
     /// All of the players of the game. The size does not change once the game is constructed.
-    _players: Vec<(action::PlayerId, player::Player)>,
+    _players: Vec<(PlayerId, player::Player)>,
     /// The current state of the game.
     _current: State,
 }
@@ -509,13 +510,13 @@ fn minister_bust(a: Card, b: Card) -> bool {
 /// The result of a finished round of Love Letter.
 #[deriving(Eq, PartialEq, Show, Clone)]
 pub struct RoundResult {
-    _players: Vec<(action::PlayerId, player::Player)>,
+    _players: Vec<(PlayerId, player::Player)>,
 }
 
 
 impl RoundResult {
 
-    fn new(players: Vec<(action::PlayerId, player::Player)>) -> RoundResult {
+    fn new(players: Vec<(PlayerId, player::Player)>) -> RoundResult {
         RoundResult { _players: players }
     }
 
@@ -547,10 +548,11 @@ impl RoundResult {
 #[cfg(test)]
 mod test {
     use action;
-    use action::{Event, PlayError, PlayerId};
+    use action::{Event, PlayError};
     use deck;
     use deck::Card;
     use player;
+    use player_id::{PlayerId, player_id_generator};
     use super::{Round, Turn};
     use super::RoundResult;
 
@@ -560,7 +562,7 @@ mod test {
     }
 
     fn make_player_ids(num_players: uint) -> Vec<PlayerId> {
-        action::player_id_generator().take(num_players).collect()
+        player_id_generator().take(num_players).collect()
     }
 
     fn make_round(num_players: uint) -> Round {
@@ -653,7 +655,7 @@ mod test {
 
     #[test]
     fn test_manual_game() {
-        let mut id_gen = action::player_id_generator();
+        let mut id_gen = player_id_generator();
         let hands = vec![
             (id_gen.next().unwrap(), Some(Card::Soldier)),
             (id_gen.next().unwrap(), Some(Card::Clown)),

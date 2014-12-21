@@ -2,10 +2,10 @@ use deck::Card::{Soldier, Clown, Knight, Wizard, General};
 
 use action::Play::{Attack, Guess};
 use action::PlayError::{BadActionForCard, BadGuess, SelfTarget};
-use action::{PlayerId, player_id_generator};
 use action::Action::{
     SwapHands, ForceDiscard, ForceReveal, EliminateWeaker, EliminateOnGuess};
 use action::play_to_action;
+use player_id::{PlayerId, player_id_generator};
 
 
 fn make_players() -> (PlayerId, PlayerId) {

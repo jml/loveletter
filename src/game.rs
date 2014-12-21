@@ -5,8 +5,8 @@
 /// receive four tokens of affection are declared to have won her heart, and
 /// thus, the game.
 
-use action::{PlayerId, player_id_generator};
 use config;
+use player_id::{PlayerId, player_id_generator};
 use round;
 
 
@@ -98,7 +98,7 @@ pub fn new_game(num_players: uint) -> Result<Game, config::Error> {
 #[cfg(test)]
 mod test {
 
-    use action::{player_id_generator, PlayerId};
+    use player_id::{player_id_generator, PlayerId};
     use super::Game;
 
     // XXX: Duplicated from round.rs
