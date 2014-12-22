@@ -12,19 +12,19 @@ use config;
 use deck;
 use deck::Card;
 use player;
-use player_id::PlayerId;
+use player_id;
 use util;
 
 
 #[deriving(Show, PartialEq, Eq)]
 pub struct Turn {
-    pub player: PlayerId,
+    pub player: player_id::PlayerId,
     pub hand: Card,
     pub draw: Card,
 }
 
 impl Turn {
-    fn new(player: PlayerId, hand: Card, draw: Card) -> Turn {
+    fn new(player: player_id::PlayerId, hand: Card, draw: Card) -> Turn {
         Turn { player: player, hand: hand, draw: draw }
     }
 }
@@ -49,13 +49,13 @@ impl Turn {
 /// were, who the winner is, and what the burn card was.
 enum State {
     NotStarted,
-    PlayerReady(PlayerId, Card),
+    PlayerReady(player_id::PlayerId, Card),
     RoundOver(RoundResult),
 }
 
 
 
-#[deriving(Show, PartialEq, Eq)]
+#[deriving(Show, PartialEq, Eq, Copy)]
 /// Errors that can occur while constructing a Round.
 pub enum Error {
     /// Specified an invalid number of players.
@@ -71,12 +71,12 @@ pub enum Error {
 pub enum TurnOutcome {
     // XXX: Not sure we should include originating player id in this
     // structure, but Round currently doesn't expose whose turn that just was.
-    BustedOut(PlayerId),
+    BustedOut(player_id::PlayerId),
     // XXX: I think there's only one use case for needing more than one Event
     // (a terrible name in itself): using the Wizard forcing someone to
     // discard the Princess. It's _possible_ we don't need that, but included
     // now for completeness.
-    Played(PlayerId, Card, action::Play, Vec<Event>),
+    Played(player_id::PlayerId, Card, action::Play, Vec<Event>),
 }
 
 
@@ -86,7 +86,7 @@ pub struct Round {
     /// The remaining cards in the deck.
     _stack: Vec<Card>,
     /// All of the players of the game. The size does not change once the game is constructed.
-    _players: Vec<(PlayerId, player::Player)>,
+    _players: Vec<(player_id::PlayerId, player::Player)>,
     /// The current state of the game.
     _current: State,
 }
@@ -101,14 +101,14 @@ impl Round {
     /// Create a new game with a randomly shuffled deck.
     ///
     /// Will return None if given an invalid number of players.
-    pub fn new(player_ids: &[PlayerId]) -> Round {
+    pub fn new(player_ids: &[player_id::PlayerId]) -> Round {
         Round::from_deck(player_ids, deck::Deck::new())
     }
 
     /// Create a new game given an already-shuffled deck.
     ///
     /// Will return None if given an invalid number of players.
-    pub fn from_deck(player_ids: &[PlayerId], deck: deck::Deck) -> Round {
+    pub fn from_deck(player_ids: &[player_id::PlayerId], deck: deck::Deck) -> Round {
         // XXX: ... aaaand we now allow invalid numbers of players.
         let mut cards: Vec<Card> = deck.as_slice().iter().map(|&x| x).collect();
         let mut players = vec![];
@@ -140,8 +140,8 @@ impl Round {
     /// Otherwise (and this is a bit broken), the next player to play is the
     /// one **after** the one given here. e.g. `Some(0)` means it's player 1's
     /// turn next.
-    pub fn from_manual(players: &[(PlayerId, Option<Card>)], deck: &[Card],
-                       current_player: Option<PlayerId>) -> Result<Round, Error> {
+    pub fn from_manual(players: &[(player_id::PlayerId, Option<Card>)], deck: &[Card],
+                       current_player: Option<player_id::PlayerId>) -> Result<Round, Error> {
         match config::Config::new(players.len()) {
             Err(..) => return Err(Error::InvalidPlayers(players.len())),
             _ => ()
@@ -177,7 +177,7 @@ impl Round {
     }
 
     /// Return the player IDs in the order of play.
-    fn player_ids(&self) -> Vec<PlayerId> {
+    fn player_ids(&self) -> Vec<player_id::PlayerId> {
         let mut ids = vec![];
         for &(id, _) in self._players.iter() {
             ids.push(id)
@@ -204,7 +204,7 @@ impl Round {
         self._players.iter().filter(|&&(_, ref p)| p.active()).count()
     }
 
-    fn current_player(&self) -> Option<PlayerId> {
+    fn current_player(&self) -> Option<player_id::PlayerId> {
         match self._current {
             State::NotStarted => None,
             State::PlayerReady(i, _) => Some(i),
@@ -228,25 +228,25 @@ impl Round {
     }
 
     /// At the end of the game, return all winners and their hands.
-    pub fn winners(&self) -> Vec<(PlayerId, Card)> {
+    pub fn winners(&self) -> Vec<(player_id::PlayerId, Card)> {
         match self.next_player() {
             (_, Some(..)) => vec![],
             (_, None) => self._game_result().winners()
         }
     }
 
-    pub fn get_discards(&self, player_id: PlayerId) -> Result<&[Card], action::PlayError> {
+    pub fn get_discards(&self, player_id: player_id::PlayerId) -> Result<&[Card], action::PlayError> {
         self.get_player(player_id).map(|p| p.discards())
     }
 
-    fn _player_index(&self, player_id: PlayerId) -> uint {
+    fn _player_index(&self, player_id: player_id::PlayerId) -> uint {
         self._players
             .iter()
             .position(|&(id, _)| id == player_id)
             .expect(format!("Unknown player ID: {}", player_id).as_slice())
     }
 
-    fn get_player(&self, player_id: PlayerId) -> Result<&player::Player, action::PlayError> {
+    fn get_player(&self, player_id: player_id::PlayerId) -> Result<&player::Player, action::PlayError> {
         match self._players.iter().find(|&&(id, _)| id == player_id) {
             None => Err(action::PlayError::InvalidPlayer(player_id)),
             Some(&(_, ref player)) => if player.active() {
@@ -257,18 +257,18 @@ impl Round {
         }
     }
 
-    fn get_hand(&self, player_id: PlayerId) -> Result<Card, action::PlayError> {
+    fn get_hand(&self, player_id: player_id::PlayerId) -> Result<Card, action::PlayError> {
         self.get_player(player_id).map(|p| p.get_hand().unwrap())
     }
 
-    fn update_player(&self, player_id: PlayerId, player: player::Player) -> Round {
+    fn update_player(&self, player_id: player_id::PlayerId, player: player::Player) -> Round {
         let i = self._player_index(player_id);
         let mut new_game = self.clone();
         new_game._players[i] = (player_id, player);
         new_game
     }
 
-    fn update_player_by(&self, player_id: PlayerId, updater: |&player::Player| -> Result<player::Player, player::Error>) -> Result<Round, action::PlayError> {
+    fn update_player_by(&self, player_id: player_id::PlayerId, updater: |&player::Player| -> Result<player::Player, player::Error>) -> Result<Round, action::PlayError> {
         self.get_player(player_id)
             .map(|x| updater(x))
             .and_then(
@@ -280,7 +280,7 @@ impl Round {
     }
 
     fn update_two_players_by(
-        &self, p1_id: PlayerId, p2_id: PlayerId,
+        &self, p1_id: player_id::PlayerId, p2_id: player_id::PlayerId,
         updater: |&player::Player, &player::Player| -> Result<(player::Player, player::Player), player::Error>)
         -> Result<Round, action::PlayError> {
 
@@ -312,7 +312,7 @@ impl Round {
         (g, c)
     }
 
-    fn _next_player(&self) -> Option<PlayerId> {
+    fn _next_player(&self) -> Option<player_id::PlayerId> {
         if self.num_players_remaining() <= 1 {
             None
         } else {
@@ -457,7 +457,7 @@ impl Round {
     /// If the game is now over, will return `Ok(None)`. If not, will return
     /// `Ok(Some(new_game))`.
     pub fn handle_turn(&self, decide_play: |&Round, &Turn| -> (Card, action::Play),
-                       reveal_card: |PlayerId, Card| -> ())
+                       reveal_card: |player_id::PlayerId, Card| -> ())
                        -> Result<Option<(Round, TurnOutcome)>, action::PlayError> {
         let (new_game, turn) = self.next_player();
         let turn = match turn {
@@ -510,18 +510,18 @@ fn minister_bust(a: Card, b: Card) -> bool {
 /// The result of a finished round of Love Letter.
 #[deriving(Eq, PartialEq, Show, Clone)]
 pub struct RoundResult {
-    _players: Vec<(PlayerId, player::Player)>,
+    _players: Vec<(player_id::PlayerId, player::Player)>,
 }
 
 
 impl RoundResult {
 
-    fn new(players: Vec<(PlayerId, player::Player)>) -> RoundResult {
+    fn new(players: Vec<(player_id::PlayerId, player::Player)>) -> RoundResult {
         RoundResult { _players: players }
     }
 
     /// At the end of the game, return players and their hands.
-    fn survivors(&self) -> Vec<(PlayerId, Card)> {
+    fn survivors(&self) -> Vec<(player_id::PlayerId, Card)> {
         self._players
             .iter()
             .filter_map(
@@ -533,7 +533,7 @@ impl RoundResult {
     }
 
     /// At the end of the game, return all winners and their hands.
-    pub fn winners(&self) -> Vec<(PlayerId, Card)> {
+    pub fn winners(&self) -> Vec<(player_id::PlayerId, Card)> {
         let survivors = self.survivors();
         let mut ws = vec![];
         for x in util::maxima_by(&survivors, |&(_, card)| card).iter() {
