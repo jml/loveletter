@@ -71,7 +71,7 @@ pub enum Error {
 pub enum TurnOutcome {
     // XXX: Not sure we should include originating player id in this
     // structure, but Round currently doesn't expose whose turn that just was.
-    BustedOut(player_id::PlayerId),
+    BustedOut(player_id::PlayerId, Card, Card),
     // XXX: I think there's only one use case for needing more than one Event
     // (a terrible name in itself): using the Wizard forcing someone to
     // discard the Princess. It's _possible_ we don't need that, but included
@@ -472,7 +472,7 @@ impl Round {
             // picked up card & held card.
             let new_game = try!(new_game.update_player_by(
                 turn.player, |p| p.play_card(turn.draw, turn.draw).and_then(|p| p.eliminate())));
-            Ok(Some((new_game, TurnOutcome::BustedOut(turn.player))))
+            Ok(Some((new_game, TurnOutcome::BustedOut(turn.player, turn.draw, turn.hand))))
         } else {
             // Find out what they'd like to play.
             let (card, play) = decide_play(&new_game, &turn);

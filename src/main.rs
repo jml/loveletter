@@ -77,12 +77,9 @@ fn format_event(event: &loveletter::Event) -> String {
 }
 
 
-fn report_outcome(game: &loveletter::Round, outcome: loveletter::TurnOutcome) -> String {
+fn report_outcome(outcome: loveletter::TurnOutcome) -> String {
     match outcome {
-        loveletter::TurnOutcome::BustedOut(player) => {
-            let discards = game.get_discards(player).ok().expect("Busted player did not exist");
-            let a = discards[discards.len() - 1];
-            let b = discards[discards.len() - 2];
+        loveletter::TurnOutcome::BustedOut(player, a, b) => {
             format!("{} busted out with {} and {}!", player, a, b)
         },
         loveletter::TurnOutcome::Played(player, card, play, events) => {
@@ -198,7 +195,7 @@ fn main() {
                 Err(e) => { println!("Invalid move: {}\n", e); continue }
             };
 
-            io::println(report_outcome(&new_round, outcome).as_slice());
+            io::println(report_outcome(outcome).as_slice());
             println!("");
             current_round = new_round;
         }
