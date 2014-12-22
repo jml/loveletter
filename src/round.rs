@@ -16,7 +16,7 @@ use player_id;
 use util;
 
 
-#[deriving(Show, PartialEq, Eq)]
+#[deriving(Show, PartialEq, Eq, Copy)]
 pub struct Turn {
     pub player: player_id::PlayerId,
     pub hand: Card,
