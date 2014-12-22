@@ -377,10 +377,11 @@ impl Round {
             },
             Action::ForceDiscard(i) => {
                 let target = try!(self.get_player(i));
+                let hand = target.get_hand().expect("ForceDiscard on inactive player");
                 if target.protected() {
                     Ok(Event::NoChange)
                 } else {
-                    Ok(Event::ForcedDiscard(i))
+                    Ok(Event::ForcedDiscard(i, hand))
                 }
             },
             Action::ForceReveal(src, tgt) => {
@@ -431,9 +432,10 @@ impl Round {
             Event::PlayerEliminated(i) => self.update_player_by(i, |p| p.eliminate()).map(|g| (g, None)),
             Event::SwappedHands(src, tgt) => self.update_two_players_by(
                 tgt, src, |tgt_player, src_player| tgt_player.swap_hands(src_player)).map(|g| (g, None)),
-            Event::ForcedDiscard(i) => {
+            Event::ForcedDiscard(i, card) => {
                 // XXX: This can cause another event.
                 let player = try!(self.get_player(i));
+                debug_assert!(player.get_hand() == Some(card));
                 if player.get_hand() == Some(Card::Princess) {
                     self.update_player_by(
                         i, |p| p.eliminate()).map(|g| (g, Some(Event::PlayerEliminated(i))))

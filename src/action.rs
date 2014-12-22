@@ -60,7 +60,7 @@ pub enum Event {
     Protected(PlayerId),
     SwappedHands(PlayerId, PlayerId),
     PlayerEliminated(PlayerId),
-    ForcedDiscard(PlayerId),
+    ForcedDiscard(PlayerId, Card),
     ForcedReveal(PlayerId, PlayerId),
 }
 
