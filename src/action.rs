@@ -2,7 +2,7 @@ use deck::Card;
 use player_id::PlayerId;
 
 
-#[deriving(PartialEq, Eq, Show)]
+#[deriving(PartialEq, Eq, Show, Copy)]
 /// The play that accompanies a card.
 pub enum Play {
     /// This card has no effect.
@@ -54,7 +54,7 @@ pub enum Action {
 }
 
 
-#[deriving(PartialEq, Eq, Show)]
+#[deriving(PartialEq, Eq, Show, Copy)]
 pub enum Event {
     NoChange,
     Protected(PlayerId),

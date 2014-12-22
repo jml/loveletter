@@ -61,6 +61,26 @@ fn choose(game: &loveletter::Game, turn: &loveletter::Turn) -> (Card, loveletter
 }
 
 
+fn format_event(game: &loveletter::Round, event: &loveletter::Event) -> String {
+    match *event {
+        Event::NoChange => "Nothing happened. ".to_string(),
+        Event::Protected(_) => "Now protected until their next turn. ".to_string(),
+        Event::SwappedHands(_, b) => format!("Swapped hands with {}. ", b),
+        Event::PlayerEliminated(p) => format!("{} eliminated. ", p),
+        Event::ForcedReveal(a, b) => format!("{} showed their card to {}. ", b, a),
+        Event::ForcedDiscard(p) => {
+            // XXX: Worth saying here whether the player was
+            // allowed to draw another card.
+            let last_discard: &Card = game
+                .get_discards(p)
+                .ok().expect("Targeted player did not exist")
+                .last().expect("Player forced to discard does not have any discards");
+            format!("{} forced to discard {}. ", p, last_discard)
+        }
+    }
+}
+
+
 fn report_outcome(game: &loveletter::Round, outcome: loveletter::TurnOutcome) -> String {
     match outcome {
         loveletter::TurnOutcome::BustedOut(player) => {
@@ -79,22 +99,7 @@ fn report_outcome(game: &loveletter::Round, outcome: loveletter::TurnOutcome) ->
             };
             let mut event_str = String::new();
             for event in events.iter() {
-                event_str = event_str + (match *event {
-                    Event::NoChange => "Nothing happened. ".to_string(),
-                    Event::Protected(_) => "Now protected until their next turn. ".to_string(),
-                    Event::SwappedHands(_, b) => format!("Swapped hands with {}. ", b),
-                    Event::PlayerEliminated(p) => format!("{} eliminated. ", p),
-                    Event::ForcedReveal(a, b) => format!("{} showed their card to {}. ", b, a),
-                    Event::ForcedDiscard(p) => {
-                        // XXX: Worth saying here whether the player was
-                        // allowed to draw another card.
-                        let last_discard: &Card = game
-                            .get_discards(p)
-                            .ok().expect("Targeted player did not exist")
-                            .last().expect("Player forced to discard does not have any discards");
-                        format!("{} forced to discard {}. ", p, last_discard)
-                    },
-                })
+                event_str = event_str + format_event(game, event).as_slice();
             }
             format!("{}{} {}", prelude, follow_up, event_str)
         },

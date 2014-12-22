@@ -270,7 +270,7 @@ impl Round {
 
     fn update_player_by(&self, player_id: PlayerId, updater: |&player::Player| -> Result<player::Player, player::Error>) -> Result<Round, action::PlayError> {
         self.get_player(player_id)
-            .map(updater)
+            .map(|x| updater(x))
             .and_then(
                 |result| match result {
                     Ok(new_player) => Ok(self.update_player(player_id, new_player)),
@@ -775,8 +775,12 @@ mod test {
     }
 
     fn assert_winners(game: &Round, expected_winners: Vec<PlayerId>) {
-        let observed_winners = game.winners();
-        assert_eq!(expected_winners, observed_winners.iter().map(|&(i, _)| i).collect());
+        let observed_winners: Vec<PlayerId> = game
+            .winners()
+            .iter()
+            .map(|&(i, _)| i)
+            .collect();
+        assert_eq!(expected_winners, observed_winners);
     }
 
     #[test]

@@ -102,7 +102,8 @@ mod test {
     #[test]
     fn test_maxima_by_no_data() {
         let xs: Vec<int> = vec![];
-        assert_eq!(vec![], super::maxima_by(&xs, |&x| x));
+        let empty: Vec<&int> = vec![];
+        assert_eq!(empty, super::maxima_by(&xs, |&x| x));
     }
 
     #[test]

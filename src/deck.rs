@@ -5,7 +5,7 @@ use std::slice;
 use util;
 
 
-#[deriving(PartialEq, PartialOrd, Eq, Ord, Show, Clone)]
+#[deriving(PartialEq, PartialOrd, Eq, Ord, Show, Clone, Copy)]
 /// Love Letter has eight different cards, each of different worth. The Soldier is the lowest and
 /// the Princess is the highest.
 pub enum Card {
@@ -57,7 +57,7 @@ const DECK: [Card, ..CARDS_IN_DECK] = [
 /// A Love Letter deck.
 pub struct Deck(Vec<Card>);
 
-#[deriving(Show, PartialEq, Eq)]
+#[deriving(Show, PartialEq, Eq, Copy)]
 /// Returned when we try to construct a malformed Love Letter deck.
 pub enum DeckError {
     WrongCards,
