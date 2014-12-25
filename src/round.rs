@@ -8,7 +8,6 @@
 
 use action;
 use action::{Action, Event};
-use config;
 use deck;
 use deck::Card;
 use player;
@@ -142,10 +141,9 @@ impl Round {
     /// turn next.
     pub fn from_manual(players: &[(player_id::PlayerId, Option<Card>)], deck: &[Card],
                        current_player: Option<player_id::PlayerId>) -> Result<Round, Error> {
-        match config::Config::new(players.len()) {
-            Err(..) => return Err(Error::InvalidPlayers(players.len())),
-            _ => ()
-        };
+        if !valid_player_count(players.len()) {
+            return Err(Error::InvalidPlayers(players.len()));
+        }
         let mut stack: Vec<Card> = deck.iter().map(|&x| x).collect();
         let mut all_cards = stack.clone();
         for x in players.iter().filter_map(|&(_, x)| x) {
@@ -508,6 +506,10 @@ fn minister_bust(a: Card, b: Card) -> bool {
     }
 }
 
+
+fn valid_player_count(num_players: uint) -> bool {
+    2 <= num_players && num_players <= 4
+}
 
 /// The result of a finished round of Love Letter.
 #[deriving(Eq, PartialEq, Show, Clone)]

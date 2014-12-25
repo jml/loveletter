@@ -12,7 +12,6 @@ pub mod game;
 pub mod prompt;
 
 mod action;
-mod config;
 mod round;
 mod player;
 mod player_id;
