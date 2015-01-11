@@ -88,7 +88,7 @@ impl Deck {
     pub fn shuffled(&self) -> Deck {
         let &Deck(ref cards) = self;
         let mut new_cards = cards.clone();
-        let mut rng = rand::task_rng();
+        let mut rng = rand::thread_rng();
         rng.shuffle(new_cards.as_mut_slice());
         Deck(new_cards)
     }
