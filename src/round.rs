@@ -243,7 +243,7 @@ impl Round {
         self._players
             .iter()
             .position(|&(id, _)| id == player_id)
-            .expect(format!("Unknown player ID: {}", player_id).as_slice())
+            .expect(format!("Unknown player ID: {:?}", player_id).as_slice())
     }
 
     fn get_player(&self, player_id: player_id::PlayerId) -> Result<&player::Player, action::PlayError> {
