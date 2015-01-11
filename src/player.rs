@@ -1,7 +1,7 @@
 use deck::Card;
 
 
-#[deriving(Show, PartialEq, Eq, Clone)]
+#[derive(Show, PartialEq, Eq, Clone)]
 /// A player of Love Letter.
 pub struct Player {
     _hand: Option<Card>,
@@ -10,7 +10,7 @@ pub struct Player {
 }
 
 
-#[deriving(Show, PartialEq, Eq)]
+#[derive(Show, PartialEq, Eq)]
 pub enum Error {
     Inactive,
     NoSuchCard(Card, (Card, Card)),

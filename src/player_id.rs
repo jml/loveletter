@@ -4,7 +4,7 @@ use std::fmt;
 use std::slice;
 use std::vec;
 
-#[deriving(PartialEq, Eq, PartialOrd, Ord, Clone, Copy)]
+#[derive(PartialEq, Eq, PartialOrd, Ord, Clone, Copy)]
 pub struct PlayerId(uint);
 
 

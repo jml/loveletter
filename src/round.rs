@@ -15,7 +15,7 @@ use player_id;
 use util;
 
 
-#[deriving(Show, PartialEq, Eq, Copy)]
+#[derive(Show, PartialEq, Eq, Copy)]
 pub struct Turn {
     pub player: player_id::PlayerId,
     pub hand: Card,
@@ -29,7 +29,7 @@ impl Turn {
 }
 
 
-#[deriving(Show, PartialEq, Eq, Clone)]
+#[derive(Show, PartialEq, Eq, Clone)]
 /// Possible states of a round of Love Letter.
 ///
 /// ### Notes
@@ -54,7 +54,7 @@ enum State {
 
 
 
-#[deriving(Show, PartialEq, Eq, Copy)]
+#[derive(Show, PartialEq, Eq, Copy)]
 /// Errors that can occur while constructing a Round.
 pub enum Error {
     /// Specified an invalid number of players.
@@ -66,7 +66,7 @@ pub enum Error {
 }
 
 
-#[deriving(Show)]
+#[derive(Show)]
 pub enum TurnOutcome {
     // XXX: Not sure we should include originating player id in this
     // structure, but Round currently doesn't expose whose turn that just was.
@@ -79,7 +79,7 @@ pub enum TurnOutcome {
 }
 
 
-#[deriving(Show, PartialEq, Eq, Clone)]
+#[derive(Show, PartialEq, Eq, Clone)]
 /// Represents a single round of Love Letter.
 pub struct Round {
     /// The remaining cards in the deck.
@@ -512,7 +512,7 @@ fn valid_player_count(num_players: uint) -> bool {
 }
 
 /// The result of a finished round of Love Letter.
-#[deriving(Eq, PartialEq, Show, Clone)]
+#[derive(Eq, PartialEq, Show, Clone)]
 pub struct RoundResult {
     _players: Vec<(player_id::PlayerId, player::Player)>,
 }

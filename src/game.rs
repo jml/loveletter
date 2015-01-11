@@ -14,7 +14,7 @@ use round;
 const WINNING_SCORE: uint = 4u;
 
 
-#[deriving(Clone)]
+#[derive(Clone)]
 pub struct Game {
     // XXX: Possibly Game should not own Config. In the only current non-test
     // use case, Config can easily last longer than Game. The only reason we

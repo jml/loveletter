@@ -2,7 +2,7 @@ use deck::Card;
 use player_id::PlayerId;
 
 
-#[deriving(PartialEq, Eq, Show, Copy)]
+#[derive(PartialEq, Eq, Show, Copy)]
 /// The play that accompanies a card.
 pub enum Play {
     /// This card has no effect.
@@ -14,7 +14,7 @@ pub enum Play {
 }
 
 
-#[deriving(PartialEq, Eq, Show)]
+#[derive(PartialEq, Eq, Show)]
 /// Represents an invalid action in a game, taken by a player.
 pub enum PlayError {
     /// Targeted a player who has never existed.
@@ -33,7 +33,7 @@ pub enum PlayError {
 
 
 /// The result of a play.
-#[deriving(PartialEq, Eq, Show)]
+#[derive(PartialEq, Eq, Show)]
 pub enum Action {
     /// Nothing happens.
     NoChange,
@@ -54,7 +54,7 @@ pub enum Action {
 }
 
 
-#[deriving(PartialEq, Eq, Show, Copy)]
+#[derive(PartialEq, Eq, Show, Copy)]
 pub enum Event {
     NoChange,
     Protected(PlayerId),
