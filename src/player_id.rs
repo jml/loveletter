@@ -77,7 +77,7 @@ impl Players {
         }
     }
 
-    pub fn iter(&self) -> slice::Items<PlayerId> {
+    pub fn iter(&self) -> slice::Iter<PlayerId> {
         self._players.iter()
     }
 }

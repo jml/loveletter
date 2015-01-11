@@ -98,7 +98,7 @@ impl Deck {
         cards.as_slice()
     }
 
-    pub fn iter(&self) -> slice::Items<Card> {
+    pub fn iter(&self) -> slice::Iter<Card> {
         let &Deck(ref cards) = self;
         cards.iter()
     }
