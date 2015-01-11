@@ -1,5 +1,6 @@
 use std::fmt;
 use std::io;
+use std::str;
 
 /// Repeatedly prompt the user until they give us something that parses.
 pub fn repeated_prompt<P, T, E>(prompt: &str, parser: P) -> T
@@ -19,7 +20,7 @@ pub fn repeated_prompt<P, T, E>(prompt: &str, parser: P) -> T
 
 
 pub fn read_int_in_range(x: &str, upper: uint) -> Result<uint, String> {
-    match from_str(x.trim()) {
+    match str::FromStr::from_str(x.trim()) {
         None => Err(format!(
             "Please enter a number between 1 and {}", upper)),
         Some(x) =>
