@@ -11,7 +11,7 @@ pub struct PlayerId(uint);
 impl fmt::Show for PlayerId {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> Result<(), fmt::Error> {
         let &PlayerId(i) = self;
-        formatter.write(format!("Player #{}", i + 1).as_bytes())
+        write!(formatter, "Player #{}", i + 1)
     }
 }
 
