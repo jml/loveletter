@@ -14,7 +14,7 @@ pub enum Play {
 }
 
 
-#[derive(PartialEq, Eq, Show)]
+#[derive(PartialEq, Eq, Show, Copy)]
 /// Represents an invalid action in a game, taken by a player.
 pub enum PlayError {
     /// Targeted a player who has never existed.
