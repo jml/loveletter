@@ -613,7 +613,7 @@ mod test {
             let found = full_deck.iter().position(|c| c == card);
             match found {
                 Some(i) => full_deck.swap_remove(i),
-                None    => panic!("card in game that's not in deck: {}", card),
+                None    => panic!("card in game that's not in deck: {:?}", card),
             };
         }
         assert_eq!(1, full_deck.len());
