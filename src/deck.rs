@@ -33,7 +33,7 @@ const CARDS_IN_DECK: uint = 16;
 /// - 1 Princess
 ///
 /// Altogether, there are 16 cards.
-const DECK: [Card, ..CARDS_IN_DECK] = [
+const DECK: [Card; CARDS_IN_DECK] = [
     Card::Soldier,
     Card::Soldier,
     Card::Soldier,
