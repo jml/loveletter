@@ -23,21 +23,21 @@ fn test_general_swap() {
 
 #[test]
 fn test_self_target_attack() {
-    let (player1, player2) = make_players();
+    let (player1, _) = make_players();
     let result = play_to_action(player1, General, Attack(player1));
     assert_eq!(SelfTarget(player1, General), result.unwrap_err());
 }
 
 #[test]
 fn test_self_target_guess() {
-    let (player1, player2) = make_players();
+    let (player1, _) = make_players();
     let result = play_to_action(player1, Soldier, Guess(player1, Wizard));
     assert_eq!(SelfTarget(player1, Soldier), result.unwrap_err());
 }
 
 #[test]
 fn test_self_target_wizard() {
-    let (player1, player2) = make_players();
+    let (player1, _) = make_players();
     let result = play_to_action(player1, Wizard, Attack(player1));
     assert_eq!(ForceDiscard(player1), result.unwrap());
 }
