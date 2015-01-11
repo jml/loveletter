@@ -30,7 +30,7 @@ pub fn other<T: Eq>((a, b): (T, T), x: T) -> Option<T> {
 pub fn maxima_by<'a, A, B: Ord, F>(xs: &'a Vec<A>, f: F) -> Vec<&'a A>
     where F: Fn(&A) -> B {
     let mut maxes = vec![];
-    let indexes: Vec<(B, uint)> = xs.iter().enumerate().map(|(i, a)| (f(a), i)).collect();
+    let indexes: Vec<(B, usize)> = xs.iter().enumerate().map(|(i, a)| (f(a), i)).collect();
     let max = indexes.iter().max_by(|&&(ref b, _)| b);
     match max {
         None => maxes,
@@ -53,63 +53,63 @@ mod test {
 
     #[test]
     fn test_vector_diff_trivial() {
-        let xs: Vec<int> = vec![];
+        let xs: Vec<i32> = vec![];
         let ys = [];
         assert_eq!(Some(vec![]), subtract_vector(xs, &ys))
     }
 
     #[test]
     fn test_vector_diff_identity() {
-        let xs: Vec<int> = vec![1, 2, 3];
+        let xs: Vec<i32> = vec![1, 2, 3];
         let ys = [];
         assert_eq!(Some(vec![1, 2, 3]), subtract_vector(xs, &ys))
     }
 
     #[test]
     fn test_vector_diff_removes() {
-        let xs: Vec<int> = vec![1, 2, 3];
+        let xs: Vec<i32> = vec![1, 2, 3];
         let ys = [2];
         assert_eq!(Some(vec![1, 3]), subtract_vector(xs, &ys))
     }
 
     #[test]
     fn test_vector_diff_only_removes_one() {
-        let xs: Vec<int> = vec![1, 2, 3, 2];
+        let xs: Vec<i32> = vec![1, 2, 3, 2];
         let ys = [2];
         assert_eq!(Some(vec![1, 3, 2]), subtract_vector(xs, &ys))
     }
 
     #[test]
     fn test_vector_diff_contains_excess_elements() {
-        let xs: Vec<int> = vec![1, 2, 3, 2];
+        let xs: Vec<i32> = vec![1, 2, 3, 2];
         let ys = [2, 2, 2];
         assert_eq!(None, subtract_vector(xs, &ys))
     }
 
     #[test]
     fn test_vector_diff_contains_novel_elements() {
-        let xs: Vec<int> = vec![1, 2, 3, 2];
+        let xs: Vec<i32> = vec![1, 2, 3, 2];
         let ys = [4];
         assert_eq!(None, subtract_vector(xs, &ys))
     }
 
     #[test]
     fn test_other_one() {
-        assert_eq!(None, other((1u, 2u), 0u));
-        assert_eq!(Some(2), other((1u, 2u), 1u));
-        assert_eq!(Some(1), other((1u, 2u), 2u));
+        assert_eq!(None, other((1, 2), 0));
+        assert_eq!(Some(2), other((1, 2), 1));
+        assert_eq!(Some(1), other((1, 2), 2));
     }
 
     #[test]
     fn test_maxima_by_no_data() {
-        let xs: Vec<int> = vec![];
-        let empty: Vec<&int> = vec![];
+        let xs: Vec<i32> = vec![];
+        let empty: Vec<&i32> = vec![];
         assert_eq!(empty, super::maxima_by(&xs, |&x| x));
     }
 
     #[test]
     fn test_maxima_by_id_function() {
-        let xs: Vec<int> = vec![1, 2, 3, 2, 3, 1];
+        let xs: Vec<i32> = vec![1, 2, 3, 2, 3, 1];
         assert_eq!(vec![&xs[2], &xs[4]], super::maxima_by(&xs, |&x| x));
     }
 

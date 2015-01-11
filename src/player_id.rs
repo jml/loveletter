@@ -5,7 +5,7 @@ use std::slice;
 use std::vec;
 
 #[derive(PartialEq, Eq, PartialOrd, Ord, Clone, Copy)]
-pub struct PlayerId(uint);
+pub struct PlayerId(u64);
 
 
 impl fmt::Show for PlayerId {
@@ -17,7 +17,7 @@ impl fmt::Show for PlayerId {
 
 
 pub struct PlayerIdGenerator {
-    last: uint,
+    last: u64,
 }
 
 impl PlayerIdGenerator {
@@ -42,7 +42,7 @@ pub fn player_id_generator() -> PlayerIdGenerator {
 }
 
 
-pub fn make_players(n: uint) -> Option<Players> {
+pub fn make_players(n: usize) -> Option<Players> {
     let player_id_gen = player_id_generator();
     let players: Vec<PlayerId> = player_id_gen.take(n).collect();
     match Players::new(players.as_slice()) {
@@ -54,7 +54,7 @@ pub fn make_players(n: uint) -> Option<Players> {
 
 
 pub enum Error {
-    InvalidNumPlayers(uint),
+    InvalidNumPlayers(usize),
     DuplicatePlayers,
 }
 
@@ -85,6 +85,6 @@ impl Players {
 }
 
 
-fn valid_player_count(num_players: uint) -> bool {
+fn valid_player_count(num_players: usize) -> bool {
     2 <= num_players && num_players <= 4
 }

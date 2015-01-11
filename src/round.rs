@@ -62,7 +62,7 @@ pub enum Error {
     /// Specified an invalid number of players.
     // TODO: Now that we're making a distinction between a game and a round,
     // the Round will be told the number of players by the Game
-    InvalidPlayers(uint),
+    InvalidPlayers(usize),
     /// The given cards do not form a valid deck.
     BadDeck,
 }
@@ -172,7 +172,7 @@ impl Round {
     }
 
     /// Number of players in this game.
-    pub fn num_players(&self) -> uint {
+    pub fn num_players(&self) -> usize {
         self._players.len()
     }
 
@@ -195,12 +195,12 @@ impl Round {
     }
 
     #[cfg(test)]
-    fn num_cards_remaining(&self) -> uint {
+    fn num_cards_remaining(&self) -> usize {
         self._stack.len()
     }
 
     /// Number of active players still playing.
-    fn num_players_remaining(&self) -> uint {
+    fn num_players_remaining(&self) -> usize {
         self._players.iter().filter(|&&(_, ref p)| p.active()).count()
     }
 
@@ -239,7 +239,7 @@ impl Round {
         self.get_player(player_id).map(|p| p.discards())
     }
 
-    fn _player_index(&self, player_id: player_id::PlayerId) -> uint {
+    fn _player_index(&self, player_id: player_id::PlayerId) -> usize {
         self._players
             .iter()
             .position(|&(id, _)| id == player_id)
@@ -355,7 +355,7 @@ impl Round {
         // deal (only check the target is active & not protected once).
         //
         // Perhaps it's also wise to have a type that actually has a reference
-        // to a player rather than a uint
+        // to a player rather than a usize
         match action {
             Action::NoChange => Ok(Event::NoChange),
             Action::Protect(i) => self.get_player(i).map(|_| Event::Protected(i)),
@@ -510,7 +510,7 @@ fn minister_bust(a: Card, b: Card) -> bool {
 }
 
 
-fn valid_player_count(num_players: uint) -> bool {
+fn valid_player_count(num_players: usize) -> bool {
     2 <= num_players && num_players <= 4
 }
 
@@ -568,11 +568,11 @@ mod test {
         make_round(4)
     }
 
-    fn make_player_ids(num_players: uint) -> Vec<PlayerId> {
+    fn make_player_ids(num_players: usize) -> Vec<PlayerId> {
         player_id_generator().take(num_players).collect()
     }
 
-    fn make_round(num_players: uint) -> Round {
+    fn make_round(num_players: usize) -> Round {
         let players: Vec<PlayerId> = make_player_ids(num_players);
         Round::new(players.as_slice())
     }
@@ -647,7 +647,7 @@ mod test {
             ];
         let num_cards = cards.len();
         let deck = deck::Deck::from_slice(&cards).unwrap();
-        let num_players = 3u;
+        let num_players = 3us;
         let players = make_player_ids(num_players);
         let g = Round::from_deck(players.as_slice(), deck);
         assert_eq!(

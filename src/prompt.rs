@@ -19,7 +19,7 @@ pub fn repeated_prompt<P, T, E>(prompt: &str, parser: P) -> T
 }
 
 
-pub fn read_int_in_range(x: &str, upper: uint) -> Result<uint, String> {
+pub fn read_int_in_range(x: &str, upper: usize) -> Result<usize, String> {
     match str::FromStr::from_str(x.trim()) {
         None => Err(format!(
             "Please enter a number between 1 and {}", upper)),

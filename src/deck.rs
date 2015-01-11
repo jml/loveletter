@@ -20,7 +20,7 @@ pub enum Card {
 }
 
 
-const CARDS_IN_DECK: uint = 16;
+const CARDS_IN_DECK: usize = 16;
 
 /// In the Love Letter deck, there are:
 /// - 5 Soldiers
@@ -61,7 +61,7 @@ pub struct Deck(Vec<Card>);
 /// Returned when we try to construct a malformed Love Letter deck.
 pub enum DeckError {
     WrongCards,
-    WrongNumber(uint),
+    WrongNumber(usize),
 }
 
 

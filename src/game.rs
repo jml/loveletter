@@ -11,7 +11,7 @@ use round;
 
 
 // XXX: Should this be a configuration parameter?
-const WINNING_SCORE: uint = 4u;
+const WINNING_SCORE: u32 = 4;
 
 
 #[derive(Clone)]
@@ -19,17 +19,17 @@ pub struct Game {
     // XXX: Possibly Game should not own Config. In the only current non-test
     // use case, Config can easily last longer than Game. The only reason we
     // want to own this is for the helper `make_game` function.
-    _players: Vec<(PlayerId, uint)>,
+    _players: Vec<(PlayerId, u32)>,
 }
 
 
 impl Game {
     fn new(players: Players) -> Game {
-        let players: Vec<(PlayerId, uint)> = players.iter().map(|&p| (p, 0)).collect();
+        let players: Vec<(PlayerId, u32)> = players.iter().map(|&p| (p, 0)).collect();
         Game { _players: players }
     }
 
-    fn num_players(&self) -> uint {
+    fn num_players(&self) -> usize {
         self._players.len()
     }
 
@@ -50,7 +50,7 @@ impl Game {
         self._players.iter().map(|&(p, _)| p).collect()
     }
 
-    pub fn scores(&self) -> Vec<uint> {
+    pub fn scores(&self) -> Vec<u32> {
         self._players.iter().map(|&(_, x)| x).collect()
     }
 
@@ -88,7 +88,7 @@ impl Game {
 
 
 /// Create a new game with the given number of arbitrary players.
-pub fn new_game(num_players: uint) -> Option<Game> {
+pub fn new_game(num_players: usize) -> Option<Game> {
     player_id::make_players(num_players).map(|players| Game::new(players))
 }
 
@@ -100,7 +100,7 @@ mod test {
     use super::Game;
 
     // XXX: Duplicated from round.rs
-    fn make_player_ids(num_players: uint) -> Vec<PlayerId> {
+    fn make_player_ids(num_players: usize) -> Vec<PlayerId> {
         player_id_generator().take(num_players).collect()
     }
 
@@ -108,7 +108,7 @@ mod test {
         Players::new(players.as_slice()).map(|players| Game::new(players)).ok().unwrap()
     }
 
-    fn make_game(num_players: uint) -> Game {
+    fn make_game(num_players: usize) -> Game {
         super::new_game(num_players).unwrap()
     }
 

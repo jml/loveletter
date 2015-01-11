@@ -128,7 +128,7 @@ fn announce_winner(winners: &Vec<(PlayerId, Card)>) {
 }
 
 
-fn announce_current_scores(scores: &[uint]) {
+fn announce_current_scores(scores: &[u32]) {
     println!("Scores");
     println!("------");
     for (player_id, &score) in scores.iter().enumerate() {
@@ -137,7 +137,7 @@ fn announce_current_scores(scores: &[uint]) {
     println!("");
 }
 
-fn announce_game_winners(scores: &[uint]) {
+fn announce_game_winners(scores: &[u32]) {
     println!("GAME OVER");
     println!("");
     announce_current_scores(scores);
@@ -155,7 +155,7 @@ fn main() {
     println!("===========");
     println!("");
 
-    let num_players = 2u;
+    let num_players = 2us;
 
     let game = match loveletter::game::new_game(num_players) {
         Some(g) => g,
