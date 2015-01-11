@@ -266,7 +266,8 @@ impl Round {
         new_game
     }
 
-    fn update_player_by(&self, player_id: player_id::PlayerId, updater: |&player::Player| -> Result<player::Player, player::Error>) -> Result<Round, action::PlayError> {
+    fn update_player_by<F>(&self, player_id: player_id::PlayerId, updater: F) -> Result<Round, action::PlayError>
+        where F: Fn(&player::Player) -> Result<player::Player, player::Error> {
         self.get_player(player_id)
             .map(|x| updater(x))
             .and_then(
@@ -277,10 +278,9 @@ impl Round {
                 })
     }
 
-    fn update_two_players_by(
-        &self, p1_id: player_id::PlayerId, p2_id: player_id::PlayerId,
-        updater: |&player::Player, &player::Player| -> Result<(player::Player, player::Player), player::Error>)
-        -> Result<Round, action::PlayError> {
+    fn update_two_players_by<F>(
+        &self, p1_id: player_id::PlayerId, p2_id: player_id::PlayerId, updater: F) -> Result<Round, action::PlayError>
+        where F: Fn(&player::Player, &player::Player) -> Result<(player::Player, player::Player), player::Error> {
 
         let p1 = try!(self.get_player(p1_id));
         let p2 = try!(self.get_player(p2_id));
@@ -456,9 +456,10 @@ impl Round {
     ///
     /// If the game is now over, will return `Ok(None)`. If not, will return
     /// `Ok(Some(new_game))`.
-    pub fn handle_turn(&self, decide_play: |&Round, &Turn| -> (Card, action::Play),
-                       reveal_card: |player_id::PlayerId, Card| -> ())
-                       -> Result<Option<(Round, TurnOutcome)>, action::PlayError> {
+    pub fn handle_turn<F, G>(&self, decide_play: F, reveal_card: G) -> Result<Option<(Round, TurnOutcome)>, action::PlayError>
+        where F: Fn(&Round, &Turn) -> (Card, action::Play),
+              G: Fn(player_id::PlayerId, Card) -> ()
+    {
         let (new_game, turn) = self.next_player();
         let turn = match turn {
             None => return Ok(None),

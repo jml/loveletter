@@ -2,7 +2,8 @@ use std::fmt;
 use std::io;
 
 /// Repeatedly prompt the user until they give us something that parses.
-pub fn repeated_prompt<T, E: fmt::Show>(prompt: &str, parser: |&str| -> Result<T, E>) -> T {
+pub fn repeated_prompt<P, T, E>(prompt: &str, parser: P) -> T
+    where P : Fn(&str) -> Result<T, E>, E : fmt::Show {
     loop {
         print!("{}", prompt);
         let input = io::stdin()

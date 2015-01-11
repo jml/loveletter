@@ -27,7 +27,8 @@ pub fn other<T: Eq>((a, b): (T, T), x: T) -> Option<T> {
 
 /// Return the "biggest" elements of `xs`, where `f` is a function applied to
 /// each element that returns some indication of magnitude.
-pub fn maxima_by<'a, A, B: Ord>(xs: &'a Vec<A>, f: |&A| -> B) -> Vec<&'a A> {
+pub fn maxima_by<'a, A, B: Ord, F>(xs: &'a Vec<A>, f: F) -> Vec<&'a A>
+    where F: Fn(&A) -> B {
     let mut maxes = vec![];
     let indexes: Vec<(B, uint)> = xs.iter().enumerate().map(|(i, a)| (f(a), i)).collect();
     let max = indexes.iter().max_by(|&&(ref b, _)| b);
