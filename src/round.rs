@@ -6,6 +6,8 @@
 /// The winner is either the last player standing, or the player with the
 /// highest-valued card.
 
+use std::cmp::Ordering::{Less, Equal, Greater};
+
 use action;
 use action::{Action, Event};
 use deck;
