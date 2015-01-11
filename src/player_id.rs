@@ -26,7 +26,9 @@ impl PlayerIdGenerator {
     }
 }
 
-impl Iterator<PlayerId> for PlayerIdGenerator {
+impl Iterator for PlayerIdGenerator {
+    type Item = PlayerId;
+
     fn next(&mut self) -> Option<PlayerId> {
         let result = PlayerId(self.last);
         self.last += 1;
