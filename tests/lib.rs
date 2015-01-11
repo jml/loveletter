@@ -1,3 +1,6 @@
+// Added rust 1.0.0-alpha. So much unstable stuff.
+#![allow(unstable)]
+
 extern crate loveletter;
 
 use loveletter::Card;

@@ -1,3 +1,6 @@
+// Added rust 1.0.0-alpha. So much unstable stuff.
+#![allow(unstable)]
+
 /// loveletter: implementation of [Love Letter](http://boardgamegeek.com/boardgame/129622/love-letter)
 
 pub use action::{Event, Play, PlayError};
